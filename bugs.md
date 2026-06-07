@@ -12,7 +12,8 @@ The dominant root cause (Bugs 1-8) is a single defect: every numeric option pars
 
 ## Critical (silent data corruption — wrong request sent, exit 0)
 
-### Bug 1 — Station/component/year ids in scientific notation are sent literally as `1e+21`
+### Bug 1 — Station/component/year ids in scientific notation are sent literally as `1e+21` — ✅ FIXED
+- **Fix**: Added a strict decimal-integer parser `parseStrictInt` (`src/cli/shared.ts`) used by all numeric option parsers; it only accepts `^-?\d+$`, so `1e21` is now rejected with "Expected a positive integer (>= 1)".
 - **Severity**: Critical · **Confidence**: Certain
 - **Repro**:
   ```
@@ -27,7 +28,8 @@ The dominant root cause (Bugs 1-8) is a single defect: every numeric option pars
   `parsePositiveIntArg` does `Number("1e21")` = `1e21`, which `Number.isInteger` accepts; then `String(1e21)` = `"1e+21"` is placed in the query string. The API receives a malformed id, not a number.
 - **Root cause**: `src/cli/shared.ts:27-32` (`parsePositiveIntArg`) + `String()` coercion in `src/client/query.ts:15`.
 
-### Bug 2 — Integer ids above 2^53 are silently rounded before being sent
+### Bug 2 — Integer ids above 2^53 are silently rounded before being sent — ✅ FIXED
+- **Fix**: `parseStrictInt` (`src/cli/shared.ts`) now rejects values that are not safe integers (`Number.isSafeInteger`), so `9999999999999999` is rejected instead of being rounded and sent.
 - **Severity**: Critical · **Confidence**: Certain
 - **Repro**:
   ```
@@ -38,7 +40,8 @@ The dominant root cause (Bugs 1-8) is a single defect: every numeric option pars
 - **Actual** (exit 0): request sent with `station=10000000000000000`. `Number("9999999999999999")` rounds to `1e16`, and `Number.isInteger` still returns true, so the corrupted value passes validation and is queried. The user asked for one id and a different id is sent — with no warning.
 - **Root cause**: `src/cli/shared.ts:26-32` validates the post-rounding float, never the original string.
 
-### Bug 3 — Hours accept hex/binary/scientific/signed forms (`0x10`→16, `0b101`→5, `1e1`→10, `+5`→5)
+### Bug 3 — Hours accept hex/binary/scientific/signed forms (`0x10`→16, `0b101`→5, `1e1`→10, `+5`→5) — ✅ FIXED
+- **Fix**: `parseHour` (`src/cli/shared.ts`) now uses `parseStrictInt`; hex/binary/octal/scientific/`+`-signed forms are rejected before the range check.
 - **Severity**: Critical · **Confidence**: Certain
 - **Repro**:
   ```
@@ -49,7 +52,8 @@ The dominant root cause (Bugs 1-8) is a single defect: every numeric option pars
 - **Actual** (exit 0): request sent as `time_from=16&time_to=10&station=143`. Note `0x10`=16 is even **out of the 1..24 range** the parser claims to enforce — it passes because `Number("0x10")` returns 16 (`<=24`), but a user typing `0x10` did not mean "hour 16". `+5`, `0b101`, `1e1` likewise accepted.
 - **Root cause**: `src/cli/shared.ts:38-44` (`parseHour`), bare `Number()`.
 
-### Bug 4 — Year accepts hex/scientific forms (`0x7e8`→2024, `1e10`→10000000000)
+### Bug 4 — Year accepts hex/scientific forms (`0x7e8`→2024, `1e10`→10000000000) — ✅ FIXED
+- **Fix**: `parseYear` (`src/cli/shared.ts`) now uses `parseStrictInt`, rejecting `0x7e8`/`1e10`; the upper bound (see Bug 6) also rejects `1e10`.
 - **Severity**: High · **Confidence**: Certain
 - **Repro**:
   ```
@@ -60,7 +64,8 @@ The dominant root cause (Bugs 1-8) is a single defect: every numeric option pars
 - **Actual** (exit 0): sent as `year=2024` and `year=10000000000` respectively.
 - **Root cause**: `src/cli/shared.ts:47-53` (`parseYear`), bare `Number()`.
 
-### Bug 5 — Whitespace-padded numbers silently accepted (`' 5'`→5)
+### Bug 5 — Whitespace-padded numbers silently accepted (`' 5'`→5) — ✅ FIXED
+- **Fix**: `parseStrictInt`'s `^-?\d+$` anchors reject leading/trailing whitespace; `' 5'` and `1e3` are now rejected across all numeric parsers (`src/cli/shared.ts`).
 - **Severity**: Medium · **Confidence**: Certain
 - **Repro**:
   ```
@@ -75,7 +80,8 @@ The dominant root cause (Bugs 1-8) is a single defect: every numeric option pars
 
 ## High (validation gaps)
 
-### Bug 6 — `--year` accepts 5+ digit years despite "four-digit year" contract
+### Bug 6 — `--year` accepts 5+ digit years despite "four-digit year" contract — ✅ FIXED
+- **Fix**: `parseYear` (`src/cli/shared.ts`) now also rejects `n > 9999`, enforcing the four-digit contract; `99999` is rejected.
 - **Severity**: High · **Confidence**: Certain
 - **Repro**:
   ```
@@ -85,7 +91,8 @@ The dominant root cause (Bugs 1-8) is a single defect: every numeric option pars
 - **Actual** (exit 0): request sent with `year=99999`. The parser only checks `>= 2016`; there is no upper bound and no digit-count check, directly contradicting its own message at `src/cli/shared.ts:49`.
 - **Root cause**: `src/cli/shared.ts:47-53` — `n < 2016` is the only guard; "four-digit" is never enforced.
 
-### Bug 7 — Dates are regex-shaped only; impossible calendar dates pass (`2024-13-40`, `0000-00-00`)
+### Bug 7 — Dates are regex-shaped only; impossible calendar dates pass (`2024-13-40`, `0000-00-00`) — ✅ FIXED
+- **Fix**: `parseDate` (`src/cli/commands/data.ts`) now round-trips the parsed Y/M/D through `Date.UTC` and verifies the components match, rejecting impossible dates like `2024-13-40` and `0000-00-00`.
 - **Severity**: High · **Confidence**: Certain
 - **Repro**:
   ```
@@ -98,7 +105,8 @@ The dominant root cause (Bugs 1-8) is a single defect: every numeric option pars
 - **Actual** (exit 0): both accepted and forwarded to the API. `parseDate` only checks `/^\d{4}-\d{2}-\d{2}$/`.
 - **Root cause**: `src/cli/commands/data.ts:17-22` (`parseDate`) — no `Date`-validity check.
 
-### Bug 8 — `parseIntArg` accepts hex/scientific/whitespace for `--timeout`, `--max-retries`, `--max-response-bytes`
+### Bug 8 — `parseIntArg` accepts hex/scientific/whitespace for `--timeout`, `--max-retries`, `--max-response-bytes` — ✅ FIXED
+- **Fix**: `parseIntArg` (`src/cli/shared.ts`) now uses `parseStrictInt`; `0x100`, `1e2`, `' 5'` are rejected with "Expected a non-negative integer".
 - **Severity**: Medium · **Confidence**: Certain
 - **Repro**: `--timeout 0x100`, `--max-retries 1e2`, `--max-response-bytes ' 5'` all pass.
 - **Expected**: "Expected a non-negative integer" should mean a plain decimal integer.
@@ -109,7 +117,8 @@ The dominant root cause (Bugs 1-8) is a single defect: every numeric option pars
 
 ## Low / UX / Doc
 
-### Bug 9 — No window-ordering validation: `date-from`/`time-from` may be after `date-to`/`time-to`
+### Bug 9 — No window-ordering validation: `date-from`/`time-from` may be after `date-to`/`time-to` — ✅ FIXED
+- **Fix**: Added `assertWindowOrdered` (`src/cli/commands/data.ts`), called from the `airquality` and `measures` actions, which rejects a reversed window (start after end) with a clear `LuftError` before any request is sent.
 - **Severity**: Low · **Confidence**: Certain
 - **Repro**:
   ```
@@ -120,7 +129,8 @@ The dominant root cause (Bugs 1-8) is a single defect: every numeric option pars
 - **Actual** (exit 0): sent verbatim (`date_from=2024-12-31...date_to=2024-01-01`). The API will return empty/odd data with no client-side hint. Defensible as "pass through to API", but the project validates other constraints locally (positive ids, year floor), so this is an inconsistency.
 - **Root cause**: no cross-field check in `src/cli/commands/data.ts:25-32`.
 
-### Bug 10 — Bad host / connection failures reported as "Request timed out" instead of a DNS/connect error
+### Bug 10 — Bad host / connection failures reported as "Request timed out" instead of a DNS/connect error — ✅ FIXED
+- **Fix**: `nodeHttpTransport` (`src/client/http.ts`) now tracks socket `connect`/`lookup`. On a timeout it only reports "Request timed out" once connected; if a DNS lookup already failed it reports that error, otherwise it reports a phase-accurate "Could not connect to <host> within Nms (host unresolved or unreachable)" message instead of misattributing to a timeout.
 - **Severity**: Low · **Confidence**: High
 - **Repro**:
   ```
@@ -130,7 +140,8 @@ The dominant root cause (Bugs 1-8) is a single defect: every numeric option pars
 - **Actual** (exit 1): `Error: Request timed out after 2000ms`. The timeout fires before/instead of the resolution error surfacing, so the message misattributes the cause. (`http://127.0.0.1:1` correctly reports `ECONNREFUSED`, so connection-refused is fine; only the unresolvable-host path mislabels.)
 - **Root cause**: `src/client/http.ts:98-102` — the `setTimeout` handler wins the race and rejects with a timeout `LuftNetworkError` regardless of the underlying failure mode.
 
-### Bug 11 — README claims global options must go "before the command"; they also work after
+### Bug 11 — README claims global options must go "before the command"; they also work after — ✅ FIXED
+- **Fix**: Updated `README.md` to state global options may be given before *or* after the command, with both example placements.
 - **Severity**: Low (doc) · **Confidence**: Certain
 - **Repro**:
   ```
@@ -141,7 +152,8 @@ The dominant root cause (Bugs 1-8) is a single defect: every numeric option pars
 - **Actual** (exit 0): both placements work (commander `optsWithGlobals` + `enablePositionalOptions` not set), so the README understates capability. Harmless but inaccurate.
 - **Root cause**: doc vs. behavior; `README.md:56`.
 
-### Bug 12 — `--lang` with a following flag swallows it, producing a confusing "too many arguments" error
+### Bug 12 — `--lang` with a following flag swallows it, producing a confusing "too many arguments" error — ✅ FIXED
+- **Fix**: Added value-parsers `parseLangArg`/`parseIndexArg` (`src/cli/shared.ts`) that reject a flag-like value (starting with `-`) with "Option '--lang' requires a value", wired onto every `--lang`/`--index` option in `src/cli/commands/reference.ts` and `src/cli/commands/data.ts`.
 - **Severity**: Low · **Confidence**: High
 - **Repro**:
   ```

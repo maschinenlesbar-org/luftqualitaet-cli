@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 import type { CliDeps } from "../io.js";
-import { action, index, lang, renderJson } from "../shared.js";
+import { action, index, lang, parseIndexArg, parseLangArg, renderJson } from "../shared.js";
 
 export function registerReferenceCommands(program: Command, deps: CliDeps): void {
   const indexed: { name: string; method: "components" | "networks" | "scopes"; desc: string }[] = [
@@ -12,8 +12,8 @@ export function registerReferenceCommands(program: Command, deps: CliDeps): void
     program
       .command(name)
       .description(desc)
-      .option("--lang <lang>", "de | en")
-      .option("--index <index>", "id | code")
+      .option("--lang <lang>", "de | en", parseLangArg)
+      .option("--index <index>", "id | code", parseIndexArg)
       .action(
         action(deps, async ({ client, global, opts }) => {
           renderJson(deps, global, await client[method]({ lang: lang(opts), index: index(opts) }));
@@ -34,7 +34,7 @@ export function registerReferenceCommands(program: Command, deps: CliDeps): void
     program
       .command(name)
       .description(desc)
-      .option("--lang <lang>", "de | en")
+      .option("--lang <lang>", "de | en", parseLangArg)
       .action(
         action(deps, async ({ client, global, opts }) => {
           renderJson(deps, global, await client[method](lang(opts)));

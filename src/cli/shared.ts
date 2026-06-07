@@ -9,10 +9,27 @@ import type { EngineOptions } from "../client/engine.js";
 import { IndexValues, LangValues } from "../client/enums.js";
 import type { IndexKind, Lang } from "../client/enums.js";
 
+/**
+ * Strictly parse a plain decimal integer string into a number.
+ *
+ * Unlike `Number()`, this rejects hex (`0x..`), binary (`0b..`), octal (`0o..`),
+ * scientific (`1e3`), explicit-sign (`+5`), and whitespace-padded forms: only an
+ * optional leading `-` followed by ASCII digits is accepted. It also rejects
+ * values that cannot be represented exactly as a JS integer (`> 2^53 - 1`), so a
+ * user-supplied id is never silently rounded before being sent. Returns
+ * `undefined` on any non-conforming input; callers map that to a clear error.
+ */
+function parseStrictInt(value: string): number | undefined {
+  if (!/^-?\d+$/.test(value)) return undefined;
+  const n = Number(value);
+  if (!Number.isSafeInteger(n)) return undefined;
+  return n;
+}
+
 /** commander value-parser: a non-negative integer. */
 export function parseIntArg(value: string): number {
-  const n = Number(value);
-  if (!Number.isInteger(n) || n < 0) {
+  const n = parseStrictInt(value);
+  if (n === undefined || n < 0) {
     throw new InvalidArgumentError("Expected a non-negative integer.");
   }
   return n;
@@ -24,8 +41,8 @@ export function parseIntArg(value: string): number {
  * should be caught locally rather than sent.
  */
 export function parsePositiveIntArg(value: string): number {
-  const n = Number(value);
-  if (!Number.isInteger(n) || n < 1) {
+  const n = parseStrictInt(value);
+  if (n === undefined || n < 1) {
     throw new InvalidArgumentError("Expected a positive integer (>= 1).");
   }
   return n;
@@ -36,8 +53,8 @@ export function parsePositiveIntArg(value: string): number {
  * (The UBA API uses hour-ending times; `0` and `> 24` are invalid.)
  */
 export function parseHour(value: string): number {
-  const n = Number(value);
-  if (!Number.isInteger(n) || n < 1 || n > 24) {
+  const n = parseStrictInt(value);
+  if (n === undefined || n < 1 || n > 24) {
     throw new InvalidArgumentError("Expected an hour in the range 1..24.");
   }
   return n;
@@ -45,11 +62,32 @@ export function parseHour(value: string): number {
 
 /** commander value-parser: a four-digit year, `>= 2016` (the API's earliest). */
 export function parseYear(value: string): number {
-  const n = Number(value);
-  if (!Number.isInteger(n) || n < 2016) {
+  const n = parseStrictInt(value);
+  if (n === undefined || n < 2016 || n > 9999) {
     throw new InvalidArgumentError("Expected a four-digit year >= 2016.");
   }
   return n;
+}
+
+/**
+ * commander value-parser for `--lang`. Rejects a flag-like value (one starting
+ * with `-`): commander would otherwise consume the *next* option (e.g. `--index`)
+ * as this option's value, producing a confusing downstream "too many arguments"
+ * error. Membership in the allowed set is still validated later by `lang()`.
+ */
+export function parseLangArg(value: string): string {
+  if (value.startsWith("-")) {
+    throw new InvalidArgumentError("Option '--lang' requires a value (e.g. de | en).");
+  }
+  return value;
+}
+
+/** commander value-parser for `--index`; see `parseLangArg`. */
+export function parseIndexArg(value: string): string {
+  if (value.startsWith("-")) {
+    throw new InvalidArgumentError("Option '--index' requires a value (e.g. id | code).");
+  }
+  return value;
 }
 
 /**

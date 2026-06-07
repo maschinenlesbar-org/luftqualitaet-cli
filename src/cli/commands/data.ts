@@ -6,6 +6,8 @@ import {
   index,
   lang,
   parseHour,
+  parseIndexArg,
+  parseLangArg,
   parsePositiveIntArg,
   parseYear,
   renderJson,
@@ -13,12 +15,44 @@ import {
 import { MetaUseValues, ThresholdUseValues } from "../../client/enums.js";
 import { LuftError } from "../../client/errors.js";
 
-/** commander value-parser: a calendar date in `YYYY-MM-DD` form. */
+/** commander value-parser: a real calendar date in `YYYY-MM-DD` form. */
 function parseDate(value: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
     throw new InvalidArgumentError("Expected a date in YYYY-MM-DD format.");
   }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  // Reject impossible calendar dates (e.g. 2024-13-40, 0000-00-00). Round-tripping
+  // through Date catches month/day overflow including leap-year boundaries.
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    throw new InvalidArgumentError(`Expected a valid calendar date, got "${value}".`);
+  }
   return value;
+}
+
+/**
+ * Reject a reversed time window (start after end) locally, consistent with the
+ * other client-side guards (positive ids, year floor). The window is ordered by
+ * date first, then by hour-ending within the same date.
+ */
+function assertWindowOrdered(
+  dateFrom: string,
+  timeFrom: number,
+  dateTo: string,
+  timeTo: number,
+): void {
+  if (dateFrom > dateTo || (dateFrom === dateTo && timeFrom > timeTo)) {
+    throw new LuftError(
+      `Window start (${dateFrom} ${timeFrom}:00) is after window end (${dateTo} ${timeTo}:00).`,
+    );
+  }
 }
 
 /** Add the shared time-window + station options required by the data endpoints. */
@@ -36,6 +70,12 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
     program.command("airquality").description("Air-quality index data for a station/window"),
   ).action(
     action(deps, async ({ client, global, opts }) => {
+      assertWindowOrdered(
+        String(opts["dateFrom"]),
+        opts["timeFrom"] as number,
+        String(opts["dateTo"]),
+        opts["timeTo"] as number,
+      );
       renderJson(
         deps,
         global,
@@ -67,6 +107,12 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
       .option("--scope <id>", "scope id", parsePositiveIntArg),
   ).action(
     action(deps, async ({ client, global, opts }) => {
+      assertWindowOrdered(
+        String(opts["dateFrom"]),
+        opts["timeFrom"] as number,
+        String(opts["dateTo"]),
+        opts["timeTo"] as number,
+      );
       renderJson(
         deps,
         global,
@@ -114,8 +160,8 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
       .description(desc)
       .requiredOption("--component <id>", "component id", parsePositiveIntArg)
       .requiredOption("--year <YYYY>", "year (>= 2016)", parseYear)
-      .option("--lang <lang>", "de | en")
-      .option("--index <index>", "id | code")
+      .option("--lang <lang>", "de | en", parseLangArg)
+      .option("--index <index>", "id | code", parseIndexArg)
       .action(
         action(deps, async ({ client, global, opts }) => {
           renderJson(
@@ -136,7 +182,7 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
     .command("thresholds")
     .description("Thresholds for a use (airquality | measure)")
     .requiredOption("--use <use>", `${ThresholdUseValues.join(" | ")}`)
-    .option("--lang <lang>", "de | en")
+    .option("--lang <lang>", "de | en", parseLangArg)
     .option("--component <id>", "component id", parsePositiveIntArg)
     .option("--scope <id>", "scope id", parsePositiveIntArg)
     .action(
@@ -158,7 +204,7 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
     .command("meta")
     .description("Combined metadata for a use")
     .requiredOption("--use <use>", `${MetaUseValues.join(" | ")}`)
-    .option("--lang <lang>", "de | en")
+    .option("--lang <lang>", "de | en", parseLangArg)
     .option("--date-from <YYYY-MM-DD>", "required when use=airquality", parseDate)
     .option("--date-to <YYYY-MM-DD>", "required when use=airquality", parseDate)
     .option("--time-from <1-24>", "window start hour", parseHour)

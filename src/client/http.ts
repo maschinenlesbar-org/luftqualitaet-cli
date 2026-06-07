@@ -95,9 +95,40 @@ export const nodeHttpTransport: Transport = (request) =>
       },
     );
 
+    // Only treat the timeout as a *timeout* if the socket was actually
+    // connected. A pending DNS/connect failure can outrace the timer (an
+    // unresolvable host may take longer to fail than the timeout window); in
+    // that case we want the real DNS/connect failure to surface, not a
+    // misleading "Request timed out" message.
+    let connected = false;
+    let dnsError: Error | undefined;
+    req.on("socket", (socket) => {
+      // A failed DNS lookup reports here before the socket emits "error";
+      // capture it so a racing timeout can report the true cause.
+      socket.on("lookup", (err) => {
+        if (err) dnsError = err;
+      });
+      socket.on("connect", () => {
+        connected = true;
+      });
+    });
+
     if (request.timeoutMs && request.timeoutMs > 0) {
       req.setTimeout(request.timeoutMs, () => {
-        req.destroy(new LuftNetworkError(`Request timed out after ${request.timeoutMs}ms`));
+        if (connected) {
+          req.destroy(new LuftNetworkError(`Request timed out after ${request.timeoutMs}ms`));
+        } else if (dnsError) {
+          // DNS resolution already failed; report that, not a timeout.
+          req.destroy(new LuftNetworkError(dnsError.message, { cause: dnsError }));
+        } else {
+          // Still in the connect/DNS phase with no socket yet. Attribute the
+          // failure to that phase rather than claiming a generic request timeout.
+          req.destroy(
+            new LuftNetworkError(
+              `Could not connect to ${url.host} within ${request.timeoutMs}ms (host unresolved or unreachable)`,
+            ),
+          );
+        }
       });
     }
 

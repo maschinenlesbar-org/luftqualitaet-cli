@@ -53,7 +53,8 @@ right. Look up station ids and component ids via `meta`, `components`, etc.
 | `--max-response-bytes <n>` | Cap response body size in bytes (`0` = unlimited; default 100 MiB) |
 | `--compact` | Print JSON on a single line |
 
-Global options go **before** the command, e.g. `luftqualitaet --compact components --lang de`.
+Global options may be given either before or after the command, e.g.
+`luftqualitaet --compact components --lang de` or `luftqualitaet components --compact --lang de`.
 
 ### Commands
 

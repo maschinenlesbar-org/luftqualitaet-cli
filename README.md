@@ -8,6 +8,10 @@ indices, annual balances, exceedances and the station/component metadata behind 
 > This client targets `/api/air_data/v3`, the live API path, which supersedes the
 > **v2** OpenAPI spec published at [luftqualitaet.api.bund.dev](https://luftqualitaet.api.bund.dev/).
 
+New to the UBA Air Data API, or terms like *component*, *scope*, *station type*
+or the hour-ending time window? See **[GLOSSARY.md](GLOSSARY.md)** for the domain
+concepts and the project's own vocabulary.
+
 - **Zero runtime HTTP dependencies** — built on Node's built-in `http`/`https` (no axios, no fetch polyfill).
 - **One small dependency** for the CLI: [`commander`](https://github.com/tj/commander.js).
 - **Strongly typed** — typed parameter objects and the lang/index/use enums.
@@ -98,7 +102,7 @@ Exit codes: `0` success, `4` on a `404` from the API, `1` for any other error, n
 ## Library usage
 
 ```ts
-import { LuftqualitaetClient, LuftApiError } from "luftqualitaet-cli";
+import { LuftqualitaetClient, LuftApiError } from "@maschinenlesbar.org/luftqualitaet-cli";
 
 const client = new LuftqualitaetClient(); // defaults to https://www.umweltbundesamt.de
 

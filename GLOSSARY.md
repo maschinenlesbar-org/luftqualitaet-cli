@@ -173,33 +173,6 @@ implements only the open, read-only `GET` endpoints.
 
 ---
 
-## Project / technical terms
-
-**API client.** [`LuftqualitaetClient`](src/client/client.ts) — the typed
-wrapper over the Air Data API. Usable as a library independently of the CLI.
-
-**Transport.** A single function `(HttpRequest) => Promise<HttpResponse>`
-([`http.ts`](src/client/http.ts)). The default uses Node's built-in
-`http`/`https`; tests inject a mock. This is the only HTTP seam.
-
-**Request engine.** [`RequestEngine`](src/client/engine.ts) — builds URLs,
-serialises queries, applies retry/backoff, follows redirects, decodes JSON and
-maps errors. Sits between the client's resource methods and the transport.
-
-**RawResponse.** The low-level result of a request: `{ data: Buffer,
-contentType, status }` — raw bytes, never lossily decoded.
-
-**AirDataResult / JsonObject.** The faithful raw-JSON type returned by every
-client method, reflecting the API's variable index/data layout.
-
-**CliDeps / CliIO.** The dependency-injection seam for the CLI
-([`io.ts`](src/cli/io.ts)): a client factory plus an I/O object (`out`/`err`).
-Lets the whole CLI run in tests with a mocked client and captured output — no
-subprocess.
-
-**Error types.** [`errors.ts`](src/client/errors.ts): `LuftApiError` (non-2xx,
-carries `status`/`detail`), `LuftNetworkError` (transport failure/timeout),
-`LuftParseError` (bad JSON), all extending `LuftError`. The CLI maps a `404` to
-exit code `4`, other errors to `1`.
-</content>
-</invoke>
+> **Library & internals.** Terms for the TypeScript client and its internals —
+> `LuftqualitaetClient`, the request engine, transport, retry/backoff, error
+> types, query builder — now live in **[DEVELOPING.md](DEVELOPING.md)**.

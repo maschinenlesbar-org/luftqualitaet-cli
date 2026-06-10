@@ -1,0 +1,39 @@
+{
+  "name": "luftqualitaet-skills",
+  "owner": {
+    "name": "Sebastian Schürmann",
+    "email": "sebs@2xs.org"
+  },
+  "metadata": {
+    "description": "German air-quality intelligence skills powered by the luftqualitaet-cli (Umweltbundesamt Air Data API)"
+  },
+  "plugins": [
+    {
+      "name": "luftqualitaet",
+      "source": "./",
+      "description": "Find the right air-quality monitoring station for a place, brief the current air-quality index for a station, and rank stations by annual pollutant levels or limit exceedances — all over the open, key-free Umweltbundesamt Air Data API via the luftqualitaet-cli.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Sebastian Schürmann",
+        "email": "sebs@2xs.org"
+      },
+      "license": "AGPL-3.0-or-later",
+      "repository": "https://github.com/maschinenlesbar-org/luftqualitaet-cli",
+      "homepage": "https://github.com/maschinenlesbar-org/luftqualitaet-cli#readme",
+      "category": "environment",
+      "keywords": [
+        "luftqualitaet",
+        "air-quality",
+        "umweltbundesamt",
+        "uba",
+        "no2",
+        "pm10",
+        "ozone",
+        "emissions",
+        "environment",
+        "germany",
+        "bund.dev"
+      ]
+    }
+  ]
+}

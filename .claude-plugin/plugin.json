@@ -1,0 +1,25 @@
+{
+  "name": "luftqualitaet",
+  "version": "0.1.0",
+  "description": "German air-quality intelligence skills powered by the luftqualitaet-cli (Umweltbundesamt Air Data API).",
+  "author": {
+    "name": "Sebastian Schürmann",
+    "email": "sebs@2xs.org"
+  },
+  "license": "AGPL-3.0-or-later",
+  "repository": "https://github.com/maschinenlesbar-org/luftqualitaet-cli",
+  "homepage": "https://github.com/maschinenlesbar-org/luftqualitaet-cli#readme",
+  "keywords": [
+    "luftqualitaet",
+    "air-quality",
+    "umweltbundesamt",
+    "uba",
+    "no2",
+    "pm10",
+    "ozone",
+    "emissions",
+    "environment",
+    "germany",
+    "bund.dev"
+  ]
+}

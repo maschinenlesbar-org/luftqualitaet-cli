@@ -139,9 +139,10 @@ as `true`/`false`, and encodes spaces as `%20` (not `+`).
 **Retry / backoff.** Transient `429` (rate limit) and `503` responses are
 retried automatically with linear backoff, up to `--max-retries` (default `2`).
 
-**Redirects.** The engine follows up to 5 HTTP redirects. On a **cross-origin**
-redirect it strips request headers (re-adding only the benign `Accept` /
-`User-Agent`) so nothing leaks to a different origin.
+**Redirects.** The engine follows up to 5 HTTP redirects by default (the
+`maxRedirects` option / `--max-redirects` flag; `0` disables following). On a
+**cross-origin** redirect it strips request headers (re-adding only the benign
+`Accept` / `User-Agent`) so nothing leaks to a different origin.
 
 **maxResponseBytes.** A hard cap on response body size (default 100 MiB; `0` =
 unlimited) that defends against memory exhaustion from a hostile or buggy

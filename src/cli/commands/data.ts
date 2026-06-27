@@ -214,8 +214,22 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
         const use = assertEnum(String(opts["use"]), MetaUseValues, "use");
         const dateFrom = opts["dateFrom"] as string | undefined;
         const dateTo = opts["dateTo"] as string | undefined;
-        if (use === "airquality" && (dateFrom === undefined || dateTo === undefined)) {
-          throw new LuftError("meta --use airquality requires --date-from and --date-to.");
+        const timeFrom = opts["timeFrom"] as number | undefined;
+        const timeTo = opts["timeTo"] as number | undefined;
+        if (use === "airquality") {
+          if (dateFrom === undefined || dateTo === undefined) {
+            throw new LuftError("meta --use airquality requires --date-from and --date-to.");
+          }
+          // Validate the window locally, consistent with the `airquality`/`measures`
+          // commands and the "reversed windows are caught before any request" promise.
+          // Omitted hours default to the full-day bounds (1..24).
+          assertWindowOrdered(dateFrom, timeFrom ?? 1, dateTo, timeTo ?? 24);
+        } else if (timeFrom !== undefined || timeTo !== undefined) {
+          // Hour bounds only mean anything for the airquality window; reject them
+          // elsewhere rather than silently sending an ignored parameter.
+          throw new LuftError(
+            `meta --time-from/--time-to apply only to --use airquality (got --use ${use}).`,
+          );
         }
         renderJson(
           deps,
@@ -225,8 +239,8 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
             lang: lang(opts),
             date_from: dateFrom,
             date_to: dateTo,
-            time_from: opts["timeFrom"] as number | undefined,
-            time_to: opts["timeTo"] as number | undefined,
+            time_from: timeFrom,
+            time_to: timeTo,
           }),
         );
       }),

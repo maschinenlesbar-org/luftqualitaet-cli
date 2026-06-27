@@ -166,6 +166,7 @@ These flags apply to every command and go before the subcommand:
 | `--timeout <ms>` | Per-request timeout in milliseconds. |
 | `--user-agent <ua>` | Set the `User-Agent` header. |
 | `--max-retries <n>` | Retries for transient `429`/`503` responses. |
+| `--max-redirects <n>` | HTTP redirects to follow (`0` = none; default `5`). |
 | `--max-response-bytes <n>` | Cap response body size in bytes (`0` = unlimited; default 100 MiB). |
 | `--compact` | Print JSON on a single line instead of pretty-printed. |
 | `-h, --help` | Show help for the CLI or for any `<command> --help`. |

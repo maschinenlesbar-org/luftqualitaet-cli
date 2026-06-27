@@ -227,8 +227,11 @@ do the same thing.
   `-limits` commands to find a window that has data for that station/component.
 - **Reversed window error** — `--date-from`/`--time-from` must come before
   `--date-to`/`--time-to`; the CLI checks this locally before sending any request.
-- **Year rejected** — `--year` must be `>= 2016`; the API does not carry data
-  before that.
+- **Year rejected** — `--year` must be `>= 2016`; the API does not carry annual
+  tabulations (`annual-balances`/`transgressions`) before that. The `>= 2016` floor
+  applies **only** to `--year`: the windowed endpoints (`airquality`/`measures`)
+  accept any valid `--date-from`/`--date-to`, since their available range varies by
+  station/scope — use the `-limits` commands to find what exists.
 
 ## Global options
 
@@ -243,6 +246,7 @@ These apply to every command and may be given before *or* after it:
 | `--timeout <ms>` | Per-request timeout (default `30000`) |
 | `--user-agent <ua>` | `User-Agent` header value |
 | `--max-retries <n>` | Retries for transient `429`/`503` responses (default `2`) |
+| `--max-redirects <n>` | HTTP redirects to follow (`0` = none; default `5`) |
 | `--max-response-bytes <n>` | Cap response body size in bytes (`0` = unlimited; default 100 MiB) |
 
 ## Learn more

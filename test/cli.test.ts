@@ -212,3 +212,77 @@ test("--compact prints single-line JSON", async () => {
   assert.equal(code, 0);
   assert.equal(cli.out.join(""), '{"a":1,"b":2}');
 });
+
+test("no command prints help to stdout and exits 0", async () => {
+  const cli = makeCli(() => jsonResponse({}));
+  const code = await run([], cli.deps);
+  assert.equal(code, 0);
+  assert.equal(cli.mt.calls.length, 0); // never touched the network
+  assert.equal(cli.err.length, 0); // help went to stdout, not stderr
+  assert.match(cli.out.join("\n"), /Usage: luftqualitaet/);
+});
+
+test("a global flag without a command still shows help on stdout, exit 0", async () => {
+  const cli = makeCli(() => jsonResponse({}));
+  const code = await run(["--compact"], cli.deps);
+  assert.equal(code, 0);
+  assert.equal(cli.err.length, 0);
+  assert.match(cli.out.join("\n"), /Usage: luftqualitaet/);
+});
+
+test("an unknown command still errors on stderr with exit 1", async () => {
+  const cli = makeCli(() => jsonResponse({}));
+  const code = await run(["boguscmd"], cli.deps);
+  assert.equal(code, 1);
+  assert.match(cli.err.join("\n"), /unknown command 'boguscmd'/);
+});
+
+test("meta --use airquality rejects a reversed date window before any request", async () => {
+  const cli = makeCli(() => jsonResponse({}));
+  const code = await run(
+    ["meta", "--use", "airquality", "--date-from", "2024-12-31", "--date-to", "2024-01-01"],
+    cli.deps,
+  );
+  assert.notEqual(code, 0);
+  assert.equal(cli.mt.calls.length, 0);
+  assert.match(cli.err.join("\n"), /Window start .* is after window end/);
+});
+
+test("meta --use airquality rejects reversed hours on the same date before any request", async () => {
+  const cli = makeCli(() => jsonResponse({}));
+  const code = await run(
+    [
+      "meta", "--use", "airquality",
+      "--date-from", "2024-01-01", "--date-to", "2024-01-01",
+      "--time-from", "10", "--time-to", "2",
+    ],
+    cli.deps,
+  );
+  assert.notEqual(code, 0);
+  assert.equal(cli.mt.calls.length, 0);
+});
+
+test("meta rejects --time-from/--time-to for a non-airquality use", async () => {
+  const cli = makeCli(() => jsonResponse({}));
+  const code = await run(["meta", "--use", "measure", "--time-from", "1", "--time-to", "5"], cli.deps);
+  assert.notEqual(code, 0);
+  assert.equal(cli.mt.calls.length, 0);
+  assert.match(cli.err.join("\n"), /apply only to --use airquality/);
+});
+
+test("--max-redirects is parsed and passed through to the client", async () => {
+  let seen: number | undefined;
+  const deps: CliDeps = {
+    io: { out: () => {}, err: () => {} },
+    createClient: (opts) => {
+      seen = opts.maxRedirects;
+      return new LuftqualitaetClient({
+        ...opts,
+        transport: makeMockTransport(() => jsonResponse({})).transport,
+      });
+    },
+  };
+  const code = await run(["--max-redirects", "0", "components"], deps);
+  assert.equal(code, 0);
+  assert.equal(seen, 0);
+});

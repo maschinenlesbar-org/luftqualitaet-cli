@@ -125,6 +125,7 @@ export interface GlobalOptions {
   timeout?: number;
   userAgent?: string;
   maxRetries?: number;
+  maxRedirects?: number;
   maxResponseBytes?: number;
   compact?: boolean;
 }
@@ -136,6 +137,7 @@ export function toEngineOptions(global: GlobalOptions): EngineOptions {
   if (global.timeout !== undefined) options.timeoutMs = global.timeout;
   if (global.userAgent !== undefined) options.userAgent = global.userAgent;
   if (global.maxRetries !== undefined) options.maxRetries = global.maxRetries;
+  if (global.maxRedirects !== undefined) options.maxRedirects = global.maxRedirects;
   if (global.maxResponseBytes !== undefined) options.maxResponseBytes = global.maxResponseBytes;
   return options;
 }

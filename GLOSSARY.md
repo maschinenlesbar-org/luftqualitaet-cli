@@ -160,9 +160,10 @@ endpoint returns: `airquality` | `measure`. CLI: `thresholds --use`.
 **503** responses; the engine retries those automatically with linear backoff
 (`--max-retries`, default `2`).
 
-**Redirects.** The engine follows up to 5 HTTP redirects. On a **cross-origin**
-redirect it strips request headers (re-adding only the benign `Accept` /
-`User-Agent`) so nothing sensitive leaks to a different origin.
+**Redirects.** The engine follows up to 5 HTTP redirects by default
+(configurable with `--max-redirects`; `0` disables following). On a
+**cross-origin** redirect it strips request headers (re-adding only the benign
+`Accept` / `User-Agent`) so nothing sensitive leaks to a different origin.
 
 **Response size cap (`maxResponseBytes`).** A hard cap on response body size
 (default 100 MiB; `0` = unlimited) that defends against memory exhaustion from a

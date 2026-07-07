@@ -140,7 +140,18 @@ export class RequestEngine {
       if (status >= 300 && status < 400 && redirects < this.maxRedirects) {
         const location = response.headers["location"];
         if (typeof location === "string" && location.length > 0) {
-          const target = new URL(location, url);
+          // A hostile server can send an unparsable Location; wrap the parse so
+          // it surfaces as a typed LuftNetworkError (matchable by library
+          // consumers) rather than a raw TypeError reported as "Unexpected error".
+          let target: URL;
+          try {
+            target = new URL(location, url);
+          } catch (cause) {
+            throw new LuftNetworkError(
+              `Invalid redirect Location ${JSON.stringify(location)} from ${url}`,
+              { cause },
+            );
+          }
           // Cross-origin redirect: strip request headers so any sensitive
           // header (e.g. an Authorization/token added later) is never leaked to
           // a different origin. Today only Accept/User-Agent are sent, so we

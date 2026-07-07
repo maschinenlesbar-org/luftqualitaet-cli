@@ -142,6 +142,20 @@ test("error detail is stripped of terminal control characters", async () => {
   );
 });
 
+test("an unparsable redirect Location surfaces as a typed LuftNetworkError", async () => {
+  const mt = makeMockTransport(() => ({
+    status: 302,
+    headers: { location: "http://[garbage" },
+    body: Buffer.from(""),
+  }));
+  const e = new RequestEngine({ baseUrl: "https://a.test", transport: mt.transport });
+  await assert.rejects(
+    () => e.getJson("/start"),
+    (err: unknown) =>
+      err instanceof LuftNetworkError && /Invalid redirect Location/.test(err.message),
+  );
+});
+
 test("the User-Agent and Accept headers are sent", async () => {
   const mt = makeMockTransport(() => jsonResponse({}));
   const e = new RequestEngine({ transport: mt.transport, userAgent: "ua/1" });

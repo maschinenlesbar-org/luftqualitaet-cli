@@ -148,6 +148,15 @@ retried automatically with linear backoff, up to `--max-retries` (default `2`).
 unlimited) that defends against memory exhaustion from a hostile or buggy
 endpoint. CLI: `--max-response-bytes`.
 
+**`--base-url` scheme validation (deliberate divergence).** Unlike the blueprint
+default — which rejects a non-`http:`/`https:` `--base-url` at parse time with
+exit code `2` — this repo validates the scheme in the transport
+([`http.ts`](src/client/http.ts)): a non-`http(s)` URL is rejected with a typed
+`LuftNetworkError` and exit `1`. The security outcome is identical (`file:` /
+`ftp:` / etc. never reach a driver, and **every redirect hop passes through the
+same transport gate**), only the exit code and rejection point differ. This is
+intentional; do not "fix" it toward parse-time/exit-2 conformance.
+
 ## Testing
 
 ```bash

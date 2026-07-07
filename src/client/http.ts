@@ -57,6 +57,21 @@ export const nodeHttpTransport: Transport = (request) =>
     const isHttps = url.protocol === "https:";
     const driver = isHttps ? https : http;
     const maxBytes = request.maxResponseBytes;
+    const timeoutMs = request.timeoutMs;
+
+    // Wall-clock deadline for the whole request. `req.setTimeout()` below is an
+    // *idle-socket* timeout that resets on every received byte, so a slow-drip
+    // server that sends one byte just under the idle window (and stays under
+    // maxResponseBytes) could keep the request alive indefinitely. A single fixed
+    // timer bounds the total time from request start to `end`, independent of the
+    // byte cadence.
+    let deadline: NodeJS.Timeout | undefined;
+    const clearDeadline = (): void => {
+      if (deadline !== undefined) {
+        clearTimeout(deadline);
+        deadline = undefined;
+      }
+    };
 
     const req = driver.request(
       url,
@@ -74,6 +89,7 @@ export const nodeHttpTransport: Transport = (request) =>
           received += chunk.length;
           if (maxBytes !== undefined && received > maxBytes) {
             aborted = true;
+            clearDeadline();
             res.destroy();
             reject(new LuftNetworkError(`Response exceeded maxResponseBytes (${maxBytes})`));
             return;
@@ -82,6 +98,7 @@ export const nodeHttpTransport: Transport = (request) =>
         });
         res.on("end", () => {
           if (aborted) return;
+          clearDeadline();
           resolve({
             status: res.statusCode ?? 0,
             headers: res.headers,
@@ -90,6 +107,7 @@ export const nodeHttpTransport: Transport = (request) =>
         });
         res.on("error", (err) => {
           if (aborted) return; // we already rejected with the size-cap error
+          clearDeadline();
           reject(new LuftNetworkError(`Response stream error: ${err.message}`, { cause: err }));
         });
       },
@@ -113,10 +131,12 @@ export const nodeHttpTransport: Transport = (request) =>
       });
     });
 
-    if (request.timeoutMs && request.timeoutMs > 0) {
-      req.setTimeout(request.timeoutMs, () => {
+    if (timeoutMs && timeoutMs > 0) {
+      // Idle-socket timeout (resets on activity). Reports the true failure phase
+      // (connected timeout vs. DNS/connect failure) as before.
+      req.setTimeout(timeoutMs, () => {
         if (connected) {
-          req.destroy(new LuftNetworkError(`Request timed out after ${request.timeoutMs}ms`));
+          req.destroy(new LuftNetworkError(`Request timed out after ${timeoutMs}ms`));
         } else if (dnsError) {
           // DNS resolution already failed; report that, not a timeout.
           req.destroy(new LuftNetworkError(dnsError.message, { cause: dnsError }));
@@ -125,14 +145,23 @@ export const nodeHttpTransport: Transport = (request) =>
           // failure to that phase rather than claiming a generic request timeout.
           req.destroy(
             new LuftNetworkError(
-              `Could not connect to ${url.host} within ${request.timeoutMs}ms (host unresolved or unreachable)`,
+              `Could not connect to ${url.host} within ${timeoutMs}ms (host unresolved or unreachable)`,
             ),
           );
         }
       });
+      // ...plus a hard wall-clock deadline that does *not* reset on activity, so a
+      // slow drip cannot outlast the caller's timeout budget (see LQ-02). This
+      // bounds total time; maxResponseBytes bounds total size.
+      deadline = setTimeout(() => {
+        req.destroy(new LuftNetworkError(`Request exceeded the ${timeoutMs}ms deadline`));
+      }, timeoutMs);
+      // Don't let the deadline timer keep the event loop alive on its own.
+      deadline.unref?.();
     }
 
     req.on("error", (err) => {
+      clearDeadline();
       // A timeout destroy already passes an LuftNetworkError; don't double-wrap.
       reject(err instanceof LuftNetworkError ? err : new LuftNetworkError(err.message, { cause: err }));
     });

@@ -1,0 +1,17 @@
+# The only repo-specific texts of the website. Everything else comes from the
+# repository: the English intro from README.md, the commands from the built CLI.
+
+# How the API is accessed: open | key (env: VAR) | account (token, user, password: VARs)
+access:
+  type: open
+
+de:
+  # German version of the README's intro paragraph. Keep it in step with README.md.
+  intro: >-
+    Die amtlichen **Luftqualitätsdaten** für Deutschland – Messwerte, Indizes, Jahresbilanzen
+    und Überschreitungen – direkt im Terminal abfragen. `luftqualitaet` ist ein
+    Kommandozeilen-Tool für die offene [Air-Data-API des
+    Umweltbundesamts](https://www.umweltbundesamt.de/api/air_data/v3): Schadstoffe und
+    Stationen nachschlagen, stündliche oder tägliche Messwerte abrufen, Überschreitungen
+    prüfen und das Gesamtbild erhalten – als sauberes JSON, das Sie direkt an
+    [`jq`](https://jqlang.github.io/jq/) weitergeben können.

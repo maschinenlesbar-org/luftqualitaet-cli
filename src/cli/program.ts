@@ -8,7 +8,8 @@ import { Command } from "commander";
 import type { CliDeps } from "./io.js";
 import { defaultIO } from "./io.js";
 import { LuftqualitaetClient } from "../client/client.js";
-import { parseIntArg } from "./shared.js";
+import { MAX_TIMEOUT_MS } from "../client/http.js";
+import { parseBoundedInt, parseIntArg } from "./shared.js";
 import { registerReferenceCommands } from "./commands/reference.js";
 import { registerDataCommands } from "./commands/data.js";
 
@@ -47,7 +48,11 @@ export function buildProgram(deps: CliDeps = defaultDeps): Command {
     )
     .version(VERSION)
     .option("--base-url <url>", "API base URL", "https://www.umweltbundesamt.de")
-    .option("--timeout <ms>", "per-request timeout in milliseconds", parseIntArg)
+    .option(
+      "--timeout <ms>",
+      `per-request timeout in milliseconds (0..${MAX_TIMEOUT_MS})`,
+      parseBoundedInt(0, MAX_TIMEOUT_MS),
+    )
     .option("--user-agent <ua>", "User-Agent header value")
     .option("--max-retries <n>", "retries for transient 429/503 responses", parseIntArg)
     .option("--max-redirects <n>", "HTTP redirects to follow (0 = none; default 5)", parseIntArg)

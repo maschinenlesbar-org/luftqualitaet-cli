@@ -294,6 +294,18 @@ test("an invalid global option value exits 1 without leaving run()", async () =>
   assert.equal(cli.err.filter((line) => /argument '-1' is invalid/.test(line)).length, 1);
 });
 
+test("--timeout accepts up to the largest timer Node supports", async () => {
+  const cli = makeCli(() => jsonResponse({}));
+  assert.equal(await run(["--timeout", "2147483647", "components"], cli.deps), 0);
+  assert.equal(cli.mt.last().timeoutMs, 2_147_483_647);
+
+  // Commander parse errors exit 1 in this CLI.
+  const over = makeCli(() => jsonResponse({}));
+  assert.equal(await run(["--timeout", "2147483648", "components"], over.deps), 1);
+  assert.equal(over.mt.calls.length, 0);
+  assert.match(over.err.join("\n"), /0\.\.2147483647/);
+});
+
 test("--max-redirects is parsed and passed through to the client", async () => {
   let seen: number | undefined;
   const deps: CliDeps = {

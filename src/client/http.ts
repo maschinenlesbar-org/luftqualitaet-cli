@@ -32,6 +32,12 @@ export interface HttpResponse {
 export type Transport = (request: HttpRequest) => Promise<HttpResponse>;
 
 /**
+ * The longest delay Node's timers support (2^31 - 1 ms, about 24.8 days). A longer one
+ * prints a TimeoutOverflowWarning and fires after 1 ms, so timeouts are capped here.
+ */
+export const MAX_TIMEOUT_MS = 2_147_483_647;
+
+/**
  * Default transport. Resolves with the raw response (including non-2xx) — status
  * interpretation is the client's job. Rejects only on transport-level failures
  * (connection errors, timeouts, malformed URLs).
@@ -134,7 +140,7 @@ export const nodeHttpTransport: Transport = (request) =>
     if (timeoutMs && timeoutMs > 0) {
       // Idle-socket timeout (resets on activity). Reports the true failure phase
       // (connected timeout vs. DNS/connect failure) as before.
-      req.setTimeout(timeoutMs, () => {
+      req.setTimeout(Math.min(timeoutMs, MAX_TIMEOUT_MS), () => {
         if (connected) {
           req.destroy(new LuftNetworkError(`Request timed out after ${timeoutMs}ms`));
         } else if (dnsError) {
@@ -155,7 +161,7 @@ export const nodeHttpTransport: Transport = (request) =>
       // bounds total time; maxResponseBytes bounds total size.
       deadline = setTimeout(() => {
         req.destroy(new LuftNetworkError(`Request exceeded the ${timeoutMs}ms deadline`));
-      }, timeoutMs);
+      }, Math.min(timeoutMs, MAX_TIMEOUT_MS));
       // Don't let the deadline timer keep the event loop alive on its own.
       deadline.unref?.();
     }

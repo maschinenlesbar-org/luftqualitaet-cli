@@ -6,7 +6,7 @@ description: >
   "what's the air quality in Berlin right now?", "how was the air at station 143
   yesterday?", "is the ozone high in Munich?", "give me today's air-quality index
   for Stuttgart", or wants pollutant levels / the AQ index for a place. Fetches
-  the index series, decodes the 0–5 index levels into words, names the driving
+  the index series, decodes the 0–4 index levels into words, names the driving
   pollutant per hour, and summarises — instead of the raw nested arrays the CLI
   returns.
 version: 1.0.0
@@ -60,7 +60,7 @@ The layout is **positional** (the self-describing `indices` block confirms it):
 
 ```
 [ "<end timestamp>",          // [0] hour-ending time
-  <total index>,              // [1] overall AQ index for the hour, 0..5
+  <total index>,              // [1] overall AQ index for the hour, 0..4
   <incomplete flag>,          // [2] 1 = data incomplete that hour
   [<comp id>, <value>, <comp index>, "<y>"],   // [3..] one sub-array per pollutant
   …
@@ -68,12 +68,12 @@ The layout is **positional** (the self-describing `indices` block confirms it):
 ```
 
 Each pollutant sub-array is `[component-id, measured value, that pollutant's index
-(0..5), y-value]`. The **overall index `[1]` is the worst of the per-pollutant
+(0..4), y-value]`. The **overall index `[1]` is the worst of the per-pollutant
 indices** — so the pollutant whose sub-array index equals `[1]` is the **driving
 pollutant** for that hour. Map component ids with
 `luftqualitaet components --lang en` (`1=PM₁₀, 2=CO, 3=O₃, 4=SO₂, 5=NO₂, 9=PM₂.₅`).
 
-**Index level → words** (UBA's official 0–5 air-quality scale):
+**Index level → words** (UBA's air-quality index: five levels, 0–4):
 
 | index | label |
 |---|---|
@@ -82,7 +82,8 @@ pollutant** for that hour. Map component ids with
 | 2 | moderate (mäßig) |
 | 3 | poor (schlecht) |
 | 4 | very poor (sehr schlecht) |
-| 5 | extremely poor (außerordentlich schlecht) |
+
+There is no level 5: every `thresholds --use airquality` band set tops out at index `4`.
 
 > **Don't average the index numerically** — it's an ordinal worst-case scale, not
 > a quantity. Report the worst level reached and how many hours sat at each level.
@@ -90,8 +91,14 @@ pollutant** for that hour. Map component ids with
 > ng/m³ — from `components`); cite it with the unit.
 
 Optional enrichment: `luftqualitaet thresholds --use airquality --component <id>`
-returns the concentration bands (`[…, min, max, index]`) behind each level — use
-it to say "NO₂ 95 µg/m³ sits in the 61–120 band = level 1".
+returns the concentration bands (`[threshold id, component id, scope id, type, min,
+max, index]`) behind each level — use it to say "NO₂ 95 µg/m³ sits in the 41–100 band
+= level 2". The bands differ per pollutant (61–120 is ozone's level-1 band, not
+NO₂'s), so always fetch the component you're quoting. PM₁₀ (`1`) and PM₂.₅ (`9`)
+return two band sets; the index follows **scope `6`** (daily average, hourly
+floating): at station 1613 in January 2026, PM₂.₅ 7–10 µg/m³ was level 0 and 11–13
+level 1, which matches scope 6's bands (0–10, 11–20), not scope 2's (0–5, 6–15).
+CO (`2`) has no bands.
 
 ## Step 4 — Brief the user
 

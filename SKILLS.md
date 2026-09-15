@@ -9,7 +9,7 @@ Each skill teaches Claude how to drive the `luftqualitaet` CLI to answer a speci
 real-world question — "which station covers Berlin?", "what's the air quality there
 right now?", "which cities had the worst NO₂ last year?" — and to report the answer with
 evidence rather than guesswork. They encode the parts that are easy to get wrong (the
-0–5 index decoding, the lon-before-lat coordinate order, the positional row layouts that
+0–4 index decoding, the lon-before-lat coordinate order, the positional row layouts that
 differ per endpoint) so Claude doesn't have to rediscover them each time.
 
 ## Skills
@@ -17,7 +17,7 @@ differ per endpoint) so Claude doesn't have to rediscover them each time.
 | Skill | What it does | Ask it… |
 |---|---|---|
 | **luftqualitaet-station-finder** | Resolves a place / region / classification to the numeric station id(s) every other query needs, with type, setting, network and coordinates. | "which station covers Berlin?", "find traffic stations in NRW", "station id for Stuttgart Neckartor" |
-| **luftqualitaet-air-report** | Fetches the air-quality index for a station over a window, decodes the 0–5 levels into words, names the driving pollutant, and summarises. | "air quality in Berlin right now?", "how was the air at station 143 yesterday?", "is ozone high in Munich?" |
+| **luftqualitaet-air-report** | Fetches the air-quality index for a station over a window, decodes the 0–4 levels into words, names the driving pollutant, and summarises. | "air quality in Berlin right now?", "how was the air at station 143 yesterday?", "is ozone high in Munich?" |
 | **luftqualitaet-annual-report** | Ranks stations by a pollutant's annual balance or its limit-value exceedances for a year, joined to real station names and places. | "worst NO₂ cities in 2023?", "where did PM₁₀ exceed the limit last year?", "rank stations by ozone" |
 
 ## Requirements
@@ -91,7 +91,7 @@ skills encode the non-obvious parts of this API, for example:
 - station rows are **positional with no `indices` key inside `.stations`**, and the
   coordinate order is **longitude (idx 7) before latitude (idx 8)** — both strings;
   `active-to` (idx 6) non-null means the station is decommissioned;
-- the `airquality` index is an **ordinal 0–5 scale** (very good → extremely poor), so you
+- the `airquality` index is an **ordinal 0–4 scale** (very good → very poor), so you
   report the worst level reached and never numerically average it; the **driving
   pollutant** is the one whose per-pollutant index equals the hour's overall index (see
   **luftqualitaet-air-report**);

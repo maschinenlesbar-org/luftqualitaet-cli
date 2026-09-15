@@ -52,7 +52,8 @@ aggregations for a station/window or component/year) and **reference** endpoints
 (the lookup lists that give meaning to the numeric ids).
 
 **airquality (`/airquality/json`).** Air-quality index data for one station over
-a time window. CLI: `airquality`.
+a time window. The index has five levels, `0` (very good) to `4` (very poor). CLI:
+`airquality`.
 
 **airquality-limits (`/airquality/limits`).** The available date range per
 station for air-quality data — use it to discover what windows you can request.

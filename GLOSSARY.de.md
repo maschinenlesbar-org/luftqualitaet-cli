@@ -52,7 +52,8 @@ Aggregationen für eine Station und ein Zeitfenster oder für eine Komponente un
 und **Referenz**-Endpoints (die Nachschlagelisten, die den numerischen IDs ihre Bedeutung geben).
 
 **airquality (`/airquality/json`).** Luftqualitätsindex-Daten für eine Station über
-ein Zeitfenster. CLI: `airquality`.
+ein Zeitfenster. Der Index hat fünf Stufen, von `0` (sehr gut) bis `4` (sehr schlecht).
+CLI: `airquality`.
 
 **airquality-limits (`/airquality/limits`).** Der verfügbare Datumsbereich je Station
 für Luftqualitätsdaten – damit ermitteln Sie, welche Zeitfenster Sie abfragen können.

@@ -284,6 +284,16 @@ test("meta rejects --time-from/--time-to for a non-airquality use", async () => 
   assert.match(cli.err.join("\n"), /apply only to --use airquality/);
 });
 
+test("an invalid global option value exits 1 without leaving run()", async () => {
+  // The help probe parses the global options too; it must not process.exit().
+  const cli = makeCli(() => jsonResponse({}));
+  const code = await run(["--max-retries", "-1", "components"], cli.deps);
+  assert.equal(code, 1);
+  assert.equal(cli.mt.calls.length, 0);
+  // Reported once, by the real parse (the probe is silenced).
+  assert.equal(cli.err.filter((line) => /argument '-1' is invalid/.test(line)).length, 1);
+});
+
 test("--max-redirects is parsed and passed through to the client", async () => {
   let seen: number | undefined;
   const deps: CliDeps = {

@@ -66,11 +66,16 @@ window, optionally narrowed to one component and/or scope. CLI: `measures`.
 scope/component/station for measurements. CLI: `measures-limits`.
 
 **annual-balances (`/annualbalances/json`).** Annual tabulations
-(*Jahresbilanzen*) for a component and a given year (`>= 2016`). CLI:
+(*Jahresbilanzen*) for a component and a given year (`>= 2016`). Each row is a
+station id followed by figures whose number and meaning depend on the component
+(for O₃ there is no annual mean); the response's `headers` object names them by
+row position, and its `indices` array does not match the rows. CLI:
 `annual-balances`.
 
 **transgressions (`/transgressions/json`).** Exceedance (*Überschreitungen*)
-data for a component and year — how often a limit value was exceeded. CLI:
+data for a component and year — how often a limit value was exceeded. The
+response's `headers` object says what the yearly count measures (hours or days
+above which value); `day_recent` shows how far the year's data reaches. CLI:
 `transgressions`.
 
 **thresholds (`/thresholds/json`).** The limit/threshold values for a given

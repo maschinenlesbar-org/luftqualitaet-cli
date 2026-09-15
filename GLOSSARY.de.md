@@ -66,11 +66,16 @@ optional eingegrenzt auf eine Komponente und/oder einen Messumfang. CLI: `measur
 Messumfang, Komponente und Station für Messwerte. CLI: `measures-limits`.
 
 **annual-balances (`/annualbalances/json`).** *Jahresbilanzen* für eine Komponente und
-ein bestimmtes Jahr (`>= 2016`). CLI:
+ein bestimmtes Jahr (`>= 2016`). Jede Zeile besteht aus einer Stations-ID und Kennzahlen,
+deren Anzahl und Bedeutung von der Komponente abhängen (für O₃ gibt es keinen
+Jahresmittelwert); das Objekt `headers` der Antwort benennt sie nach ihrer Position in der
+Zeile, das Array `indices` passt dagegen nicht zu den Zeilen. CLI:
 `annual-balances`.
 
 **transgressions (`/transgressions/json`).** Daten zu *Überschreitungen* für eine
-Komponente und ein Jahr – wie oft ein Grenzwert überschritten wurde. CLI:
+Komponente und ein Jahr – wie oft ein Grenzwert überschritten wurde. Das Objekt `headers`
+der Antwort gibt an, was die Jahressumme zählt (Stunden oder Tage über welchem Wert);
+`day_recent` zeigt, wie weit die Daten des Jahres reichen. CLI:
 `transgressions`.
 
 **thresholds (`/thresholds/json`).** Die Grenz- und Schwellenwerte für eine bestimmte

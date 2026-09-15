@@ -40,13 +40,32 @@ usual "limit exceedance" questions; O₃ (`3`) for summer-ozone.
 luftqualitaet --compact annual-balances --component 1 --year 2023 --lang en
 ```
 
-`.data` is an **array of 4-element rows**, `["<station id>", "<value>", "<index>",
-"<index2>"]` — station id first, then the annual figure (e.g. the annual mean in
-the component's unit), then two AQ-index-band columns. **Trap:** the response also
-carries an `indices` array (`["station id","component id","year","value",…]`) with
-*five* labels that **do not line up** with the four-element rows — ignore it and use
-the positional layout above (value is at index **1**, verified live: Essen
-Gladbecker Straße ≈ 23 µg/m³ PM₁₀ for 2023).
+`.data` is an array of rows `["<station id>", <column 1>, <column 2>, …]`, all
+values strings (or `null` where a station has no figure). **The columns depend on the
+component, and sometimes the year** — the response's `.headers` object names them,
+keyed by row position. Examples (live, 2026-09-15):
+
+| component | columns (`.headers`) |
+|---|---|
+| NO₂ `5` | `1` annual mean µg/m³, `2` hourly means above 200 µg/m³ |
+| PM₁₀ `1` | `1` annual mean µg/m³, `2` daily means above 50 µg/m³ (2023 adds `3`, the same with road-salt discount) |
+| PM₂.₅ `9` | `1` annual mean µg/m³ only |
+| O₃ `3` | `1` hours above 240, `2` hours above 180, `3` days with 8-h max above 120, `4` its 3-year average, `5`/`6` AOT40 — **no annual mean** |
+
+So read `.headers` first and pick the column that answers the question; don't assume
+column `1` is an annual mean (for O₃ it's a count of hours above 240 µg/m³). Ranking
+on a chosen column (`col`), skipping `null`s:
+
+```bash
+luftqualitaet --compact annual-balances --component 3 --year 2025 --lang en \
+  | jq -r --argjson col 3 '"ranking on: \(.headers[$col|tostring])",
+      (.data | map(select(.[$col] != null)) | sort_by(.[$col] | tonumber) | reverse | .[:10][]
+       | [.[0], .[$col]] | @tsv)'
+```
+
+**Trap:** the response also carries an `indices` array (`["station id","component
+id","year","value","transgression type id"]`) that **does not describe** the rows —
+ignore it and use `.headers`.
 
 **Transgressions** — how often the limit value was exceeded, per station:
 
@@ -57,11 +76,34 @@ luftqualitaet --compact transgressions --component 5 --year 2022 --lang en
 Here `.data` is an array of rows and there **is** an `indices` array describing
 them: `["station id", "day_first", "day_recent", "value of year", "4-16 values of
 months"]`. Column `[3]` ("value of year") is the **total exceedance count for the
-year** — that's the number to rank on; `[4..]` are the monthly breakdown. List
-exceedance *types* with `luftqualitaet transgression-types --lang en`.
+year** — that's the number to rank on; `[4..]` are the monthly breakdown (January
+first; some rows are shorter because trailing months are left out).
 
-Both default to `--index id` (rows keyed/led by numeric station id). Most stations
-report `0` exceedances — that is the normal, healthy case, not missing data.
+- **What `[3]` counts is in `.headers`**, a single entry keyed `"3"` — e.g. NO₂
+  `"Number of hourly values above 200 µg/m³"` (hours), PM₁₀ `"Number of daily mean
+  values above 50 µg/m³"` (days), O₃ `"Number of days with highest daily 8-hour
+  averages above 120 µg/m³"` (days). Use that text for the label and the unit
+  (hours vs days). Don't label from `transgression-types`: upstream that
+  list mixes real names with bare numbers (`"23":"1"`, `"26":"18480"`) and
+  mis-encoded German (`"Jahresmittelwert in ng/mÂ³"`).
+- **The year may not be complete.** `day_recent` is the last day covered. As of
+  2026-09-15, 283 of 286 O₃ stations for 2025 end at `2025-11-30` — December is
+  missing — and some stations end months earlier. Report the period you ranked.
+
+```bash
+luftqualitaet --compact transgressions --component 3 --year 2025 --lang en \
+  | jq -r '(.data | map(.[2]) | max) as $end
+           | "counts: \(.headers | to_entries[0].value)",
+             "data up to: \($end) (\(.data | map(select(.[2] < $end)) | length) stations end earlier)",
+             (.data | sort_by(.[3] | tonumber) | reverse | .[:10][] | [.[0], .[3], .[2]] | @tsv)'
+```
+
+Both default to `--index id` (rows keyed/led by numeric station id). `0` exceedances
+is a real, healthy result, not missing data. How common it is depends on the
+pollutant: for NO₂ 2025 all but one of 410 stations had `0`, while for PM₁₀ 2024 and
+O₃ 2025 most stations had at least one. A count above zero is not by itself a breach —
+the EU limits allow some exceedances per year (18 hours for NO₂ above 200 µg/m³, 35 days
+for PM₁₀ above 50 µg/m³; the O₃ target value allows 25 days as a 3-year average).
 
 ## Step 3 — Join to station identities
 
@@ -80,28 +122,34 @@ station isn't in the active catalogue — keep the row, label it by id.
 
 ## Step 4 — Rank and report
 
-Sort descending by the figure that answers the question — annual `value` for
+Sort descending by the figure that answers the question — the chosen `.headers` column for
 balances, the yearly exceedance count (`[3]`) for transgressions — and report the
 top N with names and places:
 
 ```
-Worst NO₂ exceedances, 2022 (component 5) — top 5 of 412 stations
-  1. 42 days  Stuttgart Am Neckartor   traffic   · BW   (48.79, 9.21)
-  2. 31 days  München Landshuter Allee traffic   · BY
-  3. …
-Most stations (≈390) recorded 0 exceedances.
+Most PM₁₀ exceedance days (daily mean above 50 µg/m³), 2024 (component 1)
+— top 5 of 379 stations, data to 2024-12-31
+  1. 17 days  Halle/Paracelsusstr.         traffic · ST  (51.4948, 11.9813)
+  2. 10 days  Berlin Silbersteinstraße 5   traffic · BE
+  2. 10 days  Wittenberg/Dessauer Strasse  traffic · ST
+  2. 10 days  Leipzig Lützner Str.         traffic · SN
+  2. 10 days  Berlin Frankfurter Allee     traffic · BE
+230 of 379 stations recorded at least one exceedance day.
 ```
 
 Rules:
-- Lead with the metric and year; show **how many stations** were in the set and how
-  many were at/above the limit (count of rows with exceedances > 0).
-- Rank by the right column — annual mean `value` for balances, exceedance **count**
-  (`[3]`) for transgressions — and **don't confuse the two**.
+- Lead with the metric (the `.headers` text, with its unit — hours or days) and year,
+  plus the period covered (`day_recent`) if the year isn't complete; show **how many
+  stations** were in the set and how many were at/above the limit (count of rows with
+  exceedances > 0).
+- Rank by the right column — the `.headers` column you chose for balances, exceedance
+  **count** (`[3]`) for transgressions — and **don't confuse the two**.
 - Always show the **station type** (idx 16): traffic stations dominate NO₂ rankings
   by design; calling that out is the insight.
 - Filter to a region when asked (idx 12 network code / idx 13 state name).
 - Give lat/lon or a map link when a few stations are highlighted.
-- Mention that 0 is the common, good result — a ranking of mostly-zeros means the
-  pollutant was largely within limits that year.
+- Mention that 0 is the good result — a ranking of mostly-zeros means the pollutant
+  was largely within limits that year; for a ranking with many non-zero counts, say how
+  many stations went past the allowed number of exceedances, not just above zero.
 - For multi-year trends, repeat per year and compare the top values; don't
   interpolate years you didn't fetch.

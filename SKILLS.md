@@ -102,9 +102,12 @@ skills encode the non-obvious parts of this API, for example:
   expect; an empty window returns `"data": {}` with exit `0`;
 - response shapes are **inconsistent**: `components`/`scopes`/`station-types`/
   `station-settings` put rows at the top level beside `indices`, while `networks` and the
-  data endpoints nest them under `.data`; `annual-balances` ships an `indices` array whose
-  five labels **don't line up** with its four-element rows — rank on positional index `1`
-  (see **luftqualitaet-annual-report**).
+  data endpoints nest them under `.data`; `annual-balances` rows have a different set of
+  columns per component (for O₃ column `1` is a count, not an annual mean), named by the
+  response's `headers` object, while its `indices` array doesn't match the rows — read
+  `headers` before ranking; for `transgressions`, `headers` names what the yearly count
+  measures (hours or days), and the latest year may stop before December (see
+  **luftqualitaet-annual-report**).
 
 ## Contributing
 

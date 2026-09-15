@@ -95,6 +95,9 @@ skills encode the non-obvious parts of this API, for example:
   report the worst level reached and never numerically average it; the **driving
   pollutant** is the one whose per-pollutant index equals the hour's overall index (see
   **luftqualitaet-air-report**);
+- all `airquality` times are **CET all year** (the response labels them so), one hour
+  behind German local time in summer, and the newest hour lags the clock — "right now"
+  means the latest hour in the data, not the current local hour;
 - an unknown station id returns **HTTP 409** (CLI exit `1`), not the `4`/"not found" you'd
   expect; an empty window returns `"data": {}` with exit `0`;
 - response shapes are **inconsistent**: `components`/`scopes`/`station-types`/

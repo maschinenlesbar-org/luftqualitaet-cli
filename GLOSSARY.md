@@ -129,6 +129,8 @@ year is **2016**, so the CLI rejects anything below that.
 endpoints address a window by a start date+hour and an end date+hour. Dates are
 `YYYY-MM-DD`. Hours are **hour-ending** values in the range **1..24** (not
 `0..23`): hour `1` is the interval ending at 01:00, hour `24` ends at midnight.
+Times are **CET (UTC+1) all year**, as the `airquality` response labels them, so in
+summer they are one hour behind German local time.
 The CLI validates the calendar date, the hour range, and rejects a reversed
 window (start after end) before any request is sent.
 

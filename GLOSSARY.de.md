@@ -128,7 +128,9 @@ API ist **2016**, daher lehnt die CLI alles darunter ab.
 Daten-Endpoints adressieren ein Zeitfenster über Startdatum+Stunde und Enddatum+Stunde.
 Datumsangaben haben das Format `YYYY-MM-DD`. Stunden sind Werte für das **Stundenende** im
 Bereich **1..24** (nicht `0..23`): Stunde `1` ist das Intervall, das um 01:00 Uhr endet,
-Stunde `24` endet um Mitternacht. Die CLI prüft das Kalenderdatum und den Stundenbereich und
+Stunde `24` endet um Mitternacht. Die Zeiten sind **ganzjährig MEZ (UTC+1)** – so beschriftet
+sie die `airquality`-Antwort –, im Sommer liegen sie also eine Stunde hinter der deutschen
+Ortszeit. Die CLI prüft das Kalenderdatum und den Stundenbereich und
 lehnt ein umgekehrtes Zeitfenster (Beginn nach Ende) ab, bevor eine Anfrage gesendet wird.
 
 ---

@@ -42,6 +42,13 @@ ordered start-before-end (the CLI rejects a reversed window locally, exit `1`).
 
 - "right now / today" → use today's (or yesterday's, if today is sparse) date with
   `--time-from 1 --time-to 24`. Current data exists and updates hourly.
+- **Times are CET (UTC+1) all year**, not German local time — the response's
+  `indices` block labels them `date start (CET)` / `date end (CET)`, and the window
+  hours you send are read the same way. During summer time (CEST, late March to late
+  October) German clocks are one hour ahead: an hour ending `15:00` CET ends at
+  16:00 local time. The newest hour also lags the clock by an hour or two and may be
+  incomplete (`[2]` = `1`). So for "right now", report the **latest hour in the data**
+  with its CET label (or converted, saying so) — never call it the current local hour.
 - If a window comes back empty (`"data": {}`), widen it or step back a day rather
   than reporting "no air quality"; `airquality-limits` shows each station's
   available range (slow — `--timeout 90000`).
@@ -67,8 +74,9 @@ The layout is **positional** (the self-describing `indices` block confirms it):
 ]
 ```
 
-Each pollutant sub-array is `[component-id, measured value, that pollutant's index
-(0..4), y-value]`. The **overall index `[1]` is the worst of the per-pollutant
+The object key is the hour's **start** time and `[0]` its end time, both in CET (see
+Step 2). Each pollutant sub-array is `[component-id, measured value, that pollutant's
+index (0..4), y-value]`. The **overall index `[1]` is the worst of the per-pollutant
 indices** — so the pollutant whose sub-array index equals `[1]` is the **driving
 pollutant** for that hour. Map component ids with
 `luftqualitaet components --lang en` (`1=PM₁₀, 2=CO, 3=O₃, 4=SO₂, 5=NO₂, 9=PM₂.₅`).
@@ -105,7 +113,7 @@ CO (`2`) has no bands.
 Lead with the verdict, then the detail a person acts on:
 
 ```
-Air quality — Berlin Grunewald (station 143), 1 Jan 2024
+Air quality — Berlin Grunewald (station 143), 1 Jan 2024 (times CET)
   Overall: mostly GOOD, peaking at MODERATE 14:00–17:00.
   Driving pollutant: O₃ (ozone) in the afternoon; PM₁₀ steady ~18 µg/m³.
   Worst hour: 16:00 — index 2 (moderate), O₃ 121 µg/m³.

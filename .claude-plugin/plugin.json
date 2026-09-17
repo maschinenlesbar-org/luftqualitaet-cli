@@ -1,6 +1,6 @@
 {
   "name": "luftqualitaet",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "German air-quality intelligence skills powered by the luftqualitaet-cli (Umweltbundesamt Air Data API).",
   "author": {
     "name": "Sebastian Schürmann",

@@ -322,3 +322,22 @@ test("--max-redirects is parsed and passed through to the client", async () => {
   assert.equal(code, 0);
   assert.equal(seen, 0);
 });
+
+// --- --base-url validation at parse time -------------------------------------
+
+for (const bad of ["file:///etc/passwd", "ftp://example.org", "notaurl"]) {
+  test(`--base-url ${bad} is a usage error (no request)`, async () => {
+    const cli = makeCli(() => jsonResponse([]));
+    const code = await run(["--base-url", bad, "networks"], cli.deps);
+    assert.notEqual(code, 0);
+    assert.equal(cli.mt.calls.length, 0);
+    assert.match(cli.err.join("\n"), /--base-url/);
+  });
+}
+
+test("--base-url accepts an http(s) URL", async () => {
+  const cli = makeCli(() => jsonResponse([]));
+  const code = await run(["--base-url", "http://localhost:8080", "networks"], cli.deps);
+  assert.equal(code, 0);
+  assert.equal(new URL(cli.mt.last().url).origin, "http://localhost:8080");
+});

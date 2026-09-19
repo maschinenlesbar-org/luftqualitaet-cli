@@ -26,17 +26,26 @@ test("buildUrl normalises the path and appends the query", () => {
   );
 });
 
-test("buildUrl rejects a malformed base URL with a clear, base-only message", () => {
-  const e = new RequestEngine({ baseUrl: "notaurl" });
+test("the constructor rejects a malformed base URL with a clear, base-only message", () => {
+  const mt = makeMockTransport(() => jsonResponse({}));
   assert.throws(
-    () => e.buildUrl("/api/air_data/v3/components/json"),
+    () => new RequestEngine({ baseUrl: "notaurl", transport: mt.transport }),
     (err: unknown) =>
-      err instanceof LuftNetworkError &&
-      /Invalid base URL: "notaurl"/.test(err.message) &&
-      // the diagnostic must NOT carry the request path (which read as if at fault)
-      !/components/.test(err.message),
+      err instanceof LuftNetworkError && /Invalid base URL: "notaurl"/.test(err.message),
   );
+  assert.equal(mt.calls.length, 0);
 });
+
+for (const bad of ["file:///etc/passwd", "ftp://example.org"]) {
+  test(`the constructor rejects a non-http(s) base URL (${bad}) before a custom transport sees it`, () => {
+    const mt = makeMockTransport(() => jsonResponse({}));
+    assert.throws(
+      () => new RequestEngine({ baseUrl: bad, transport: mt.transport }),
+      (err: unknown) => err instanceof LuftNetworkError && /Unsupported protocol/.test(err.message),
+    );
+    assert.equal(mt.calls.length, 0);
+  });
+}
 
 test("getJson parses a JSON body", async () => {
   const mt = makeMockTransport(() => jsonResponse({ ok: true }));

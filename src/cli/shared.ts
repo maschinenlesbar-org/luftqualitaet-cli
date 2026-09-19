@@ -26,6 +26,26 @@ function parseStrictInt(value: string): number | undefined {
   return n;
 }
 
+/**
+ * commander value-parser for `--base-url`: an absolute http(s) URL. A malformed
+ * or non-http(s) value (`file:`, `ftp:`, `notaurl`) is a usage error at parse
+ * time, before any client is built.
+ */
+export function parseBaseUrl(value: string): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new InvalidArgumentError("Expected an absolute http(s) URL.");
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new InvalidArgumentError(
+      `Unsupported scheme "${url.protocol}". Expected an http(s) URL.`,
+    );
+  }
+  return value;
+}
+
 /** commander value-parser: a non-negative integer. */
 export function parseIntArg(value: string): number {
   const n = parseStrictInt(value);

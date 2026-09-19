@@ -9,7 +9,7 @@ import type { CliDeps } from "./io.js";
 import { defaultIO } from "./io.js";
 import { LuftqualitaetClient } from "../client/client.js";
 import { MAX_TIMEOUT_MS } from "../client/http.js";
-import { parseBoundedInt, parseIntArg } from "./shared.js";
+import { parseBaseUrl, parseBoundedInt, parseIntArg } from "./shared.js";
 import { registerReferenceCommands } from "./commands/reference.js";
 import { registerDataCommands } from "./commands/data.js";
 
@@ -47,7 +47,7 @@ export function buildProgram(deps: CliDeps = defaultDeps): Command {
         "(https://www.umweltbundesamt.de/api/air_data/v3)",
     )
     .version(VERSION)
-    .option("--base-url <url>", "API base URL", "https://www.umweltbundesamt.de")
+    .option("--base-url <url>", "API base URL", parseBaseUrl, "https://www.umweltbundesamt.de")
     .option(
       "--timeout <ms>",
       `per-request timeout in milliseconds (0..${MAX_TIMEOUT_MS})`,

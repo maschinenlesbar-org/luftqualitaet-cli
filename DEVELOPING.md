@@ -148,14 +148,15 @@ retried automatically with linear backoff, up to `--max-retries` (default `2`).
 unlimited) that defends against memory exhaustion from a hostile or buggy
 endpoint. CLI: `--max-response-bytes`.
 
-**`--base-url` scheme validation (deliberate divergence).** Unlike the blueprint
-default — which rejects a non-`http:`/`https:` `--base-url` at parse time with
-exit code `2` — this repo validates the scheme in the transport
-([`http.ts`](src/client/http.ts)): a non-`http(s)` URL is rejected with a typed
-`LuftNetworkError` and exit `1`. The security outcome is identical (`file:` /
-`ftp:` / etc. never reach a driver, and **every redirect hop passes through the
-same transport gate**), only the exit code and rejection point differ. This is
-intentional; do not "fix" it toward parse-time/exit-2 conformance.
+**`--base-url` scheme validation.** The scheme is checked at three points.
+`--base-url` has a value parser (`parseBaseUrl` in
+[`shared.ts`](src/cli/shared.ts)), so a malformed or non-`http:`/`https:` value
+(`notaurl`, `file:///etc/passwd`, `ftp://…`) is a usage error at parse time, before
+any client is built, as in the sibling CLIs. The engine constructor re-checks the
+configured base URL (`assertHttpScheme` in [`engine.ts`](src/client/engine.ts)) and
+throws a typed `LuftNetworkError`, so a library consumer that injects a custom
+transport can never hand it a non-http(s) base URL. And the default transport
+([`http.ts`](src/client/http.ts)) gates the scheme on **every redirect hop**.
 
 ## Testing
 

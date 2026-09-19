@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { LuftqualitaetClient } from "../src/client/client.js";
-import { LuftApiError } from "../src/client/errors.js";
+import { LuftApiError, LuftNetworkError } from "../src/client/errors.js";
 import { makeMockTransport, jsonResponse, constantJson } from "./helpers.js";
 
 function clientWith(mt: ReturnType<typeof makeMockTransport>): LuftqualitaetClient {
@@ -222,4 +222,13 @@ test("meta with no params (no use) still hits /meta/json with empty query", asyn
   const mt = constantJson({});
   await clientWith(mt).stationTypes();
   assert.equal(new URL(mt.last().url).search, "");
+});
+
+test("the client rejects a file: base URL before any request reaches a custom transport", () => {
+  const mt = constantJson([]);
+  assert.throws(
+    () => new LuftqualitaetClient({ baseUrl: "file:///etc/passwd", transport: mt.transport }),
+    (err: unknown) => err instanceof LuftNetworkError,
+  );
+  assert.equal(mt.calls.length, 0);
 });

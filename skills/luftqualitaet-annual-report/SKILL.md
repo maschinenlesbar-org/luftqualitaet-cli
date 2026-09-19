@@ -8,8 +8,11 @@ description: >
   balance for Germany", or wants a yearly / nationwide / regional comparison. Joins
   the per-station annual rows to station names and locations and ranks them, instead
   of returning anonymous numeric rows.
-version: 1.0.0
-userInvocable: true
+compatibility: >
+  Requires the `luftqualitaet` CLI (npm package
+  @maschinenlesbar.org/luftqualitaet-cli) on PATH, installed by the user; the
+  skill never installs it. Uses jq for JSON filtering. Network access to
+  www.umweltbundesamt.de.
 ---
 
 # Luftqualität Annual Balances & Exceedances
@@ -21,6 +24,8 @@ did it break the limit value* — by ranking the `annual-balances` /
 ## Tooling
 
 This skill drives the `luftqualitaet` command. **Before anything else, validate it is available** — run `command -v luftqualitaet` (or `luftqualitaet --version`). If it is not on your PATH, STOP and inform the user that the `luftqualitaet` CLI (`@maschinenlesbar.org/luftqualitaet-cli`) is not installed — installing it is their responsibility; never install it yourself, and do not fall back to `npx` or a local `node dist/...` build.
+
+This skill also filters JSON with `jq`. **Validate it too** — run `command -v jq`. If it is missing, inform the user that `jq` is not installed — installing it is their responsibility; never install it yourself — and carry on without it: filter the CLI output with `node -e` instead (Node is already on your PATH, since the CLI runs on it).
 
 Always `--compact`. `--year` must be **≥ 2016** (the API has nothing earlier; the
 CLI rejects lower years locally, exit `1`).

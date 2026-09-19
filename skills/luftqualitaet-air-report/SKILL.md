@@ -9,8 +9,10 @@ description: >
   the index series, decodes the 0–4 index levels into words, names the driving
   pollutant per hour, and summarises — instead of the raw nested arrays the CLI
   returns.
-version: 1.0.0
-userInvocable: true
+compatibility: >
+  Requires the `luftqualitaet` CLI (npm package
+  @maschinenlesbar.org/luftqualitaet-cli) on PATH, installed by the user; the
+  skill never installs it. Network access to www.umweltbundesamt.de.
 ---
 
 # Luftqualität Air-Quality Report

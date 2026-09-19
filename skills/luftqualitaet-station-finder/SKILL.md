@@ -9,8 +9,11 @@ description: >
   background stations", or any time a measurement/index request names a place
   rather than an id. Returns matching stations with id, name, city, type,
   setting, network and coordinates.
-version: 1.0.0
-userInvocable: true
+compatibility: >
+  Requires the `luftqualitaet` CLI (npm package
+  @maschinenlesbar.org/luftqualitaet-cli) on PATH, installed by the user; the
+  skill never installs it. Uses jq for JSON filtering. Network access to
+  www.umweltbundesamt.de.
 ---
 
 # Luftqualität Station Finder
@@ -23,6 +26,8 @@ into the right station id(s), with the metadata to pick between them.
 ## Tooling
 
 This skill drives the `luftqualitaet` command. **Before anything else, validate it is available** — run `command -v luftqualitaet` (or `luftqualitaet --version`). If it is not on your PATH, STOP and inform the user that the `luftqualitaet` CLI (`@maschinenlesbar.org/luftqualitaet-cli`) is not installed — installing it is their responsibility; never install it yourself, and do not fall back to `npx` or a local `node dist/...` build.
+
+This skill also filters JSON with `jq`. **Validate it too** — run `command -v jq`. If it is missing, inform the user that `jq` is not installed — installing it is their responsibility; never install it yourself — and carry on without it: filter the CLI output with `node -e` instead (Node is already on your PATH, since the CLI runs on it).
 
 Pass `--compact` so the (large) JSON is one line, easy to pipe into `jq`. The
 station list lives inside `meta` and is ~500 stations — bump `--timeout 60000`,

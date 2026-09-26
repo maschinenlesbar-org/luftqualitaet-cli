@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { MAX_RETRY_AFTER_MS, RequestEngine, parseRetryAfter } from "../src/client/engine.js";
-import { LuftApiError, LuftNetworkError, LuftParseError } from "../src/client/errors.js";
+import { LuftApiError, LuftNetworkError, LuftParseError, redactUrl } from "../src/client/errors.js";
 import { makeMockTransport, jsonResponse, rawResponse } from "./helpers.js";
 
 // Built via char codes so no raw control bytes ever appear in this source file.
@@ -243,4 +243,15 @@ test("a base URL with a query or fragment is rejected at construction", () => {
     );
     assert.equal(mt.calls.length, 0);
   }
+});
+
+test("redactUrl hides userinfo and leaves other URLs alone", () => {
+  assert.equal(redactUrl("http://user:secret@host.test/x?y=1"), "http://***@host.test/x?y=1");
+  assert.equal(redactUrl("http://user@host.test/"), "http://***@host.test/");
+  assert.equal(redactUrl("https://host.test/a"), "https://host.test/a");
+  assert.equal(redactUrl("not a url"), "not a url");
+  assert.throws(
+    () => new RequestEngine({ baseUrl: "ftp://user:secret@host.test" }),
+    (err: unknown) => err instanceof LuftNetworkError && !/secret/.test(err.message) && /\*\*\*@/.test(err.message),
+  );
 });

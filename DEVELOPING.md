@@ -168,7 +168,9 @@ transport can never hand it a non-http(s) base URL. And the default transport
 Paths are appended to the base URL as a string, so a base URL with a query (`?`) or
 fragment (`#`) is refused too — by `parseBaseUrl` (usage error, also for surrounding
 whitespace) and by the engine constructor (`LuftNetworkError`) — instead of swallowing
-every request path.
+every request path. Userinfo (`http://user:secret@mirror/`) is allowed — Node sends it
+as Basic auth — but `redactUrl` (exported from [`errors.ts`](src/client/errors.ts))
+shows it as `***@` in every error message and in `LuftApiError.url`.
 
 ## Testing
 

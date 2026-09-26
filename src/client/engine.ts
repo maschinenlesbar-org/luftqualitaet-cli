@@ -4,7 +4,7 @@
 
 import { nodeHttpTransport, type Transport } from "./http.js";
 import { buildQueryString, type QueryParams } from "./query.js";
-import { LuftApiError, LuftNetworkError, LuftParseError } from "./errors.js";
+import { LuftApiError, LuftNetworkError, LuftParseError, redactUrl } from "./errors.js";
 
 /**
  * The API's host. The client appends the API path (`API_PATH`, `/api/air-data/v3`).
@@ -131,11 +131,11 @@ function assertHttpScheme(baseUrl: string): void {
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new LuftNetworkError(
-      `Unsupported protocol "${url.protocol}" in base URL: ${baseUrl}`,
+      `Unsupported protocol "${url.protocol}" in base URL: ${redactUrl(baseUrl)}`,
     );
   }
   if (/[?#]/.test(baseUrl)) {
-    throw new LuftNetworkError(`Base URL must not contain a query or fragment: ${baseUrl}`);
+    throw new LuftNetworkError(`Base URL must not contain a query or fragment: ${redactUrl(baseUrl)}`);
   }
 }
 
@@ -225,7 +225,7 @@ export class RequestEngine {
             target = new URL(location, url);
           } catch (cause) {
             throw new LuftNetworkError(
-              `Invalid redirect Location ${JSON.stringify(location)} from ${url}`,
+              `Invalid redirect Location ${JSON.stringify(location)} from ${redactUrl(url)}`,
               { cause },
             );
           }

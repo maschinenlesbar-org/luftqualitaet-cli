@@ -486,3 +486,14 @@ test("a --base-url with a query, a fragment or surrounding whitespace is a usage
     assert.match(cli.err.join("\n"), message, baseUrl);
   }
 });
+
+test("credentials in --base-url are redacted from error messages", async () => {
+  const cli = makeCli(() => jsonResponse({ message: "status 404" }, 404));
+  const code = await run(["--compact", "--base-url", "http://user:secret@127.0.0.1:18122/s/404", "components"], cli.deps);
+  assert.equal(code, 4);
+  const text = cli.err.join("\n");
+  assert.doesNotMatch(text, /secret|user:/);
+  assert.match(text, /HTTP 404 for GET http:\/\/\*\*\*@127\.0\.0\.1:18122\/s\/404\/api\/air-data\/v3\/components\/json/);
+  // The request itself keeps the userinfo (Node sends it as Basic auth).
+  assert.match(cli.mt.last().url, /^http:\/\/user:secret@/);
+});

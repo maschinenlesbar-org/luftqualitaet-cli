@@ -13,7 +13,7 @@ export { MAX_TIMEOUT_MS, nodeHttpTransport } from "./http.js";
 export type { Transport, HttpRequest, HttpResponse } from "./http.js";
 export { buildQueryString } from "./query.js";
 export type { QueryParams, QueryValue } from "./query.js";
-export { LuftError, LuftApiError, LuftNetworkError, LuftParseError } from "./errors.js";
+export { LuftError, LuftApiError, LuftNetworkError, LuftParseError, redactUrl } from "./errors.js";
 
 export * from "./enums.js";
 export * from "./types.js";

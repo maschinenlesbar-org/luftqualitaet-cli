@@ -46,10 +46,11 @@ luftqualitaet components --lang en --index code
 ```
 
 This returns a map of all measured pollutants keyed by their short code. Pull
-out just the ids with `jq`:
+out the ids, codes and names with `jq` (the map sits at the top level, next to
+`count` and `indices`):
 
 ```bash
-luftqualitaet components --lang en | jq '.data | to_entries[] | {id: .key, name: .value[1]}'
+luftqualitaet components --lang en | jq -c 'del(.count, .indices) | to_entries[] | {id: .key, code: .value[1], name: .value[4]}'
 ```
 
 Then fetch the air-quality index for a station over a day:
@@ -187,15 +188,19 @@ Every command prints **pretty JSON to stdout**. Errors and diagnostics go to
 stderr, so piping stdout into `jq` stays clean.
 
 UBA responses are **index + data** structures: an `indices` array names the
-columns and the payload is a compact map keyed by id/code/timestamp. Most
-recipes involve indexing into `.data`:
+columns and the payload is a compact map keyed by id/code/timestamp. **Where the
+rows sit depends on the endpoint:** `networks` and the data commands
+(`airquality`, `measures`, the `-limits` commands, `annual-balances`,
+`transgressions`) wrap them in `.data`; `components`, `scopes`, `station-types`,
+`station-settings` and `thresholds` put them at the top level, mixed with `count`
+and `indices`. Check one response before writing a filter:
 
 ```bash
 # How many stations have air-quality limits data?
 luftqualitaet airquality-limits | jq '.data | keys | length'
 
-# Pull the component name + unit for every pollutant
-luftqualitaet components --lang en | jq '.data | to_entries[] | {id: .key, name: .value[1]}'
+# Pull the component code, name + unit for every pollutant (top-level map)
+luftqualitaet components --lang en | jq -c 'del(.count, .indices) | to_entries[] | {id: .key, code: .value[1], name: .value[4], unit: .value[3]}'
 
 # Annual balances as compact JSON for further piping
 luftqualitaet --compact annual-balances --component 1 --year 2023 | jq '.data'

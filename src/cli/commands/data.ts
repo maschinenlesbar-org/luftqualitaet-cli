@@ -61,6 +61,25 @@ function assertWindowOrdered(
   }
 }
 
+/**
+ * Run a station query; the API answers an unknown station id with HTTP 409 (an HTML
+ * page, no detail), so name the likely cause on stderr before the error.
+ */
+async function withStationHint<T>(deps: CliDeps, station: number, query: () => Promise<T>): Promise<T> {
+  try {
+    return await query();
+  } catch (err) {
+    if (err instanceof LuftApiError && err.status === 409) {
+      deps.io.err(
+        `Hint: the API answers an unknown station id with HTTP 409. Check that station ` +
+          `${station} exists (meta --use measure lists them) and has data in this window ` +
+          `(airquality-limits / measures-limits).`,
+      );
+    }
+    throw err;
+  }
+}
+
 /** Add the shared time-window + station options required by the data endpoints. */
 function addWindowOptions(cmd: Command): Command {
   return cmd
@@ -85,13 +104,15 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
       renderJson(
         deps,
         global,
-        await client.airquality({
-          date_from: String(opts["dateFrom"]),
-          time_from: opts["timeFrom"] as number,
-          date_to: String(opts["dateTo"]),
-          time_to: opts["timeTo"] as number,
-          station: opts["station"] as number,
-        }),
+        await withStationHint(deps, opts["station"] as number, () =>
+          client.airquality({
+            date_from: String(opts["dateFrom"]),
+            time_from: opts["timeFrom"] as number,
+            date_to: String(opts["dateTo"]),
+            time_to: opts["timeTo"] as number,
+            station: opts["station"] as number,
+          }),
+        ),
       );
     }),
   );
@@ -124,15 +145,17 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
       renderJson(
         deps,
         global,
-        await client.measures({
-          date_from: String(opts["dateFrom"]),
-          time_from: opts["timeFrom"] as number,
-          date_to: String(opts["dateTo"]),
-          time_to: opts["timeTo"] as number,
-          station: opts["station"] as number,
-          component: opts["component"] as number,
-          scope: opts["scope"] as number,
-        }),
+        await withStationHint(deps, opts["station"] as number, () =>
+          client.measures({
+            date_from: String(opts["dateFrom"]),
+            time_from: opts["timeFrom"] as number,
+            date_to: String(opts["dateTo"]),
+            time_to: opts["timeTo"] as number,
+            station: opts["station"] as number,
+            component: opts["component"] as number,
+            scope: opts["scope"] as number,
+          }),
+        ),
       );
     }),
   );

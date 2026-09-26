@@ -223,7 +223,7 @@ do the same thing.
 | Code | Meaning |
 | --- | --- |
 | `0` | success (also `--help` / `--version`) |
-| `4` | resource not found (`404` from the API) |
+| `4` | resource not found (`404` from the API — usually a wrong `--base-url`; unknown ids give `409` or an empty `data`, see Troubleshooting) |
 | `1` | any other error (network failure, bad JSON, validation error) |
 | non-zero | usage / argument error (bad flag, missing required option) |
 
@@ -232,9 +232,15 @@ do the same thing.
 - **`command not found: luftqualitaet`** — the global npm bin directory isn't on
   your `PATH`. Run `npm bin -g` to find it and add it, or run via
   `npx @maschinenlesbar.org/luftqualitaet-cli …`.
-- **Exit `4` / "not found"** — the API returned a `404`. The station or component
-  id may not exist, or the requested year/window is out of the available range.
-  Use `airquality-limits` or `measures-limits` to discover what data is actually
+- **Unknown ids don't give exit `4`.** The API has its own answers:
+  - an unknown **station** on `airquality`/`measures` → HTTP `409` (an HTML page, no
+    detail), exit `1`; the CLI adds a `Hint:` line. Look the id up with
+    `meta --use measure`.
+  - an unknown **component** or **scope**, a year or window with no data →
+    HTTP `200` with `"data": {}`, exit `0`.
+
+  Exit `4` means a real `404` — in practice a wrong `--base-url`. Use
+  `airquality-limits` or `measures-limits` to discover what data is actually
   available.
 - **Exit `1` / network error** — connectivity, DNS, or a timeout. Try again, or
   raise the limit with `--timeout 60000`.

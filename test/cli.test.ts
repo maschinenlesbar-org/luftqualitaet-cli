@@ -4,7 +4,7 @@ import { run } from "../src/cli/run.js";
 import { LuftqualitaetClient } from "../src/client/client.js";
 import type { CliDeps } from "../src/cli/io.js";
 import type { HttpRequest, HttpResponse } from "../src/client/http.js";
-import { makeMockTransport, jsonResponse } from "./helpers.js";
+import { makeMockTransport, jsonResponse, rawResponse } from "./helpers.js";
 
 const API = "/api/air-data/v3";
 
@@ -456,4 +456,17 @@ test("transgressions before 2019: an upstream 500 gets a hint naming the year fl
   const balances = makeCli(() => jsonResponse({}, 500));
   assert.equal(await run(["annual-balances", "--component", "5", "--year", "2018"], balances.deps), 1);
   assert.doesNotMatch(balances.err.join("\n"), /Hint:/);
+});
+
+test("airquality/measures: an upstream 409 (unknown station) gets a hint, exit 1", async () => {
+  for (const cmd of [["airquality"], ["measures", "--component", "5", "--scope", "2"]]) {
+    const cli = makeCli(() => rawResponse("<html>conflict</html>", "text/html", 409));
+    assert.equal(await run([...cmd, ...withWindowArg({ "--station": "999999" })], cli.deps), 1);
+    const text = cli.err.join("\n");
+    assert.match(text, /Hint: the API answers an unknown station id with HTTP 409\. Check that station 999999 exists/);
+    assert.match(text, /Error: HTTP 409/);
+  }
+  const other = makeCli(() => jsonResponse({}, 500));
+  assert.equal(await run(["airquality", ...fullWindow], other.deps), 1);
+  assert.doesNotMatch(other.err.join("\n"), /Hint:/);
 });

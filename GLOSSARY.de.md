@@ -156,7 +156,9 @@ Dies sind die geschlossenen Wertemengen, gegen die der Client validiert (definie
 Metadaten: `de` | `en`. CLI: `--lang`.
 
 **index (`IndexKind`).** Wie eine Referenzliste in der Antwort verschlüsselt ist: `id`
-(die numerische ID) | `code` (der Kurzcode). CLI: `--index`.
+(die numerische ID) | `code` (der Kurzcode). CLI: `--index`. `annual-balances` und
+`transgressions` nehmen es ebenfalls an, ihre Zeilen sind aber Arrays mit der
+Stations-ID vorn – es ändert dort nichts.
 
 **use (meta) (`MetaUse`).** Welches Metadatenpaket der Endpoint `meta` liefert:
 `airquality` | `measure` | `transgression` | `annualbalance` | `map`. Bei

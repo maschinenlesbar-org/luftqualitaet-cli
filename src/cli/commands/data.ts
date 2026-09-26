@@ -192,7 +192,9 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
       .requiredOption("--component <id>", "component id", parsePositiveIntArg)
       .requiredOption("--year <YYYY>", "year (>= 2016)", parseYear)
       .option("--lang <lang>", "de | en", parseLangArg)
-      .option("--index <index>", "id | code", parseIndexArg)
+      // Accepted and sent, but the rows are arrays led by the station id, so the
+      // payload is the same either way (only the echoed `request` differs).
+      .option("--index <index>", "id | code (no effect on these rows; kept for compatibility)", parseIndexArg)
       .action(
         action(deps, async ({ client, global, opts }) => {
           const year = opts["year"] as number;

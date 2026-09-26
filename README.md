@@ -124,7 +124,7 @@ Takes no options.
 | `--component <id>` | yes | component id |
 | `--year <YYYY>` | yes | year (>= 2016) |
 | `--lang de\|en` | no | label language |
-| `--index id\|code` | no | response key |
+| `--index id\|code` | no | accepted, but **no effect** here: the rows are arrays led by the station id either way |
 
 **`transgressions`** — exceedance data for a component and year.
 Same flags as `annual-balances`. Before 2019 the API has no transgressions for some

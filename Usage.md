@@ -111,8 +111,9 @@ Example: the PM₁₀ (component `1`) balance for 2023, in German.
 luftqualitaet annual-balances --component 1 --year 2023 --lang de
 ```
 
-`--year` must be `>= 2016`. Use `--index code` to key the output by code, and
-`--lang en` for English labels.
+`--year` must be `>= 2016`. Use `--lang en` for English labels. `--index` is
+accepted but changes nothing here: the rows are arrays led by the station id with
+either value (only the echoed `request` differs).
 
 ### 8. List exceedances for a pollutant and year
 
@@ -123,8 +124,8 @@ the recorded exceedances per component and year.
 luftqualitaet transgressions --component 5 --year 2022 --lang en
 ```
 
-Same constraints as annual balances: `--year >= 2016`, plus optional `--lang` and
-`--index`. In practice the data is complete from **2019**: for 2016–2018 the API
+Same constraints as annual balances: `--year >= 2016`, plus optional `--lang` (and
+`--index`, which has no effect here either). In practice the data is complete from **2019**: for 2016–2018 the API
 fails with HTTP `500` for some components (NO₂, PM₁₀; O₃ 2018 works), and the CLI
 adds a hint saying so.
 

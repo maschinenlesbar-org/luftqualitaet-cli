@@ -157,7 +157,9 @@ These are the closed value sets the client validates against (defined in
 metadata: `de` | `en`. CLI: `--lang`.
 
 **index (`IndexKind`).** How a reference list is keyed in the response: `id`
-(the numeric id) | `code` (the short code). CLI: `--index`.
+(the numeric id) | `code` (the short code). CLI: `--index`. `annual-balances` and
+`transgressions` accept it too, but their rows are arrays led by the station id, so
+it changes nothing there.
 
 **use (meta) (`MetaUse`).** Which metadata bundle the `meta` endpoint returns:
 `airquality` | `measure` | `transgression` | `annualbalance` | `map`. When

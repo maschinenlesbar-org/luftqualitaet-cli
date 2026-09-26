@@ -106,7 +106,7 @@ luftqualitaet --compact transgressions --component 3 --year 2025 --lang en \
              (.data | sort_by(.[3] | tonumber) | reverse | .[:10][] | [.[0], .[3], .[2]] | @tsv)'
 ```
 
-Both default to `--index id` (rows keyed/led by numeric station id). `0` exceedances
+Rows of both are led by the numeric station id (`--index` changes nothing here). `0` exceedances
 is a real, healthy result, not missing data. How common it is depends on the
 pollutant: for NO₂ 2025 all but one of 410 stations had `0`, while for PM₁₀ 2024 and
 O₃ 2025 most stations had at least one. A count above zero is not by itself a breach —

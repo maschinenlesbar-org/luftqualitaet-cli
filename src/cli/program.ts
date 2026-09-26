@@ -8,7 +8,7 @@ import { Command } from "commander";
 import type { CliDeps } from "./io.js";
 import { defaultIO } from "./io.js";
 import { API_PATH, LuftqualitaetClient } from "../client/client.js";
-import { DEFAULT_BASE_URL } from "../client/engine.js";
+import { DEFAULT_BASE_URL, MAX_RETRIES } from "../client/engine.js";
 import { MAX_TIMEOUT_MS } from "../client/http.js";
 import { parseBaseUrl, parseBoundedInt, parseIntArg } from "./shared.js";
 import { registerReferenceCommands } from "./commands/reference.js";
@@ -60,7 +60,11 @@ export function buildProgram(deps: CliDeps = defaultDeps): Command {
       parseBoundedInt(0, MAX_TIMEOUT_MS),
     )
     .option("--user-agent <ua>", "User-Agent header value")
-    .option("--max-retries <n>", "retries for transient 429/503 responses", parseIntArg)
+    .option(
+      "--max-retries <n>",
+      `retries for transient 429/503 responses (0..${MAX_RETRIES}; each waits the server's Retry-After, up to 30 s)`,
+      parseBoundedInt(0, MAX_RETRIES),
+    )
     .option("--max-redirects <n>", "HTTP redirects to follow (0 = none; default 5)", parseIntArg)
     .option(
       "--max-response-bytes <n>",

@@ -58,7 +58,7 @@ try {
 new LuftqualitaetClient({
   baseUrl: "https://luftdaten.umweltbundesamt.de", // the host; the client adds API_PATH (/api/air-data/v3)
   timeoutMs: 15_000,
-  maxRetries: 3,              // 429 / 503 are retried with linear backoff
+  maxRetries: 3,              // 429 / 503 are retried (Retry-After, else linear backoff)
   maxResponseBytes: 50 << 20, // abort responses larger than 50 MiB (0 = unlimited)
   userAgent: "my-app/1.0",
   transport: customTransport, // inject your own HTTP transport
@@ -141,7 +141,11 @@ serialiser: omits `undefined`/`null`, repeats keys for arrays, renders booleans
 as `true`/`false`, and encodes spaces as `%20` (not `+`).
 
 **Retry / backoff.** Transient `429` (rate limit) and `503` responses are
-retried automatically with linear backoff, up to `--max-retries` (default `2`).
+retried automatically, up to `--max-retries` (`0..MAX_RETRIES` = `0..10`, default `2`).
+Each retry waits the response's `Retry-After` (`parseRetryAfter`: delay-seconds or an
+IMF-fixdate; anything else is ignored), or else `retryDelayMs * attempt`. A
+`Retry-After` above `MAX_RETRY_AFTER_MS` (30 s) is not retried: the `LuftApiError`
+surfaces at once.
 
 **Redirects.** The engine follows up to 5 HTTP redirects by default (the
 `maxRedirects` option / `--max-redirects` flag; `0` disables following). On a

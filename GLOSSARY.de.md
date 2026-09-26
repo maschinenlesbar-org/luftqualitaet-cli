@@ -172,8 +172,10 @@ liefert: `airquality` | `measure`. CLI: `thresholds --use`.
 ## Such- und API-Konzepte
 
 **Retry / Backoff.** Die API begrenzt die Anfragerate und kann vorübergehend mit **429** /
-**503** antworten; die Engine wiederholt solche Anfragen automatisch mit linearem Backoff
-(`--max-retries`, Standard `2`).
+**503** antworten; die Engine wiederholt solche Anfragen automatisch und wartet dabei das
+`Retry-After` der Antwort ab (Sekunden oder ein HTTP-Datum), sonst linear steigend (200 ms,
+400 ms, …). Ein `Retry-After` über 30 s wird nicht abgewartet: Der Fehler erscheint sofort
+(`--max-retries`, `0..10`, Standard `2`).
 
 **Weiterleitungen.** Die Engine folgt standardmäßig bis zu 5 HTTP-Weiterleitungen
 (einstellbar mit `--max-redirects`; `0` schaltet das Folgen ab). Bei einer

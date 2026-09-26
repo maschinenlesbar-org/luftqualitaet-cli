@@ -173,7 +173,7 @@ These flags apply to every command and go before the subcommand:
 | `--base-url <url>` | Override the API host (default `https://luftdaten.umweltbundesamt.de`); the CLI adds `/api/air-data/v3` itself. |
 | `--timeout <ms>` | Per-request timeout in milliseconds. |
 | `--user-agent <ua>` | Set the `User-Agent` header. |
-| `--max-retries <n>` | Retries for transient `429`/`503` responses. |
+| `--max-retries <n>` | Retries for transient `429`/`503` responses (`0..10`, default `2`; each waits the server's `Retry-After`, up to 30 s). |
 | `--max-redirects <n>` | HTTP redirects to follow (`0` = none; default `5`). |
 | `--max-response-bytes <n>` | Cap response body size in bytes (`0` = unlimited; default 100 MiB). |
 | `--compact` | Print JSON on a single line instead of pretty-printed. |

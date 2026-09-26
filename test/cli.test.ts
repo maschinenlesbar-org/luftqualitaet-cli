@@ -429,3 +429,15 @@ test("--base-url with a path prefix keeps it in front of the API path", async ()
   assert.equal(await run(["--base-url", "http://mirror.test/uba/", "scopes"], cli.deps), 0);
   assert.equal(cli.mt.last().url, "http://mirror.test/uba/api/air-data/v3/scopes/json");
 });
+
+test("--max-retries is bounded to 0..10", async () => {
+  for (const [value, ok] of [["0", true], ["10", true], ["11", false], ["99999999999", false]] as const) {
+    const cli = makeCli(() => jsonResponse({}));
+    const code = await run(["--max-retries", value, "scopes"], cli.deps);
+    assert.equal(code, ok ? 0 : 1, value);
+    if (!ok) {
+      assert.equal(cli.mt.calls.length, 0);
+      assert.match(cli.err.join("\n"), /Expected an integer in the range 0\.\.10\./);
+    }
+  }
+});

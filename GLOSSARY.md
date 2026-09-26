@@ -173,8 +173,10 @@ endpoint returns: `airquality` | `measure`. CLI: `thresholds --use`.
 ## Search & API concepts
 
 **Retry / backoff.** The API rate-limits and can return transient **429** /
-**503** responses; the engine retries those automatically with linear backoff
-(`--max-retries`, default `2`).
+**503** responses; the engine retries those automatically, waiting the response's
+`Retry-After` (seconds or an HTTP date) or else backing off linearly (200 ms, 400 ms,
+…). A `Retry-After` above 30 s is not retried: the error surfaces at once
+(`--max-retries`, `0..10`, default `2`).
 
 **Redirects.** The engine follows up to 5 HTTP redirects by default
 (configurable with `--max-redirects`; `0` disables following). On a

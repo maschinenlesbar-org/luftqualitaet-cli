@@ -11,7 +11,7 @@ de:
     Die amtlichen **Luftqualitätsdaten** für Deutschland – Messwerte, Indizes, Jahresbilanzen
     und Überschreitungen – direkt im Terminal abfragen. `luftqualitaet` ist ein
     Kommandozeilen-Tool für die offene [Air-Data-API des
-    Umweltbundesamts](https://www.umweltbundesamt.de/api/air_data/v3): Schadstoffe und
+    Umweltbundesamts](https://luftdaten.umweltbundesamt.de/): Schadstoffe und
     Stationen nachschlagen, stündliche oder tägliche Messwerte abrufen, Überschreitungen
     prüfen und das Gesamtbild erhalten – als sauberes JSON, das Sie direkt an
     [`jq`](https://jqlang.github.io/jq/) weitergeben können.

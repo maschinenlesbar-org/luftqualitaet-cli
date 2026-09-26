@@ -12,7 +12,7 @@ compatibility: >
   Requires the `luftqualitaet` CLI (npm package
   @maschinenlesbar.org/luftqualitaet-cli) on PATH, installed by the user; the
   skill never installs it. Uses jq for JSON filtering. Network access to
-  www.umweltbundesamt.de.
+  luftdaten.umweltbundesamt.de.
 ---
 
 # Luftqualität Annual Balances & Exceedances

@@ -9,7 +9,7 @@
 | | |
 |---|---|
 | **Data provider** | Umweltbundesamt (UBA, German Environment Agency) |
-| **API / source** | `https://www.umweltbundesamt.de/api/air_data/v3` → `https://luftdaten.umweltbundesamt.de/api/air-data/v3` |
+| **API / source** | `https://luftdaten.umweltbundesamt.de/api/air-data/v3` (the older `https://www.umweltbundesamt.de/api/air_data/v3` redirects there) |
 | **Data license** | **Datenlizenz Deutschland – Namensnennung – Version 2.0 (`dl-de/by-2-0`)** |
 | **License text** | https://www.govdata.de/dl-de/by-2-0 |
 | **Attribution** | **Required** (3 elements — see below). |

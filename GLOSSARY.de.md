@@ -31,8 +31,10 @@ deutschen Original, sofern es eines gibt.
 Luftqualitätsdaten, die dieses Tool abfragt.
 
 **Air-Data-API.** Die offene REST-API des UBA für Luftqualitätsdaten, ohne API-Schlüssel.
-Dieser Client nutzt den Live-API-Pfad `/api/air_data/v3` auf
-`https://www.umweltbundesamt.de` (die Standard-Basis-URL). Sie löst die
+Dieser Client nutzt den Live-API-Pfad `/api/air-data/v3` auf
+`https://luftdaten.umweltbundesamt.de` (die Standard-Basis-URL; die ältere Adresse
+`https://www.umweltbundesamt.de/api/air_data/v3` leitet dauerhaft dorthin um).
+`--base-url` nimmt nur den Host – den API-Pfad ergänzt die CLI. Sie löst die
 OpenAPI-Spezifikation **v2** ab, die unter
 [luftqualitaet.api.bund.dev](https://luftqualitaet.api.bund.dev/) veröffentlicht ist.
 

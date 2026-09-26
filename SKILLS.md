@@ -2,8 +2,8 @@
 
 A set of [Claude Code](https://code.claude.com/docs/en/skills) **Agent Skills** for
 German air-quality intelligence, all powered by the **[luftqualitaet](README.md)** CLI
-over the open [Umweltbundesamt Air Data API](https://www.umweltbundesamt.de/api/air_data/v3)
-(`umweltbundesamt.de`).
+over the open [Umweltbundesamt Air Data API](https://luftdaten.umweltbundesamt.de/)
+(`luftdaten.umweltbundesamt.de`).
 
 Each skill teaches Claude how to drive the `luftqualitaet` CLI to answer a specific,
 real-world question — "which station covers Berlin?", "what's the air quality there

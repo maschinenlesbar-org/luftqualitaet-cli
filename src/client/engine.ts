@@ -6,7 +6,12 @@ import { nodeHttpTransport, type Transport } from "./http.js";
 import { buildQueryString, type QueryParams } from "./query.js";
 import { LuftApiError, LuftNetworkError, LuftParseError } from "./errors.js";
 
-export const DEFAULT_BASE_URL = "https://www.umweltbundesamt.de";
+/**
+ * The API's host. The client appends the API path (`API_PATH`, `/api/air-data/v3`).
+ * The old address `https://www.umweltbundesamt.de` + `/api/air_data/v3` answers every
+ * request with a permanent 301 to this host and path.
+ */
+export const DEFAULT_BASE_URL = "https://luftdaten.umweltbundesamt.de";
 const DEFAULT_USER_AGENT = "luftqualitaet-cli";
 
 export interface RawResponse {
@@ -16,7 +21,10 @@ export interface RawResponse {
 }
 
 export interface EngineOptions {
-  /** Base URL of the API. Defaults to https://www.umweltbundesamt.de */
+  /**
+   * Base URL of the API: the host (plus an optional path prefix on a mirror), without
+   * the API path, which the client appends. Defaults to https://luftdaten.umweltbundesamt.de
+   */
   baseUrl?: string;
   /** Swappable transport. Defaults to the built-in node http/https transport. */
   transport?: Transport;

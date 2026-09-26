@@ -8,7 +8,7 @@ function clientWith(mt: ReturnType<typeof makeMockTransport>): LuftqualitaetClie
   return new LuftqualitaetClient({ transport: mt.transport });
 }
 
-const API = "/api/air_data/v3";
+const API = "/api/air-data/v3";
 
 test("components passes lang and index", async () => {
   const mt = constantJson({ count: 0 });

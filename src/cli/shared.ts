@@ -5,6 +5,7 @@ import type { Command } from "commander";
 import { InvalidArgumentError } from "commander";
 import type { CliDeps } from "./io.js";
 import { LuftError } from "../client/errors.js";
+import { API_PATH } from "../client/client.js";
 import type { EngineOptions } from "../client/engine.js";
 import { IndexValues, LangValues } from "../client/enums.js";
 import type { IndexKind, Lang } from "../client/enums.js";
@@ -41,6 +42,16 @@ export function parseBaseUrl(value: string): string {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new InvalidArgumentError(
       `Unsupported scheme "${url.protocol}". Expected an http(s) URL.`,
+    );
+  }
+  // The client appends the API path, so a base URL that already ends in it (the
+  // API's documented address, current or old spelling) would double it.
+  const apiPath = /\/api\/air[-_]data\/v3\/*$/.exec(url.pathname);
+  if (apiPath) {
+    const prefix = url.pathname.slice(0, apiPath.index);
+    throw new InvalidArgumentError(
+      `Leave out ${apiPath[0].replace(/\/+$/, "")}: the base URL is the host, and the CLI adds ` +
+        `${API_PATH} itself (try ${url.origin}${prefix}).`,
     );
   }
   return value;

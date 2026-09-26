@@ -7,8 +7,8 @@ command-line tool, start with the **[README](README.md)** and
 
 The package ships both a CLI (`luftqualitaet`) and a typed API client
 (`LuftqualitaetClient`) for the
-[Umweltbundesamt Air Data API](https://www.umweltbundesamt.de/api/air_data/v3)
-(`umweltbundesamt.de/api/air_data/v3`).
+[Umweltbundesamt Air Data API](https://luftdaten.umweltbundesamt.de/)
+(`luftdaten.umweltbundesamt.de/api/air-data/v3`).
 
 **Design goals**
 
@@ -38,7 +38,7 @@ luftqualitaet --help
 ```ts
 import { LuftqualitaetClient, LuftApiError } from "@maschinenlesbar.org/luftqualitaet-cli";
 
-const client = new LuftqualitaetClient(); // defaults to https://www.umweltbundesamt.de
+const client = new LuftqualitaetClient(); // defaults to https://luftdaten.umweltbundesamt.de
 
 const components = await client.components({ lang: "de" });
 const aq = await client.airquality({
@@ -56,7 +56,7 @@ try {
 
 ```ts
 new LuftqualitaetClient({
-  baseUrl: "https://www.umweltbundesamt.de",
+  baseUrl: "https://luftdaten.umweltbundesamt.de", // the host; the client adds API_PATH (/api/air-data/v3)
   timeoutMs: 15_000,
   maxRetries: 3,              // 429 / 503 are retried with linear backoff
   maxResponseBytes: 50 << 20, // abort responses larger than 50 MiB (0 = unlimited)
@@ -114,7 +114,11 @@ wrapper over the Air Data API. Usable as a library independently of the CLI.
 **Request engine.** [`RequestEngine`](src/client/engine.ts) — builds URLs,
 serialises queries, applies retry/backoff, follows redirects, decodes JSON and
 maps errors. Sits between the client's resource methods and the transport.
-`DEFAULT_BASE_URL` is `https://www.umweltbundesamt.de`.
+`DEFAULT_BASE_URL` is `https://luftdaten.umweltbundesamt.de`; the client appends
+`API_PATH` (`/api/air-data/v3`), both exported. The old `https://www.umweltbundesamt.de`
++ `/api/air_data/v3` answers every request with a permanent 301 to that host and path.
+The CLI's `parseBaseUrl` rejects a `--base-url` that already ends in the API path (either
+spelling) with a hint naming the host to use instead.
 
 **RawResponse.** The low-level result of a request: `{ data: Buffer,
 contentType, status }` — raw bytes, never lossily decoded.

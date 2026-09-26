@@ -9,7 +9,7 @@
 Query Germany's official **air-quality data** — measurements, indices, annual
 balances and exceedances — straight from your terminal. `luftqualitaet` is a
 command-line tool over the open
-[Umweltbundesamt Air Data API](https://www.umweltbundesamt.de/api/air_data/v3):
+[Umweltbundesamt Air Data API](https://luftdaten.umweltbundesamt.de/):
 look up pollutants and stations, fetch hourly or daily measurements, inspect
 exceedances, and get the full picture — as clean JSON you can pipe straight into
 [`jq`](https://jqlang.github.io/jq/).
@@ -250,7 +250,7 @@ These apply to every command and may be given before *or* after it:
 | `-V, --version` | Print the version number |
 | `-h, --help` | Show help for the program or a command |
 | `--compact` | Print JSON on a single line instead of pretty-printed |
-| `--base-url <url>` | API base URL (default `https://www.umweltbundesamt.de`) |
+| `--base-url <url>` | API host (default `https://luftdaten.umweltbundesamt.de`); the CLI adds `/api/air-data/v3` itself |
 | `--timeout <ms>` | Per-request timeout (default `30000`; at most `2147483647`) |
 | `--user-agent <ua>` | `User-Agent` header value |
 | `--max-retries <n>` | Retries for transient `429`/`503` responses (default `2`) |

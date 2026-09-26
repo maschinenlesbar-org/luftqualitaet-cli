@@ -7,7 +7,8 @@ import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import type { CliDeps } from "./io.js";
 import { defaultIO } from "./io.js";
-import { LuftqualitaetClient } from "../client/client.js";
+import { API_PATH, LuftqualitaetClient } from "../client/client.js";
+import { DEFAULT_BASE_URL } from "../client/engine.js";
 import { MAX_TIMEOUT_MS } from "../client/http.js";
 import { parseBaseUrl, parseBoundedInt, parseIntArg } from "./shared.js";
 import { registerReferenceCommands } from "./commands/reference.js";
@@ -44,10 +45,15 @@ export function buildProgram(deps: CliDeps = defaultDeps): Command {
     .name("luftqualitaet")
     .description(
       "CLI for the open Umweltbundesamt Air Data API " +
-        "(https://www.umweltbundesamt.de/api/air_data/v3)",
+        `(${DEFAULT_BASE_URL}${API_PATH})`,
     )
     .version(VERSION)
-    .option("--base-url <url>", "API base URL", parseBaseUrl, "https://www.umweltbundesamt.de")
+    .option(
+      "--base-url <url>",
+      `API host; the CLI adds ${API_PATH} itself`,
+      parseBaseUrl,
+      DEFAULT_BASE_URL,
+    )
     .option(
       "--timeout <ms>",
       `per-request timeout in milliseconds (0..${MAX_TIMEOUT_MS})`,

@@ -12,7 +12,7 @@ description: >
 compatibility: >
   Requires the `luftqualitaet` CLI (npm package
   @maschinenlesbar.org/luftqualitaet-cli) on PATH, installed by the user; the
-  skill never installs it. Network access to www.umweltbundesamt.de.
+  skill never installs it. Network access to luftdaten.umweltbundesamt.de.
 ---
 
 # Luftqualität Air-Quality Report

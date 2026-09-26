@@ -31,8 +31,10 @@ where one exists.
 data this tool wraps.
 
 **Air Data API.** The UBA's open, key-free REST API for air-quality data. This
-client targets the live API path `/api/air_data/v3` on
-`https://www.umweltbundesamt.de` (the default base URL). It supersedes the **v2**
+client targets the live API path `/api/air-data/v3` on
+`https://luftdaten.umweltbundesamt.de` (the default base URL; the older address
+`https://www.umweltbundesamt.de/api/air_data/v3` answers with a permanent redirect
+there). `--base-url` takes the host only — the CLI adds the API path. It supersedes the **v2**
 OpenAPI spec published at
 [luftqualitaet.api.bund.dev](https://luftqualitaet.api.bund.dev/).
 

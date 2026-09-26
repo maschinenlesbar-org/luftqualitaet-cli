@@ -1,5 +1,5 @@
 // LuftqualitaetClient — a typed client over the open (no-auth) Air Data API of
-// the Umweltbundesamt (https://www.umweltbundesamt.de/api/air_data/v3).
+// the Umweltbundesamt (https://luftdaten.umweltbundesamt.de/api/air-data/v3).
 //
 //   client.components({ lang: "de" })
 //   client.airquality({ date_from: "2024-01-01", time_from: 1, date_to: "2024-01-01", time_to: 24, station: 143 })
@@ -17,7 +17,9 @@ import type {
 } from "./types.js";
 import type { Lang } from "./enums.js";
 
-const API = "/api/air_data/v3";
+/** The API path the client appends to the base URL (the host). */
+export const API_PATH = "/api/air-data/v3";
+const API = API_PATH;
 
 /** Drop undefined values so only the parameters the caller set are sent. */
 function prune(params: Record<string, unknown>): QueryParams {

@@ -1,7 +1,7 @@
 # Usage
 
 Real, use-case-driven examples for the `luftqualitaet` CLI — a client for the open
-[Umweltbundesamt Air Data API](https://www.umweltbundesamt.de/api/air_data/v3)
+[Umweltbundesamt Air Data API](https://luftdaten.umweltbundesamt.de/)
 (air-quality indices, raw measurements, annual balances, exceedances, and the
 station/component metadata behind them).
 
@@ -170,7 +170,7 @@ These flags apply to every command and go before the subcommand:
 | Flag | Purpose |
 | --- | --- |
 | `-V, --version` | Print the CLI version. |
-| `--base-url <url>` | Override the API base URL (default `https://www.umweltbundesamt.de`). |
+| `--base-url <url>` | Override the API host (default `https://luftdaten.umweltbundesamt.de`); the CLI adds `/api/air-data/v3` itself. |
 | `--timeout <ms>` | Per-request timeout in milliseconds. |
 | `--user-agent <ua>` | Set the `User-Agent` header. |
 | `--max-retries <n>` | Retries for transient `429`/`503` responses. |

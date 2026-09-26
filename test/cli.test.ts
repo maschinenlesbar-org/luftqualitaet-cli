@@ -6,7 +6,7 @@ import type { CliDeps } from "../src/cli/io.js";
 import type { HttpRequest, HttpResponse } from "../src/client/http.js";
 import { makeMockTransport, jsonResponse } from "./helpers.js";
 
-const API = "/api/air_data/v3";
+const API = "/api/air-data/v3";
 
 function makeCli(responder: (req: HttpRequest) => HttpResponse) {
   const out: string[] = [];
@@ -401,4 +401,31 @@ test("--base-url accepts an http(s) URL", async () => {
   const code = await run(["--base-url", "http://localhost:8080", "networks"], cli.deps);
   assert.equal(code, 0);
   assert.equal(new URL(cli.mt.last().url).origin, "http://localhost:8080");
+});
+
+test("the default base URL is the API's current host, so no 301 hop is needed", async () => {
+  const cli = makeCli(() => jsonResponse({}));
+  assert.equal(await run(["scopes"], cli.deps), 0);
+  assert.equal(cli.mt.last().url, "https://luftdaten.umweltbundesamt.de/api/air-data/v3/scopes/json");
+});
+
+for (const [base, hint] of [
+  ["https://luftdaten.umweltbundesamt.de/api/air-data/v3", "try https://luftdaten.umweltbundesamt.de)"],
+  ["https://www.umweltbundesamt.de/api/air_data/v3/", "try https://www.umweltbundesamt.de)"],
+  ["http://mirror.test/uba/api/air-data/v3", "try http://mirror.test/uba)"],
+] as const) {
+  test(`--base-url ${base} (with the API path) is a usage error with a hint`, async () => {
+    const cli = makeCli(() => jsonResponse({}));
+    assert.equal(await run(["--base-url", base, "scopes"], cli.deps), 1);
+    assert.equal(cli.mt.calls.length, 0);
+    const text = cli.err.join("\n");
+    assert.match(text, /Leave out \/api\/air[-_]data\/v3: the base URL is the host, and the CLI adds \/api\/air-data\/v3 itself/);
+    assert.ok(text.includes(hint), text);
+  });
+}
+
+test("--base-url with a path prefix keeps it in front of the API path", async () => {
+  const cli = makeCli(() => jsonResponse({}));
+  assert.equal(await run(["--base-url", "http://mirror.test/uba/", "scopes"], cli.deps), 0);
+  assert.equal(cli.mt.last().url, "http://mirror.test/uba/api/air-data/v3/scopes/json");
 });

@@ -153,9 +153,12 @@ luftqualitaet meta --use airquality \
 
 `--use` accepts `measure`, `airquality`, `transgression`, `annualbalance`, or
 `map`. When `--use airquality`, `--date-from` and `--date-to` are required (the
-`--time-from` / `--time-to` window flags are also accepted). An omitted hour is
-sent as `1` (start) or `24` (end): the API would otherwise fill it with the current
-hour, which can turn a one-day window around.
+`--time-from` / `--time-to` window flags are also accepted). The other uses take the
+same window optionally, and the API applies it there too: `meta --use measure` with
+dates lists only the stations active in that window. Give both dates or neither;
+the hour flags need the dates. An omitted hour is sent as `1` (start) or `24`
+(end): the API would otherwise fill it with the current hour, which can turn a
+one-day window around. A reversed window is rejected before any request.
 
 ## Global options
 

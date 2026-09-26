@@ -153,8 +153,11 @@ Metadaten: `de` | `en`. CLI: `--lang`.
 
 **use (meta) (`MetaUse`).** Welches Metadatenpaket der Endpoint `meta` liefert:
 `airquality` | `measure` | `transgression` | `annualbalance` | `map`. Bei
-`use=airquality` ist ein Zeitfenster (`--date-from` + `--date-to`) erforderlich. CLI:
-`meta --use`.
+`use=airquality` ist ein Zeitfenster (`--date-from` + `--date-to`) erforderlich. Bei
+den anderen Werten ist es optional, die API wendet es aber ebenfalls an (`use=measure`
+liefert dann nur die im Fenster aktiven Stationen). Deshalb prüft die CLI es genauso:
+beide Daten oder keines, Stunden nur zusammen mit Daten, fehlende Stunden werden als
+`1`/`24` gesendet, kein umgekehrtes Fenster. CLI: `meta --use`.
 
 **use (thresholds) (`ThresholdUse`).** Welche Schwellenwertmenge der Endpoint `thresholds`
 liefert: `airquality` | `measure`. CLI: `thresholds --use`.

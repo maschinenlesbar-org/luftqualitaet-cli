@@ -299,12 +299,40 @@ test("meta --use airquality rejects reversed hours on the same date before any r
   assert.equal(cli.mt.calls.length, 0);
 });
 
-test("meta rejects --time-from/--time-to for a non-airquality use", async () => {
+test("meta rejects --time-from/--time-to without dates", async () => {
   const cli = makeCli(() => jsonResponse({}));
   const code = await run(["meta", "--use", "measure", "--time-from", "1", "--time-to", "5"], cli.deps);
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
-  assert.match(cli.err.join("\n"), /apply only to --use airquality/);
+  assert.match(cli.err.join("\n"), /need --date-from and --date-to/);
+});
+
+test("meta checks the window for every use, not only airquality", async () => {
+  const reversed = makeCli(() => jsonResponse({}));
+  assert.equal(
+    await run(["meta", "--use", "measure", "--date-from", "2025-01-01", "--date-to", "2024-01-01"], reversed.deps),
+    1,
+  );
+  assert.equal(reversed.mt.calls.length, 0);
+  assert.match(reversed.err.join("\n"), /Window start .* is after window end/);
+
+  const half = makeCli(() => jsonResponse({}));
+  assert.equal(await run(["meta", "--use", "map", "--date-to", "2024-01-01"], half.deps), 1);
+  assert.equal(half.mt.calls.length, 0);
+  assert.match(half.err.join("\n"), /go together/);
+
+  const ok = makeCli(() => jsonResponse({}));
+  assert.equal(
+    await run(
+      ["meta", "--use", "measure", "--date-from", "2024-01-01", "--date-to", "2024-01-02", "--time-to", "6"],
+      ok.deps,
+    ),
+    0,
+  );
+  const q = new URL(ok.mt.last().url).searchParams;
+  assert.equal(q.get("date_from"), "2024-01-01");
+  assert.equal(q.get("time_from"), "1");
+  assert.equal(q.get("time_to"), "6");
 });
 
 test("an invalid global option value exits 1 without leaving run()", async () => {

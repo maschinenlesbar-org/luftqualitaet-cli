@@ -470,3 +470,19 @@ test("airquality/measures: an upstream 409 (unknown station) gets a hint, exit 1
   assert.equal(await run(["airquality", ...fullWindow], other.deps), 1);
   assert.doesNotMatch(other.err.join("\n"), /Hint:/);
 });
+
+test("a --base-url with a query, a fragment or surrounding whitespace is a usage error", async () => {
+  for (const [baseUrl, message] of [
+    ["http://127.0.0.1:18122/echo?x=1", /cannot have a query \(\?\) or fragment \(#\)/],
+    ["http://127.0.0.1:18122/echo#frag", /cannot have a query \(\?\) or fragment \(#\)/],
+    ["http://127.0.0.1:18122?", /cannot have a query \(\?\) or fragment \(#\)/],
+    [" https://luftdaten.umweltbundesamt.de", /cannot have surrounding whitespace/],
+    ["https://luftdaten.umweltbundesamt.de\t", /cannot have surrounding whitespace/],
+  ] as const) {
+    const cli = makeCli(() => jsonResponse({}));
+    const code = await run(["--base-url", baseUrl, "components"], cli.deps);
+    assert.equal(code, 1, baseUrl);
+    assert.equal(cli.mt.calls.length, 0, baseUrl);
+    assert.match(cli.err.join("\n"), message, baseUrl);
+  }
+});

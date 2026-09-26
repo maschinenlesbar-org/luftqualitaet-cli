@@ -231,3 +231,16 @@ test("parseRetryAfter reads delay-seconds and IMF-fixdate HTTP-dates", () => {
   }
   assert.equal(MAX_RETRY_AFTER_MS, 30_000);
 });
+
+test("a base URL with a query or fragment is rejected at construction", () => {
+  for (const baseUrl of ["https://example.test/?x=1", "https://example.test/#frag", "https://example.test?"]) {
+    const mt = makeMockTransport(() => jsonResponse({}));
+    assert.throws(
+      () => new RequestEngine({ transport: mt.transport, baseUrl }),
+      (err: unknown) =>
+        err instanceof LuftNetworkError && /Base URL must not contain a query or fragment/.test(err.message),
+      baseUrl,
+    );
+    assert.equal(mt.calls.length, 0);
+  }
+});

@@ -165,6 +165,10 @@ configured base URL (`assertHttpScheme` in [`engine.ts`](src/client/engine.ts)) 
 throws a typed `LuftNetworkError`, so a library consumer that injects a custom
 transport can never hand it a non-http(s) base URL. And the default transport
 ([`http.ts`](src/client/http.ts)) gates the scheme on **every redirect hop**.
+Paths are appended to the base URL as a string, so a base URL with a query (`?`) or
+fragment (`#`) is refused too — by `parseBaseUrl` (usage error, also for surrounding
+whitespace) and by the engine constructor (`LuftNetworkError`) — instead of swallowing
+every request path.
 
 ## Testing
 

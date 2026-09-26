@@ -526,3 +526,19 @@ test("--use does not swallow the next option", async () => {
     assert.match(cli.err.join("\n"), /Option '--use' requires a value/, cmd);
   }
 });
+
+test("a deeply nested response fails pretty-printing cleanly and still prints with --compact", async () => {
+  const depth = 200_000;
+  const deep = () => rawResponse("[".repeat(depth) + "]".repeat(depth), "application/json");
+  const pretty = makeCli(deep);
+  assert.equal(await run(["components"], pretty.deps), 1);
+  assert.deepEqual(pretty.out, []);
+  assert.equal(pretty.err.join("\n"), "Error: The response is nested too deeply to pretty-print; try --compact.");
+
+  // Compact serialisation goes much deeper (it prints this one on current Node);
+  // should a runtime's stack still be too small, it must fail just as cleanly.
+  const compact = makeCli(deep);
+  const code = await run(["--compact", "components"], compact.deps);
+  if (code === 0) assert.equal(compact.out.join("").length, 2 * depth);
+  else assert.equal(compact.err.join("\n"), "Error: The response is nested too deeply to print.");
+});

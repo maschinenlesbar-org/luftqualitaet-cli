@@ -441,3 +441,19 @@ test("--max-retries is bounded to 0..10", async () => {
     }
   }
 });
+
+test("transgressions before 2019: an upstream 500 gets a hint naming the year floor", async () => {
+  const cli = makeCli(() => jsonResponse({}, 500));
+  assert.equal(await run(["transgressions", "--component", "5", "--year", "2018"], cli.deps), 1);
+  const text = cli.err.join("\n");
+  assert.match(text, /Hint: the API has no transgressions for some components before 2019/);
+  assert.match(text, /Error: HTTP 500/);
+
+  const later = makeCli(() => jsonResponse({}, 500));
+  assert.equal(await run(["transgressions", "--component", "5", "--year", "2019"], later.deps), 1);
+  assert.doesNotMatch(later.err.join("\n"), /Hint:/);
+
+  const balances = makeCli(() => jsonResponse({}, 500));
+  assert.equal(await run(["annual-balances", "--component", "5", "--year", "2018"], balances.deps), 1);
+  assert.doesNotMatch(balances.err.join("\n"), /Hint:/);
+});

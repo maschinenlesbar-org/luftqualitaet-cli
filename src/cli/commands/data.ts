@@ -13,7 +13,13 @@ import {
   renderJson,
 } from "../shared.js";
 import { MetaUseValues, ThresholdUseValues } from "../../client/enums.js";
-import { LuftError } from "../../client/errors.js";
+import { LuftApiError, LuftError } from "../../client/errors.js";
+
+/**
+ * From this year on `transgressions` works for every component; before it, the API
+ * answers some components (NO₂, PM₁₀ in 2016-2018) with HTTP 500.
+ */
+const TRANSGRESSIONS_COMPLETE_FROM = 2019;
 
 /** commander value-parser: a real calendar date in `YYYY-MM-DD` form. */
 function parseDate(value: string): string {
@@ -166,16 +172,33 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
       .option("--index <index>", "id | code", parseIndexArg)
       .action(
         action(deps, async ({ client, global, opts }) => {
-          renderJson(
-            deps,
-            global,
-            await client[method]({
+          const year = opts["year"] as number;
+          let result;
+          try {
+            result = await client[method]({
               component: opts["component"] as number,
-              year: opts["year"] as number,
+              year,
               lang: lang(opts),
               index: index(opts),
-            }),
-          );
+            });
+          } catch (err) {
+            // Upstream has no transgressions for some components before 2019 (NO₂ and
+            // PM₁₀ 2016-2018; O₃ 2018 works) and answers with a bare HTML 500.
+            if (
+              method === "transgressions" &&
+              year < TRANSGRESSIONS_COMPLETE_FROM &&
+              err instanceof LuftApiError &&
+              err.status === 500
+            ) {
+              deps.io.err(
+                `Hint: the API has no transgressions for some components before ` +
+                  `${TRANSGRESSIONS_COMPLETE_FROM} and answers with HTTP 500; try --year ` +
+                  `${TRANSGRESSIONS_COMPLETE_FROM} or later, or annual-balances for ${year}.`,
+              );
+            }
+            throw err;
+          }
+          renderJson(deps, global, result);
         }),
       );
   }

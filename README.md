@@ -127,7 +127,9 @@ Takes no options.
 | `--index id\|code` | no | response key |
 
 **`transgressions`** — exceedance data for a component and year.
-Same flags as `annual-balances`.
+Same flags as `annual-balances`. Before 2019 the API has no transgressions for some
+components (NO₂ and PM₁₀ 2016–2018 fail with HTTP `500`; O₃ 2018 works); the CLI then
+adds a hint to the error.
 
 **`thresholds`** — limit/threshold values for a given use case.
 
@@ -245,6 +247,9 @@ do the same thing.
   applies **only** to `--year`: the windowed endpoints (`airquality`/`measures`)
   accept any valid `--date-from`/`--date-to`, since their available range varies by
   station/scope — use the `-limits` commands to find what exists.
+- **HTTP `500` from `transgressions` before 2019** — the API has no exceedance data
+  for some components in 2016–2018 (NO₂, PM₁₀) and fails instead of returning an
+  empty set. Use `--year 2019` or later, or `annual-balances` for that year.
 
 ## Global options
 

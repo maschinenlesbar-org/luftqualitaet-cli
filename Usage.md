@@ -124,7 +124,9 @@ luftqualitaet transgressions --component 5 --year 2022 --lang en
 ```
 
 Same constraints as annual balances: `--year >= 2016`, plus optional `--lang` and
-`--index`.
+`--index`. In practice the data is complete from **2019**: for 2016–2018 the API
+fails with HTTP `500` for some components (NO₂, PM₁₀; O₃ 2018 works), and the CLI
+adds a hint saying so.
 
 ### 9. Inspect the thresholds behind the air-quality index
 

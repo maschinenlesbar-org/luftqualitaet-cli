@@ -132,7 +132,9 @@ Die Zuordnung ID ↔ Schadstoff liefert `components`.
 bezeichnet. Pflicht bei `measures`, optional bei `thresholds`. Auflösung über `scopes`.
 
 **year.** Eine vierstellige Jahreszahl für die Jahresaggregationen; das früheste Jahr der
-API ist **2016**, daher lehnt die CLI alles darunter ab.
+API ist **2016**, daher lehnt die CLI alles darunter ab. `transgressions` ist erst ab
+**2019** vollständig: Für 2016–2018 antwortet die API bei manchen Komponenten (NO₂,
+PM₁₀) mit HTTP 500, was die CLI mit einem Hinweis meldet.
 
 **Zeitfenster (`date_from` / `time_from` / `date_to` / `time_to`).** Die
 Daten-Endpoints adressieren ein Zeitfenster über Startdatum+Stunde und Enddatum+Stunde.

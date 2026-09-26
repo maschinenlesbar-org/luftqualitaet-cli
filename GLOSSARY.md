@@ -133,7 +133,9 @@ Resolve the id ↔ pollutant mapping via `components`.
 definition). Required by `measures`, optional on `thresholds`. Resolve via `scopes`.
 
 **year.** A four-digit year for the annual aggregations; the API's earliest
-year is **2016**, so the CLI rejects anything below that.
+year is **2016**, so the CLI rejects anything below that. `transgressions` is
+complete only from **2019**: for 2016–2018 the API answers some components (NO₂,
+PM₁₀) with HTTP 500, which the CLI reports with a hint.
 
 **Time window (`date_from` / `time_from` / `date_to` / `time_to`).** The data
 endpoints address a window by a start date+hour and an end date+hour. Dates are

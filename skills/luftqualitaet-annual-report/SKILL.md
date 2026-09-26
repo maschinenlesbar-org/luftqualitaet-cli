@@ -28,7 +28,10 @@ This skill drives the `luftqualitaet` command. **Before anything else, validate 
 This skill also filters JSON with `jq`. **Validate it too** — run `command -v jq`. If it is missing, inform the user that `jq` is not installed — installing it is their responsibility; never install it yourself — and carry on without it: filter the CLI output with `node -e` instead (Node is already on your PATH, since the CLI runs on it).
 
 Always `--compact`. `--year` must be **≥ 2016** (the API has nothing earlier; the
-CLI rejects lower years locally, exit `1`).
+CLI rejects lower years locally, exit `1`). **`transgressions` is complete only from
+2019:** for 2016–2018 some components (NO₂, PM₁₀) fail with HTTP `500` (exit `1`, with
+a `Hint:` line) — tell the user that year has no exceedance data upstream, and offer
+`annual-balances` for it (its PM₁₀/NO₂ columns include the exceedance counts).
 
 ## Step 1 — Resolve the component id
 

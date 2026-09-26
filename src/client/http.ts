@@ -127,13 +127,29 @@ export const nodeHttpTransport: Transport = (request) =>
     let connected = false;
     let dnsError: Error | undefined;
     req.on("socket", (socket) => {
+      // A keep-alive socket reused from the agent is already connected and never
+      // emits "lookup"/"connect" again; adding listeners to it would pile up one
+      // pair per request (MaxListenersExceededWarning after 10) and leave
+      // `connected` false on a healthy connection.
+      if (!socket.connecting) {
+        connected = true;
+        return;
+      }
       // A failed DNS lookup reports here before the socket emits "error";
       // capture it so a racing timeout can report the true cause.
-      socket.on("lookup", (err) => {
+      const onLookup = (err: Error | null): void => {
         if (err) dnsError = err;
-      });
-      socket.on("connect", () => {
+      };
+      const onConnect = (): void => {
         connected = true;
+      };
+      socket.on("lookup", onLookup);
+      socket.once("connect", onConnect);
+      // The socket outlives this request (keep-alive), so detach both listeners
+      // when the request is done with it.
+      req.once("close", () => {
+        socket.off("lookup", onLookup);
+        socket.off("connect", onConnect);
       });
     });
 

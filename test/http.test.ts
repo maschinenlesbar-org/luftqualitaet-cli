@@ -100,3 +100,49 @@ test("a slow-drip response is bounded by the wall-clock deadline", async () => {
   );
   for (const t of timers) clearInterval(t);
 });
+
+test("reused keep-alive sockets do not collect lookup/connect listeners", async () => {
+  const agent = new http.Agent({ keepAlive: true, maxSockets: 1 });
+  const warnings: Error[] = [];
+  const onWarning = (w: Error): void => {
+    warnings.push(w);
+  };
+  process.on("warning", onWarning);
+  const ports = new Set<number>();
+  try {
+    await withServer(
+      (req, res) => {
+        ports.add(req.socket.remotePort ?? 0);
+        res.setHeader("content-type", "application/json");
+        res.end("{}");
+      },
+      async (baseUrl) => {
+        const transport = (url: string) =>
+          new Promise<void>((resolve, reject) => {
+            // Route through a dedicated keep-alive agent so the socket is reused.
+            const saved = http.globalAgent;
+            http.globalAgent = agent;
+            nodeHttpTransport({ method: "GET", url, timeoutMs: 5000 })
+              .then(() => resolve(), reject)
+              .finally(() => {
+                http.globalAgent = saved;
+              });
+          });
+        for (let i = 0; i < 15; i++) await transport(`${baseUrl}/x${i}`);
+        const free = Object.values(agent.freeSockets).flat();
+        assert.equal(free.length, 1);
+        const socket = free[0]!;
+        assert.equal(socket.listenerCount("lookup"), 0);
+        assert.equal(socket.listenerCount("connect"), 0);
+      },
+    );
+  } finally {
+    process.off("warning", onWarning);
+    agent.destroy();
+  }
+  assert.equal(ports.size, 1, "the socket was reused");
+  assert.deepEqual(
+    warnings.filter((w) => w.name === "MaxListenersExceededWarning"),
+    [],
+  );
+});

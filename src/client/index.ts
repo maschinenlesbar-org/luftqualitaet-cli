@@ -4,6 +4,7 @@ export { LuftqualitaetClient, API_PATH } from "./client.js";
 export {
   RequestEngine,
   DEFAULT_BASE_URL,
+  MAX_REDIRECTS,
   MAX_RETRIES,
   MAX_RETRY_AFTER_MS,
   parseRetryAfter,
@@ -14,6 +15,15 @@ export type { Transport, HttpRequest, HttpResponse } from "./http.js";
 export { buildQueryString } from "./query.js";
 export type { QueryParams, QueryValue } from "./query.js";
 export { LuftError, LuftApiError, LuftNetworkError, LuftParseError, redactUrl } from "./errors.js";
+
+export {
+  MIN_YEAR,
+  assertDate,
+  assertHour,
+  assertId,
+  assertWindow,
+  assertYear,
+} from "./validate.js";
 
 export * from "./enums.js";
 export * from "./types.js";

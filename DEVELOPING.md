@@ -65,6 +65,19 @@ new LuftqualitaetClient({
 });
 ```
 
+The numeric options must be integers in range — `timeoutMs` 0..2^31−1, `maxRetries`
+0..`MAX_RETRIES` (10), `retryDelayMs` 0..30 000, `maxRedirects` 0..`MAX_REDIRECTS` (20),
+`maxResponseBytes` 0..2^53−1 — or the constructor throws a `LuftError` naming the
+option (`Invalid option timeoutMs: expected an integer from 0 to 2147483647, got NaN.`).
+
+The methods check their parameters before any request, like the CLI: dates as real
+`YYYY-MM-DD` calendar dates, hours `1..24`, a window in order, positive integer ids,
+`year >= 2016`, and `lang`/`index`/`use` from their value sets. A bad value is a
+rejected promise with a `LuftError` (`Invalid time_to: expected an hour from 1 to 24,
+got 99.`). The checks (`assertDate`, `assertHour`, `assertId`, `assertWindow`,
+`assertYear`, `MIN_YEAR`) are exported. Unlike the CLI, `meta()` does not fill in
+omitted window hours: the API then uses the current hour, so pass both.
+
 ### Methods
 
 `airquality`, `airqualityLimits`, `measures`, `measuresLimits`, `annualBalances`,

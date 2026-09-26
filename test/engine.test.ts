@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { MAX_RETRY_AFTER_MS, RequestEngine, parseRetryAfter } from "../src/client/engine.js";
-import { LuftApiError, LuftNetworkError, LuftParseError, redactUrl } from "../src/client/errors.js";
+import { LuftApiError, LuftError, LuftNetworkError, LuftParseError, redactUrl } from "../src/client/errors.js";
 import { makeMockTransport, jsonResponse, rawResponse } from "./helpers.js";
 
 // Built via char codes so no raw control bytes ever appear in this source file.
@@ -254,4 +254,29 @@ test("redactUrl hides userinfo and leaves other URLs alone", () => {
     () => new RequestEngine({ baseUrl: "ftp://user:secret@host.test" }),
     (err: unknown) => err instanceof LuftNetworkError && !/secret/.test(err.message) && /\*\*\*@/.test(err.message),
   );
+});
+
+test("numeric engine options must be integers in range", () => {
+  const bad: [string, Record<string, number>][] = [
+    ["timeoutMs", { timeoutMs: Number.NaN }],
+    ["timeoutMs", { timeoutMs: -1 }],
+    ["timeoutMs", { timeoutMs: 2 ** 31 }],
+    ["maxRetries", { maxRetries: Infinity }],
+    ["maxRetries", { maxRetries: 11 }],
+    ["retryDelayMs", { retryDelayMs: 1.5 }],
+    ["maxRedirects", { maxRedirects: Infinity }],
+    ["maxRedirects", { maxRedirects: 21 }],
+    ["maxResponseBytes", { maxResponseBytes: -1 }],
+  ];
+  for (const [name, options] of bad) {
+    assert.throws(
+      () => new RequestEngine(options),
+      (err: unknown) =>
+        err instanceof LuftError && new RegExp(`^Invalid option ${name}: expected an integer from 0 to \\d+, got `).test(err.message),
+      JSON.stringify(options),
+    );
+  }
+  // Boundaries and defaults are fine.
+  new RequestEngine({ timeoutMs: 0, maxRetries: 10, retryDelayMs: 30_000, maxRedirects: 20, maxResponseBytes: 0 });
+  new RequestEngine({});
 });

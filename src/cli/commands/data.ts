@@ -9,6 +9,7 @@ import {
   parseIndexArg,
   parseLangArg,
   parsePositiveIntArg,
+  parseUseArg,
   parseYear,
   renderJson,
 } from "../shared.js";
@@ -231,7 +232,7 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
   program
     .command("thresholds")
     .description("Thresholds for a use (airquality | measure)")
-    .requiredOption("--use <use>", `${ThresholdUseValues.join(" | ")}`)
+    .requiredOption("--use <use>", `${ThresholdUseValues.join(" | ")}`, parseUseArg)
     .option("--lang <lang>", "de | en", parseLangArg)
     .option("--component <id>", "component id", parsePositiveIntArg)
     .option("--scope <id>", "scope id", parsePositiveIntArg)
@@ -253,7 +254,7 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
   program
     .command("meta")
     .description("Combined metadata for a use")
-    .requiredOption("--use <use>", `${MetaUseValues.join(" | ")}`)
+    .requiredOption("--use <use>", `${MetaUseValues.join(" | ")}`, parseUseArg)
     .option("--lang <lang>", "de | en", parseLangArg)
     .option(
       "--date-from <YYYY-MM-DD>",

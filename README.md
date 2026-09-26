@@ -268,7 +268,7 @@ These apply to every command and may be given before *or* after it:
 | `--compact` | Print JSON on a single line instead of pretty-printed |
 | `--base-url <url>` | API host (default `https://luftdaten.umweltbundesamt.de`); the CLI adds `/api/air-data/v3` itself |
 | `--timeout <ms>` | Per-request timeout (default `30000`; at most `2147483647`) |
-| `--user-agent <ua>` | `User-Agent` header value |
+| `--user-agent <ua>` | `User-Agent` header value (non-blank; no control characters or characters above U+00FF) |
 | `--max-retries <n>` | Retries for transient `429`/`503` responses (`0..10`, default `2`); each waits the server's `Retry-After`, up to 30 s — a longer one fails at once |
 | `--max-redirects <n>` | HTTP redirects to follow (`0` = none; default `5`) |
 | `--max-response-bytes <n>` | Cap response body size in bytes (`0` = unlimited; default 100 MiB) |

@@ -67,6 +67,41 @@ export function parseBaseUrl(value: string): string {
   return value;
 }
 
+/** commander value-parser: reject a blank value (`""` or only whitespace). */
+export function parseNonEmpty(value: string): string {
+  if (value.trim() === "") {
+    throw new InvalidArgumentError("Expected a non-empty value.");
+  }
+  return value;
+}
+
+/**
+ * commander value-parser for a value that ends up in an HTTP header (`--user-agent`).
+ * commander takes the next argv entry as the value even when it is a flag
+ * (`--user-agent --compact` swallowed `--compact`), so a value starting with `--` is
+ * refused. Node's HTTP layer throws an opaque "Invalid character in header content"
+ * at request time for a CR/LF (or any other C0 control or DEL) and for any character
+ * above U+00FF, which surfaced as "Unexpected error". Reject those here as a usage
+ * error, along with a blank value. Tab is allowed, as in HTTP. Checked by char code
+ * so the source stays free of control bytes.
+ */
+export function parseHeaderValue(value: string): string {
+  if (value.startsWith("--")) {
+    throw new InvalidArgumentError("Expected a value, got another option. Give the option its value first.");
+  }
+  parseNonEmpty(value);
+  for (let i = 0; i < value.length; i++) {
+    const c = value.charCodeAt(i);
+    if ((c < 0x20 && c !== 0x09) || c === 0x7f) {
+      throw new InvalidArgumentError("Value contains control characters.");
+    }
+    if (c > 0xff) {
+      throw new InvalidArgumentError("Value contains characters outside Latin-1 (above U+00FF).");
+    }
+  }
+  return value;
+}
+
 /** commander value-parser: a non-negative integer. */
 export function parseIntArg(value: string): number {
   const n = parseStrictInt(value);
@@ -130,6 +165,14 @@ export function parseYear(value: string): number {
 export function parseLangArg(value: string): string {
   if (value.startsWith("-")) {
     throw new InvalidArgumentError("Option '--lang' requires a value (e.g. de | en).");
+  }
+  return value;
+}
+
+/** commander value-parser for `--use` (thresholds, meta); see `parseLangArg`. */
+export function parseUseArg(value: string): string {
+  if (value.startsWith("-")) {
+    throw new InvalidArgumentError("Option '--use' requires a value (e.g. airquality | measure).");
   }
   return value;
 }

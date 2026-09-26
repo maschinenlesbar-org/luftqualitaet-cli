@@ -497,3 +497,32 @@ test("credentials in --base-url are redacted from error messages", async () => {
   // The request itself keeps the userinfo (Node sends it as Basic auth).
   assert.match(cli.mt.last().url, /^http:\/\/user:secret@/);
 });
+
+test("--user-agent: blank, flag-like, control or non-Latin-1 values are usage errors", async () => {
+  for (const [ua, message] of [
+    ["", /Expected a non-empty value\./],
+    ["   ", /Expected a non-empty value\./],
+    ["--compact", /Expected a value, got another option/],
+    ["a\r\nX-Evil: 1", /Value contains control characters\./],
+    ["bot \u2603", /Value contains characters outside Latin-1/],
+  ] as const) {
+    const cli = makeCli(() => jsonResponse({}));
+    const code = await run(["--user-agent", ua, "components"], cli.deps);
+    assert.equal(code, 1, JSON.stringify(ua));
+    assert.equal(cli.mt.calls.length, 0, JSON.stringify(ua));
+    assert.match(cli.err.join("\n"), message, JSON.stringify(ua));
+  }
+  const ok = makeCli(() => jsonResponse({}));
+  assert.equal(await run(["--user-agent", "my-bot/1.0\t(Grüße)", "components"], ok.deps), 0);
+  assert.equal(ok.mt.last().headers?.["User-Agent"], "my-bot/1.0\t(Grüße)");
+});
+
+test("--use does not swallow the next option", async () => {
+  for (const cmd of ["thresholds", "meta"]) {
+    const cli = makeCli(() => jsonResponse({}));
+    const code = await run([cmd, "--use", "--component", "5"], cli.deps);
+    assert.equal(code, 1, cmd);
+    assert.equal(cli.mt.calls.length, 0, cmd);
+    assert.match(cli.err.join("\n"), /Option '--use' requires a value/, cmd);
+  }
+});

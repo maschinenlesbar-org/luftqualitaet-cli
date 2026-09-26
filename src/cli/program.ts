@@ -10,7 +10,7 @@ import { defaultIO } from "./io.js";
 import { API_PATH, LuftqualitaetClient } from "../client/client.js";
 import { DEFAULT_BASE_URL, MAX_RETRIES } from "../client/engine.js";
 import { MAX_TIMEOUT_MS } from "../client/http.js";
-import { parseBaseUrl, parseBoundedInt, parseIntArg } from "./shared.js";
+import { parseBaseUrl, parseBoundedInt, parseHeaderValue, parseIntArg } from "./shared.js";
 import { registerReferenceCommands } from "./commands/reference.js";
 import { registerDataCommands } from "./commands/data.js";
 
@@ -59,7 +59,7 @@ export function buildProgram(deps: CliDeps = defaultDeps): Command {
       `per-request timeout in milliseconds (0..${MAX_TIMEOUT_MS})`,
       parseBoundedInt(0, MAX_TIMEOUT_MS),
     )
-    .option("--user-agent <ua>", "User-Agent header value")
+    .option("--user-agent <ua>", "User-Agent header value", parseHeaderValue)
     .option(
       "--max-retries <n>",
       `retries for transient 429/503 responses (0..${MAX_RETRIES}; each waits the server's Retry-After, up to 30 s)`,

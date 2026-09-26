@@ -262,6 +262,29 @@ test("meta --use airquality rejects a reversed date window before any request", 
   assert.match(cli.err.join("\n"), /Window start .* is after window end/);
 });
 
+test("meta --use airquality sends the 1/24 hour defaults it validates against", async () => {
+  // Upstream fills a missing hour with the *current* hour, which could reverse a
+  // window the CLI accepted (e.g. --time-from 20 on one day at 10:00).
+  const cli = makeCli(() => jsonResponse({}));
+  const code = await run(
+    ["meta", "--use", "airquality", "--date-from", "2024-01-01", "--date-to", "2024-01-01", "--time-from", "20"],
+    cli.deps,
+  );
+  assert.equal(code, 0);
+  const q = new URL(cli.mt.last().url).searchParams;
+  assert.equal(q.get("time_from"), "20");
+  assert.equal(q.get("time_to"), "24");
+
+  const none = makeCli(() => jsonResponse({}));
+  assert.equal(
+    await run(["meta", "--use", "airquality", "--date-from", "2024-01-01", "--date-to", "2024-01-02"], none.deps),
+    0,
+  );
+  const q2 = new URL(none.mt.last().url).searchParams;
+  assert.equal(q2.get("time_from"), "1");
+  assert.equal(q2.get("time_to"), "24");
+});
+
 test("meta --use airquality rejects reversed hours on the same date before any request", async () => {
   const cli = makeCli(() => jsonResponse({}));
   const code = await run(

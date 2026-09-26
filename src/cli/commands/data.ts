@@ -214,16 +214,20 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
         const use = assertEnum(String(opts["use"]), MetaUseValues, "use");
         const dateFrom = opts["dateFrom"] as string | undefined;
         const dateTo = opts["dateTo"] as string | undefined;
-        const timeFrom = opts["timeFrom"] as number | undefined;
-        const timeTo = opts["timeTo"] as number | undefined;
+        let timeFrom = opts["timeFrom"] as number | undefined;
+        let timeTo = opts["timeTo"] as number | undefined;
         if (use === "airquality") {
           if (dateFrom === undefined || dateTo === undefined) {
             throw new LuftError("meta --use airquality requires --date-from and --date-to.");
           }
           // Validate the window locally, consistent with the `airquality`/`measures`
           // commands and the "reversed windows are caught before any request" promise.
-          // Omitted hours default to the full-day bounds (1..24).
-          assertWindowOrdered(dateFrom, timeFrom ?? 1, dateTo, timeTo ?? 24);
+          // Omitted hours default to the full-day bounds (1..24) — and those defaults
+          // are sent, so the check holds upstream: the API would otherwise fill a
+          // missing hour with the current hour, which can reverse an accepted window.
+          timeFrom ??= 1;
+          timeTo ??= 24;
+          assertWindowOrdered(dateFrom, timeFrom, dateTo, timeTo);
         } else if (timeFrom !== undefined || timeTo !== undefined) {
           // Hour bounds only mean anything for the airquality window; reject them
           // elsewhere rather than silently sending an ignored parameter.

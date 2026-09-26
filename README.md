@@ -139,7 +139,7 @@ Same flags as `annual-balances`.
 | `--use measure\|airquality\|transgression\|annualbalance\|map` | yes | which bundle |
 | `--lang de\|en` | no | label language |
 | `--date-from`, `--date-to` | when `--use airquality` | time window (required for that use) |
-| `--time-from`, `--time-to` | no | hour bounds within window |
+| `--time-from`, `--time-to` | no | hour bounds within the window (default `1` and `24`, sent to the API — it would otherwise use the current hour) |
 
 ## Common tasks
 

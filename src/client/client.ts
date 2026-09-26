@@ -47,7 +47,10 @@ export class LuftqualitaetClient {
     return this.engine.getJson(`${API}/airquality/limits`);
   }
 
-  /** Raw measurement data for a station over a window (optional component/scope). */
+  /**
+   * Raw measurement data for a station over a window — one component/scope series;
+   * give both, or the API picks the series (see `MeasuresParams`).
+   */
   measures(params: MeasuresParams): Promise<AirDataResult> {
     return this.engine.getJson(`${API}/measures/json`, prune({ ...params }));
   }

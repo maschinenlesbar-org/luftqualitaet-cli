@@ -39,7 +39,13 @@ export interface WindowParams {
   station: number;
 }
 
-/** Parameters for `/measures/json` (a window plus optional component/scope). */
+/**
+ * Parameters for `/measures/json` (a window plus component/scope). The response
+ * holds **one** series per station (one value per hour): leave `component` or
+ * `scope` out and the API picks one for you (e.g. PM2.5 daily floating average),
+ * it does not return all of them. An id the station does not measure gives
+ * `data: {}`.
+ */
 export interface MeasuresParams extends WindowParams {
   component?: number;
   scope?: number;

@@ -60,7 +60,10 @@ für Luftqualitätsdaten – damit ermitteln Sie, welche Zeitfenster Sie abfrage
 CLI: `airquality-limits`.
 
 **measures (`/measures/json`).** Rohe Messdaten für eine Station über ein Zeitfenster,
-optional eingegrenzt auf eine Komponente und/oder einen Messumfang. CLI: `measures`.
+für eine Komponente und einen Messumfang: Die Antwort enthält eine Reihe (ein Wert je
+Stunde), ohne `component`/`scope` wählt die API also eine aus, statt alle zu liefern.
+Die CLI verlangt beide. Eine ID, die die Station nicht misst, ergibt `"data": {}`.
+CLI: `measures`.
 
 **measures-limits (`/measures/limits`).** Der verfügbare Datumsbereich je
 Messumfang, Komponente und Station für Messwerte. CLI: `measures-limits`.
@@ -120,11 +123,11 @@ lehnt die CLI `0` schon lokal ab. IDs finden Sie über `meta` / `airquality-limi
 `measures-limits`.
 
 **component.** Die numerische **Komponenten-ID**, die einen Schadstoff bezeichnet. Pflicht
-bei `annual-balances` / `transgressions`; optional bei `measures` / `thresholds`.
+bei `annual-balances` / `transgressions` / `measures`; optional bei `thresholds`.
 Die Zuordnung ID ↔ Schadstoff liefert `components`.
 
 **scope.** Die numerische **Messumfang-ID**, die einen Messumfang (Mittelungsdefinition)
-bezeichnet. Optional bei `measures` / `thresholds`. Auflösung über `scopes`.
+bezeichnet. Pflicht bei `measures`, optional bei `thresholds`. Auflösung über `scopes`.
 
 **year.** Eine vierstellige Jahreszahl für die Jahresaggregationen; das früheste Jahr der
 API ist **2016**, daher lehnt die CLI alles darunter ab.

@@ -102,9 +102,11 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
   addWindowOptions(
     program
       .command("measures")
-      .description("Raw measurements for a station/window")
-      .option("--component <id>", "component id", parsePositiveIntArg)
-      .option("--scope <id>", "scope id", parsePositiveIntArg),
+      .description("Raw measurements of one component/scope series for a station/window")
+      // Both are required: the response holds one series (one value per hour), so
+      // leaving either out does not return "all" — the API picks one for you.
+      .requiredOption("--component <id>", "component id", parsePositiveIntArg)
+      .requiredOption("--scope <id>", "scope id (averaging, see `scopes`)", parsePositiveIntArg),
   ).action(
     action(deps, async ({ client, global, opts }) => {
       assertWindowOrdered(
@@ -122,8 +124,8 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
           date_to: String(opts["dateTo"]),
           time_to: opts["timeTo"] as number,
           station: opts["station"] as number,
-          component: opts["component"] as number | undefined,
-          scope: opts["scope"] as number | undefined,
+          component: opts["component"] as number,
+          scope: opts["scope"] as number,
         }),
       );
     }),

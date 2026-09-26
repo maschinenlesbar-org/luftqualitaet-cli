@@ -153,7 +153,17 @@ test("transgressions builds the request", async () => {
   assert.equal(new URL(cli.mt.last().url).pathname, `${API}/transgressions/json`);
 });
 
-test("measures forwards optional component/scope", async () => {
+test("measures requires --component and --scope (the API would pick one series)", async () => {
+  for (const extra of [[], ["--component", "5"], ["--scope", "2"]]) {
+    const cli = makeCli(() => jsonResponse({}));
+    const code = await run(["measures", ...fullWindow, ...extra], cli.deps);
+    assert.equal(code, 1, extra.join(" "));
+    assert.equal(cli.mt.calls.length, 0);
+    assert.match(cli.err.join("\n"), /required option '--(component|scope) <id>' not specified/);
+  }
+});
+
+test("measures forwards component/scope", async () => {
   const cli = makeCli(() => jsonResponse({}));
   const code = await run(
     ["measures", ...fullWindow, "--component", "5", "--scope", "2"],

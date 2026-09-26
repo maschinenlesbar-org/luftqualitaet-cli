@@ -60,7 +60,10 @@ station for air-quality data — use it to discover what windows you can request
 CLI: `airquality-limits`.
 
 **measures (`/measures/json`).** Raw measurement data for a station over a
-window, optionally narrowed to one component and/or scope. CLI: `measures`.
+window, for one component and one scope: the response holds one series (one value
+per hour), so without `component`/`scope` the API picks one rather than returning
+all. The CLI requires both. An id the station doesn't measure gives `"data": {}`.
+CLI: `measures`.
 
 **measures-limits (`/measures/limits`).** The available date range per
 scope/component/station for measurements. CLI: `measures-limits`.
@@ -121,11 +124,11 @@ the CLI rejects `0` locally. Discover ids via `meta` / `airquality-limits` /
 `measures-limits`.
 
 **component.** The numeric **component id** identifying a pollutant. Required by
-`annual-balances` / `transgressions`; optional on `measures` / `thresholds`.
+`annual-balances` / `transgressions` / `measures`; optional on `thresholds`.
 Resolve the id ↔ pollutant mapping via `components`.
 
 **scope.** The numeric **scope id** identifying a measurement scope (averaging
-definition). Optional on `measures` / `thresholds`. Resolve via `scopes`.
+definition). Required by `measures`, optional on `thresholds`. Resolve via `scopes`.
 
 **year.** A four-digit year for the annual aggregations; the API's earliest
 year is **2016**, so the CLI rejects anything below that.

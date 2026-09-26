@@ -98,14 +98,20 @@ Flags for reference commands:
 **`airquality-limits`** — available date range per station for air-quality data.
 Takes no options.
 
-**`measures`** — raw measurement data for a station over a time window.
+**`measures`** — raw measurement data for a station over a time window, for one
+component and one scope.
 
 Same window + station flags as `airquality`, plus:
 
 | Flag | Required | Meaning |
 | --- | --- | --- |
-| `--component <id>` | no | narrow to one pollutant |
-| `--scope <id>` | no | narrow to one averaging scope |
+| `--component <id>` | yes | the pollutant |
+| `--scope <id>` | yes | the averaging scope (see `scopes`) |
+
+The response holds **one series** (one value per hour), so both are required:
+leave either out and the API picks a series for you rather than returning all of
+them. A component the station doesn't measure, or an unknown scope, gives
+`"data": {}` (exit `0`).
 
 **`measures-limits`** — available date range per scope/component/station.
 Takes no options.

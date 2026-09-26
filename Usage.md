@@ -85,8 +85,11 @@ luftqualitaet measures \
   --date-to 2024-06-01 --time-to 24
 ```
 
-`--component` and `--scope` are optional narrowing filters; the window flags and
-`--station` define the query.
+`--component` and `--scope` are required along with the window flags and
+`--station`: the response is keyed station → hour, so it holds **one** series. Left
+out, the API would pick one for you (station 143 without either returns PM₂,₅ as a
+daily floating average), not all of them. A component the station doesn't measure,
+or an unknown scope, returns `"data": {}` with exit `0` — check `measures-limits`.
 
 ### 6. Find the valid date range for a measurement series
 

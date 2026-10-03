@@ -79,8 +79,12 @@ an hour from 1 to 24, got 99.`), and no request is sent. The checks (`assertDate
 `assertValid(name, value, problem)` with its `Problem` type: a rule is a pure function
 that returns the reason a value is invalid (or `undefined`), and `assertValid` throws
 `LuftValidationError` with `Invalid <name>: <reason>`. The CLI uses the same rules, and
-`run()` maps a `LuftValidationError` to the usage-error exit code `1`. Unlike the CLI, `meta()` does not fill in
-omitted window hours: the API then uses the current hour, so pass both.
+`run()` maps a `LuftValidationError` to the usage-error exit code `1`.
+
+`meta()` fills in omitted window hours when dates are given: `DEFAULT_META_TIME_FROM`
+(`1`) and `DEFAULT_META_TIME_TO` (`24`, both exported). It checks the window with them
+and sends them, because the API would otherwise use the current hour and could reverse
+a window that passed the check. The CLI's `meta` passes its options straight through.
 
 ### Methods
 

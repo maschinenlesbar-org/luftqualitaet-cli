@@ -27,6 +27,14 @@ import {
   optional,
 } from "./validate.js";
 
+/**
+ * The window hours `meta()` sends when dates are given without hours: the full day.
+ * The API would otherwise fill a missing hour with the current hour, which can
+ * reverse a window that passed the order check.
+ */
+export const DEFAULT_META_TIME_FROM = 1;
+export const DEFAULT_META_TIME_TO = 24;
+
 /** The API path the client appends to the base URL (the host). */
 export const API_PATH = "/api/air-data/v3";
 const API = API_PATH;
@@ -143,11 +151,20 @@ export class LuftqualitaetClient {
     assertOneOf("use", params.use, MetaUseValues);
     optional(params.lang, (v) => assertOneOf("lang", v, LangValues));
     // Dates are optional (required for use=airquality by the API); when given, both
-    // are needed and the whole window is checked. Omitted hours are left to the
-    // caller: the API then fills them with the current hour (the CLI sends 1/24).
+    // are needed and the whole window is checked. Omitted hours default to the full
+    // day (DEFAULT_META_TIME_FROM/TO) and are sent: the API would otherwise fill a
+    // missing hour with the current hour, which can reverse an accepted window.
     if (params.date_from !== undefined || params.date_to !== undefined) {
-      assertWindow(params.date_from, params.time_from ?? 1, params.date_to, params.time_to ?? 24);
-    } else if (params.time_from !== undefined || params.time_to !== undefined) {
+      const time_from = params.time_from ?? DEFAULT_META_TIME_FROM;
+      const time_to = params.time_to ?? DEFAULT_META_TIME_TO;
+      assertWindow(params.date_from, time_from, params.date_to, time_to);
+      const { use, lang, date_from, date_to } = params;
+      return this.engine.getJson(
+        `${API}/meta/json`,
+        prune({ use, lang, date_from, date_to, time_from, time_to }),
+      );
+    }
+    if (params.time_from !== undefined || params.time_to !== undefined) {
       throw new LuftValidationError("Invalid meta window: time_from/time_to need date_from and date_to.");
     }
     return this.engine.getJson(`${API}/meta/json`, prune({ ...params }));

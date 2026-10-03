@@ -14,6 +14,7 @@ import {
   renderJson,
 } from "../shared.js";
 import { MetaUseValues, ThresholdUseValues } from "../../client/enums.js";
+import { DEFAULT_META_TIME_FROM, DEFAULT_META_TIME_TO } from "../../client/client.js";
 import { LuftApiError, LuftError } from "../../client/errors.js";
 
 /**
@@ -262,15 +263,15 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
       parseDate,
     )
     .option("--date-to <YYYY-MM-DD>", "window end date (given together with --date-from)", parseDate)
-    .option("--time-from <1-24>", "window start hour (needs the dates; default 1)", parseHour)
-    .option("--time-to <1-24>", "window end hour (needs the dates; default 24)", parseHour)
+    .option("--time-from <1-24>", `window start hour (needs the dates; default ${DEFAULT_META_TIME_FROM})`, parseHour)
+    .option("--time-to <1-24>", `window end hour (needs the dates; default ${DEFAULT_META_TIME_TO})`, parseHour)
     .action(
       action(deps, async ({ client, global, opts }) => {
         const use = assertEnum(String(opts["use"]), MetaUseValues, "use");
         const dateFrom = opts["dateFrom"] as string | undefined;
         const dateTo = opts["dateTo"] as string | undefined;
-        let timeFrom = opts["timeFrom"] as number | undefined;
-        let timeTo = opts["timeTo"] as number | undefined;
+        const timeFrom = opts["timeFrom"] as number | undefined;
+        const timeTo = opts["timeTo"] as number | undefined;
         if (use === "airquality" && (dateFrom === undefined || dateTo === undefined)) {
           throw new LuftError("meta --use airquality requires --date-from and --date-to.");
         }
@@ -282,14 +283,8 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
               "meta --date-from and --date-to go together: give both, or neither.",
             );
           }
-          // Validate the window locally, consistent with the `airquality`/`measures`
-          // commands and the "reversed windows are caught before any request" promise.
-          // Omitted hours default to the full-day bounds (1..24) — and those defaults
-          // are sent, so the check holds upstream: the API would otherwise fill a
-          // missing hour with the current hour, which can reverse an accepted window.
-          timeFrom ??= 1;
-          timeTo ??= 24;
-          assertWindowOrdered(dateFrom, timeFrom, dateTo, timeTo);
+          // The window order, with omitted hours defaulting to the full day (1..24),
+          // is checked by client.meta(), which also sends those default hours.
         } else if (timeFrom !== undefined || timeTo !== undefined) {
           // Hours without dates would be sent against a window the API makes up.
           throw new LuftError("meta --time-from/--time-to need --date-from and --date-to.");

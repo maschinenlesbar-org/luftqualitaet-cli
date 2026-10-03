@@ -56,6 +56,14 @@ test("measures includes optional component/scope only when set", async () => {
   assert.equal(url.searchParams.get("scope"), null);
 });
 
+test("meta with dates but no hours sends the full-day hours 1/24 it checks against", async () => {
+  const mt = constantJson({});
+  await clientWith(mt).meta({ use: "measure", date_from: "2024-03-05", date_to: "2024-03-06" });
+  const q = new URL(mt.last().url).searchParams;
+  assert.equal(q.get("time_from"), "1");
+  assert.equal(q.get("time_to"), "24");
+});
+
 test("thresholds requires a use value", async () => {
   const mt = constantJson([]);
   await clientWith(mt).thresholds({ use: "measure", component: 3 });

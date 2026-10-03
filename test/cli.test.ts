@@ -269,7 +269,7 @@ test("meta --use airquality rejects a reversed date window before any request", 
   );
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
-  assert.match(cli.err.join("\n"), /Window start .* is after window end/);
+  assert.match(cli.err.join("\n"), /Invalid window: the start .* is after the end/);
 });
 
 test("meta --use airquality sends the 1/24 hour defaults it validates against", async () => {
@@ -324,7 +324,7 @@ test("meta checks the window for every use, not only airquality", async () => {
     1,
   );
   assert.equal(reversed.mt.calls.length, 0);
-  assert.match(reversed.err.join("\n"), /Window start .* is after window end/);
+  assert.match(reversed.err.join("\n"), /Invalid window: the start .* is after the end/);
 
   const half = makeCli(() => jsonResponse({}));
   assert.equal(await run(["meta", "--use", "map", "--date-to", "2024-01-01"], half.deps), 1);

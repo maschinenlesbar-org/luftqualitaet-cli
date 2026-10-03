@@ -165,9 +165,10 @@ it changes nothing there.
 `airquality` | `measure` | `transgression` | `annualbalance` | `map`. When
 `use=airquality`, a time window (`--date-from` + `--date-to`) is required. For the
 other uses the window is optional, but the API applies it too (`use=measure` then
-lists only the stations active in it), so the CLI checks it the same way: both dates
-or neither, hours only with dates, omitted hours sent as `1`/`24`, no reversed
-window. CLI: `meta --use`.
+lists only the stations active in it), so the client checks it the same way: both dates
+or neither, hours only with dates, omitted hours sent as `1`/`24`
+(`DEFAULT_META_TIME_FROM`/`DEFAULT_META_TIME_TO`; the API would otherwise use the
+current hour), no reversed window. CLI: `meta --use`.
 
 **use (thresholds) (`ThresholdUse`).** Which threshold set the `thresholds`
 endpoint returns: `airquality` | `measure`. CLI: `thresholds --use`.

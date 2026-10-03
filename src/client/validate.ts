@@ -74,6 +74,29 @@ export const baseUrlWhitespaceProblem: Problem<unknown> = (value) => {
   return undefined;
 };
 
+/**
+ * Every engine rule for a base URL, in order: a URL that parses, the `http:` or
+ * `https:` scheme, no query or fragment — request paths are appended to the base URL
+ * as a string, so a `?` or `#` would swallow every path (`http://h/#f` requests `/`)
+ * — and no whitespace or control characters (see {@link baseUrlWhitespaceProblem}).
+ * The reasons never echo the URL, so a credential in it cannot leak. (A path that
+ * already ends in the API path is the client's rule, `baseUrlApiPathProblem`.)
+ */
+export const baseUrlProblem: Problem<unknown> = (value) => {
+  if (typeof value !== "string") return "Expected an absolute http(s) URL.";
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return "Expected an absolute http(s) URL.";
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return `Unsupported scheme "${url.protocol}". Expected an http(s) URL.`;
+  }
+  if (/[?#]/.test(value)) return "A base URL cannot have a query (?) or fragment (#).";
+  return baseUrlWhitespaceProblem(value);
+};
+
 function describe(value: unknown): string {
   return typeof value === "string" ? JSON.stringify(value) : String(value);
 }

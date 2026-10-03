@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { LuftqualitaetClient } from "../src/client/client.js";
-import { LuftValidationError } from "../src/client/errors.js";
+import { LuftNetworkError, LuftValidationError } from "../src/client/errors.js";
 import type { Transport } from "../src/client/http.js";
 import type { MeasuresParams, MetaParams } from "../src/client/types.js";
 import { parity, requestShapes } from "./helpers.js";
@@ -189,5 +189,31 @@ test("baseUrl: a host or a mirror prefix gives the identical request on both sid
     assert.equal(cli.code, 0, baseUrl);
     assert.ok(lib.ok, baseUrl);
     assert.deepEqual(requestShapes(lib.requests), requestShapes(cli.requests), baseUrl);
+  }
+});
+
+// ---- Finding 7: an invalid base URL is a validation error, not a network error ----
+
+test("baseUrl: every invalid shape is a LuftValidationError with the CLI's reason", async () => {
+  for (const [baseUrl, reason] of [
+    ["", "Expected an absolute http(s) URL."],
+    ["   ", "Expected an absolute http(s) URL."],
+    ["notaurl", "Expected an absolute http(s) URL."],
+    ["ftp://x", 'Unsupported scheme "ftp:". Expected an http(s) URL.'],
+    ["file:///etc/passwd", 'Unsupported scheme "file:". Expected an http(s) URL.'],
+    ["https://x/?q=1", "A base URL cannot have a query (?) or fragment (#)."],
+    ["https://x/#f", "A base URL cannot have a query (?) or fragment (#)."],
+  ] as const) {
+    const { cli, lib } = await parity(["--compact", "--base-url", baseUrl, "components"], (transport) =>
+      new LuftqualitaetClient({ baseUrl, transport }).components(),
+    );
+    const label = JSON.stringify(baseUrl);
+    assert.equal(cli.code, 1, label);
+    assert.equal(cli.requests.length, 0, label);
+    assert.ok(cli.err.includes(reason), `${label}: ${cli.err}`);
+    assert.ok(!lib.ok && lib.error instanceof LuftValidationError, label);
+    assert.ok(!(lib.error instanceof LuftNetworkError), label);
+    assert.equal((lib as { error: Error }).error.message, `Invalid baseUrl: ${reason}`, label);
+    assert.equal(lib.requests.length, 0, label);
   }
 });

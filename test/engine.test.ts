@@ -1,7 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { MAX_RETRY_AFTER_MS, RequestEngine, parseRetryAfter } from "../src/client/engine.js";
-import { LuftApiError, LuftError, LuftNetworkError, LuftParseError, redactUrl } from "../src/client/errors.js";
+import {
+  LuftApiError,
+  LuftError,
+  LuftNetworkError,
+  LuftParseError,
+  LuftValidationError,
+  redactUrl,
+} from "../src/client/errors.js";
 import { makeMockTransport, jsonResponse, rawResponse } from "./helpers.js";
 
 // Built via char codes so no raw control bytes ever appear in this source file.
@@ -31,7 +38,7 @@ test("the constructor rejects a malformed base URL with a clear, base-only messa
   assert.throws(
     () => new RequestEngine({ baseUrl: "notaurl", transport: mt.transport }),
     (err: unknown) =>
-      err instanceof LuftNetworkError && /Invalid base URL: "notaurl"/.test(err.message),
+      err instanceof LuftValidationError && err.message === "Invalid baseUrl: Expected an absolute http(s) URL.",
   );
   assert.equal(mt.calls.length, 0);
 });
@@ -41,7 +48,10 @@ for (const bad of ["file:///etc/passwd", "ftp://example.org"]) {
     const mt = makeMockTransport(() => jsonResponse({}));
     assert.throws(
       () => new RequestEngine({ baseUrl: bad, transport: mt.transport }),
-      (err: unknown) => err instanceof LuftNetworkError && /Unsupported protocol/.test(err.message),
+      (err: unknown) =>
+        err instanceof LuftValidationError &&
+        !(err instanceof LuftNetworkError) &&
+        /^Invalid baseUrl: Unsupported scheme "(file|ftp):"\. Expected an http\(s\) URL\.$/.test(err.message),
     );
     assert.equal(mt.calls.length, 0);
   });
@@ -238,7 +248,8 @@ test("a base URL with a query or fragment is rejected at construction", () => {
     assert.throws(
       () => new RequestEngine({ transport: mt.transport, baseUrl }),
       (err: unknown) =>
-        err instanceof LuftNetworkError && /Base URL must not contain a query or fragment/.test(err.message),
+        err instanceof LuftValidationError &&
+        err.message === "Invalid baseUrl: A base URL cannot have a query (?) or fragment (#).",
       baseUrl,
     );
     assert.equal(mt.calls.length, 0);
@@ -252,7 +263,8 @@ test("redactUrl hides userinfo and leaves other URLs alone", () => {
   assert.equal(redactUrl("not a url"), "not a url");
   assert.throws(
     () => new RequestEngine({ baseUrl: "ftp://user:secret@host.test" }),
-    (err: unknown) => err instanceof LuftNetworkError && !/secret/.test(err.message) && /\*\*\*@/.test(err.message),
+    // The reason names the scheme, never the URL, so the credential cannot leak.
+    (err: unknown) => err instanceof LuftValidationError && !/secret/.test(err.message),
   );
 });
 

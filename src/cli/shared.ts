@@ -8,7 +8,7 @@ import { LuftError } from "../client/errors.js";
 import { baseUrlApiPathProblem } from "../client/client.js";
 import type { EngineOptions } from "../client/engine.js";
 import { IndexValues, LangValues } from "../client/enums.js";
-import { baseUrlWhitespaceProblem, headerValueProblem } from "../client/validate.js";
+import { baseUrlProblem, headerValueProblem } from "../client/validate.js";
 import type { IndexKind, Lang } from "../client/enums.js";
 
 /**
@@ -29,30 +29,14 @@ function parseStrictInt(value: string): number | undefined {
 }
 
 /**
- * commander value-parser for `--base-url`: an absolute http(s) URL. A malformed
- * or non-http(s) value (`file:`, `ftp:`, `notaurl`) is a usage error at parse
- * time, before any client is built.
+ * commander value-parser for `--base-url`: the library's {@link baseUrlProblem}
+ * (an absolute http(s) URL, no query or fragment, no whitespace) and
+ * {@link baseUrlApiPathProblem} (not ending in the API path), so a bad value is a
+ * usage error at parse time, before any client is built. The CLI keeps no rules of
+ * its own.
  */
 export function parseBaseUrl(value: string): string {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new InvalidArgumentError("Expected an absolute http(s) URL.");
-  }
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new InvalidArgumentError(
-      `Unsupported scheme "${url.protocol}". Expected an http(s) URL.`,
-    );
-  }
-  // Paths are appended to the base URL as a string, so a query or fragment would
-  // swallow every request path ("http://h/#f" requests "/" for every command).
-  if (/[?#]/.test(value)) {
-    throw new InvalidArgumentError("A base URL cannot have a query (?) or fragment (#).");
-  }
-  // Whitespace (which new URL() would hide) and a trailing API path: the library's
-  // rules, reported as a usage error.
-  for (const problem of [baseUrlWhitespaceProblem, baseUrlApiPathProblem]) {
+  for (const problem of [baseUrlProblem, baseUrlApiPathProblem]) {
     const reason = problem(value);
     if (reason !== undefined) throw new InvalidArgumentError(reason);
   }

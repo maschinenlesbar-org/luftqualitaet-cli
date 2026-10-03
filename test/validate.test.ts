@@ -5,6 +5,7 @@ import { LuftqualitaetClient, baseUrlApiPathProblem } from "../src/client/client
 import { LuftError, LuftValidationError } from "../src/client/errors.js";
 import {
   assertValid,
+  baseUrlProblem,
   baseUrlWhitespaceProblem,
   headerValueProblem,
   nonBlankProblem,
@@ -133,4 +134,15 @@ test("baseUrlApiPathProblem rejects a path ending in the API path, either spelli
     baseUrlApiPathProblem("https://user:pw@h.example/x/api/air_data/v3//"),
     "Leave out /api/air_data/v3: the base URL is the host, and the client adds /api/air-data/v3 itself (try https://h.example/x).",
   );
+});
+
+test("baseUrlProblem: parse, scheme, query/fragment and whitespace, never echoing the URL", () => {
+  assert.equal(baseUrlProblem("https://h.example"), undefined);
+  assert.equal(baseUrlProblem("http://user:pw@h.example/p/"), undefined);
+  assert.equal(baseUrlProblem(""), "Expected an absolute http(s) URL.");
+  assert.equal(baseUrlProblem("notaurl"), "Expected an absolute http(s) URL.");
+  assert.equal(baseUrlProblem("ftp://u:secret@h"), 'Unsupported scheme "ftp:". Expected an http(s) URL.');
+  assert.equal(baseUrlProblem("https://h/#f"), "A base URL cannot have a query (?) or fragment (#).");
+  assert.equal(baseUrlProblem("https://h "), "A base URL cannot have surrounding whitespace.");
+  assert.equal(root.validateBaseUrl("https://h.example/p//"), "https://h.example/p");
 });

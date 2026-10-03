@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { LuftqualitaetClient } from "../src/client/client.js";
-import { LuftApiError, LuftError, LuftNetworkError, LuftValidationError } from "../src/client/errors.js";
+import { LuftApiError, LuftError, LuftValidationError } from "../src/client/errors.js";
 import type { MeasuresParams } from "../src/client/types.js";
 import { makeMockTransport, jsonResponse, constantJson } from "./helpers.js";
 
@@ -240,7 +240,7 @@ test("the client rejects a file: base URL before any request reaches a custom tr
   const mt = constantJson([]);
   assert.throws(
     () => new LuftqualitaetClient({ baseUrl: "file:///etc/passwd", transport: mt.transport }),
-    (err: unknown) => err instanceof LuftNetworkError,
+    (err: unknown) => err instanceof LuftValidationError,
   );
   assert.equal(mt.calls.length, 0);
 });

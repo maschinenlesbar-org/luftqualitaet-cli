@@ -5,7 +5,7 @@
 import { MAX_TIMEOUT_MS, nodeHttpTransport, type Transport } from "./http.js";
 import { buildQueryString, type QueryParams } from "./query.js";
 import { LuftApiError, LuftError, LuftNetworkError, LuftParseError, redactUrl } from "./errors.js";
-import { assertValid, baseUrlWhitespaceProblem, headerValueProblem } from "./validate.js";
+import { assertValid, baseUrlProblem, headerValueProblem } from "./validate.js";
 
 /**
  * The API's host. The client appends the API path (`API_PATH`, `/api/air-data/v3`).
@@ -30,8 +30,9 @@ export interface EngineOptions {
   /**
    * Base URL of the API: the host (plus an optional path prefix on a mirror), without
    * the API path, which the client appends. Defaults to https://luftdaten.umweltbundesamt.de.
-   * Surrounding or inner whitespace and control characters throw a LuftValidationError,
-   * and so does (in the client) a path that already ends in the API path.
+   * A value that breaks a rule of {@link validateBaseUrl} (not http(s), a query or
+   * fragment, whitespace or control characters) throws a LuftValidationError, and so
+   * does (in the client) a path that already ends in the API path.
    */
   baseUrl?: string;
   /** Swappable transport. Defaults to the built-in node http/https transport. */
@@ -146,31 +147,16 @@ function sanitizeServerText(text: string): string {
 }
 
 /**
- * Reject a base URL whose scheme is not http(s), or that has a query or fragment.
- * The default transport already gates the scheme per hop, but the engine is
- * exported as a library and may be handed a custom transport that does no such
- * check, so gate the configured base URL here too (a `file:`/`ftp:` base URL fails
- * fast with a typed error). Request paths are appended to the base URL as a string,
- * so a `?` or `#` in it would swallow every path: `http://h/?x=1` requests
- * `/?x=1/api/...` and `http://h/#f` requests `/`.
+ * Check a base URL against every rule of {@link baseUrlProblem} — unparseable, a
+ * scheme other than `http:`/`https:`, a query or fragment, whitespace or control
+ * characters — and return it with trailing slashes stripped. A bad value throws a
+ * LuftValidationError ("Invalid baseUrl: <reason>"): it is a configuration error,
+ * not a transport failure. The default transport still gates the scheme per hop,
+ * but the engine may be handed a custom transport that does no such check, so the
+ * configured value is checked here, on the raw value, before any request.
  */
-function assertHttpScheme(baseUrl: string): void {
-  let url: URL;
-  try {
-    url = new URL(baseUrl);
-  } catch {
-    // Name only the offending base value, not a request path (which would read
-    // as if the path were at fault).
-    throw new LuftNetworkError(`Invalid base URL: ${JSON.stringify(baseUrl)}`);
-  }
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new LuftNetworkError(
-      `Unsupported protocol "${url.protocol}" in base URL: ${redactUrl(baseUrl)}`,
-    );
-  }
-  if (/[?#]/.test(baseUrl)) {
-    throw new LuftNetworkError(`Base URL must not contain a query or fragment: ${redactUrl(baseUrl)}`);
-  }
+export function validateBaseUrl(raw: string): string {
+  return assertValid("baseUrl", raw, baseUrlProblem).replace(/\/+$/, "");
 }
 
 /**
@@ -198,16 +184,10 @@ export class RequestEngine {
 
   constructor(options: EngineOptions = {}) {
     // The raw value is checked before the trailing-slash strip, so "https://h/ "
-    // cannot slip past it; only an omitted baseUrl selects the default.
-    const baseUrl =
-      options.baseUrl === undefined
-        ? DEFAULT_BASE_URL
-        : assertValid("baseUrl", options.baseUrl, baseUrlWhitespaceProblem);
-    this.baseUrl = baseUrl.replace(/\/+$/, "");
-    // Re-check the base-URL scheme here, not only in the default transport: a
-    // library consumer that injects a custom transport would otherwise get no
-    // gating at all, and could be steered to a non-http(s) scheme.
-    assertHttpScheme(this.baseUrl);
+    // cannot slip past it; only an omitted baseUrl selects the default. Checked
+    // here, not only in the default transport: a library consumer that injects a
+    // custom transport would otherwise get no gating at all.
+    this.baseUrl = validateBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
     this.transport = options.transport ?? nodeHttpTransport;
     // Only an omitted userAgent selects the default: a blank one is an error, and a
     // malformed one fails here rather than at request time.

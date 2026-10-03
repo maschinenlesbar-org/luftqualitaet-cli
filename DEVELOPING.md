@@ -169,7 +169,8 @@ Lets the whole CLI run in tests with a mocked client and captured output — no
 subprocess.
 
 **Error types.** [`errors.ts`](src/client/errors.ts): `LuftApiError` (non-2xx,
-carries `status`/`detail`), `LuftNetworkError` (transport failure/timeout),
+carries `status`/`detail`), `LuftNetworkError` (transport failure/timeout, and the default transport's
+per-hop scheme check; a bad configured `baseUrl` is a `LuftValidationError` instead),
 `LuftParseError` (bad JSON) and `LuftValidationError` (a rejected input, thrown before
 any request), all extending `LuftError`. The CLI maps a `404` to exit code `4`, a
 `LuftValidationError` to the usage-error code `1`, other errors to `1`.
@@ -194,24 +195,25 @@ surfaces at once.
 unlimited) that defends against memory exhaustion from a hostile or buggy
 endpoint. CLI: `--max-response-bytes`.
 
-**`--base-url` scheme validation.** The scheme is checked at three points.
-`--base-url` has a value parser (`parseBaseUrl` in
-[`shared.ts`](src/cli/shared.ts)), so a malformed or non-`http:`/`https:` value
-(`notaurl`, `file:///etc/passwd`, `ftp://…`) is a usage error at parse time, before
-any client is built, as in the sibling CLIs. The engine constructor re-checks the
-configured base URL (`assertHttpScheme` in [`engine.ts`](src/client/engine.ts)) and
-throws a typed `LuftNetworkError`, so a library consumer that injects a custom
-transport can never hand it a non-http(s) base URL. And the default transport
-([`http.ts`](src/client/http.ts)) gates the scheme on **every redirect hop**.
-Paths are appended to the base URL as a string, so a base URL with a query (`?`) or
-fragment (`#`) is refused too — by `parseBaseUrl` (usage error) and by the engine
-constructor (`LuftNetworkError`) — instead of swallowing every request path. The engine
-constructor also checks the raw value, before trailing slashes are stripped, for
-surrounding or inner whitespace and control characters (`baseUrlWhitespaceProblem`,
-exported, and used by `parseBaseUrl` too): `new URL()` would hide them, while the raw
-string is joined to each path. That throws a `LuftValidationError`. Userinfo (`http://user:secret@mirror/`) is allowed — Node sends it
+**`--base-url` validation.** The base URL is checked at three points. The engine
+constructor checks the raw configured value, before trailing slashes are stripped, with
+the exported `validateBaseUrl` (rule: `baseUrlProblem`, the same one the CLI's
+`--base-url` uses): a value that does not parse (`notaurl`, `""`), a scheme other than
+`http:`/`https:` (`file:///etc/passwd`, `ftp://…`), a query (`?`) or fragment (`#`) —
+paths are appended to the base URL as a string, so they would swallow every request
+path — and surrounding or inner whitespace or control characters (`new URL()` would hide
+them, while the raw string is joined to each path) each throw a `LuftValidationError`
+(`Invalid baseUrl: <reason>`). That is a configuration error, not a `LuftNetworkError`,
+and it holds for a library consumer that injects a custom transport too. Only an
+omitted `baseUrl` selects the default. The client constructor adds the API-path rule
+(`baseUrlApiPathProblem`, above). `--base-url`'s value parser (`parseBaseUrl` in
+[`shared.ts`](src/cli/shared.ts)) calls the same two rules, so a bad value is a usage
+error at parse time, before any client is built. And the default transport
+([`http.ts`](src/client/http.ts)) gates the scheme on **every redirect hop**, as a
+`LuftNetworkError`. Userinfo (`http://user:secret@mirror/`) is allowed — Node sends it
 as Basic auth — but `redactUrl` (exported from [`errors.ts`](src/client/errors.ts))
-shows it as `***@` in every error message and in `LuftApiError.url`.
+shows it as `***@` in every error message and in `LuftApiError.url`; the base-URL
+reasons never echo the URL.
 
 ## Testing
 

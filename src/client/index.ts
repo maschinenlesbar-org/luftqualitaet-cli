@@ -14,7 +14,14 @@ export { MAX_TIMEOUT_MS, nodeHttpTransport } from "./http.js";
 export type { Transport, HttpRequest, HttpResponse } from "./http.js";
 export { buildQueryString } from "./query.js";
 export type { QueryParams, QueryValue } from "./query.js";
-export { LuftError, LuftApiError, LuftNetworkError, LuftParseError, redactUrl } from "./errors.js";
+export {
+  LuftError,
+  LuftApiError,
+  LuftNetworkError,
+  LuftParseError,
+  LuftValidationError,
+  redactUrl,
+} from "./errors.js";
 
 export {
   MIN_YEAR,
@@ -22,8 +29,10 @@ export {
   assertHour,
   assertId,
   assertWindow,
+  assertValid,
   assertYear,
 } from "./validate.js";
+export type { Problem } from "./validate.js";
 
 export * from "./enums.js";
 export * from "./types.js";

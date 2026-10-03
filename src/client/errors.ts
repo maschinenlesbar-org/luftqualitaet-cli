@@ -62,6 +62,13 @@ export class LuftApiError extends LuftError {
   }
 }
 
+/**
+ * An input the library refuses before sending any request: a bad date, hour, id or
+ * year, a value outside an enum, a window out of order. The message reads
+ * `Invalid <name>: <reason>`. The CLI maps it to its usage-error exit code (1).
+ */
+export class LuftValidationError extends LuftError {}
+
 /** A transport-level failure (DNS, connection reset, timeout, ...). */
 export class LuftNetworkError extends LuftError {}
 

@@ -5,7 +5,7 @@
 //   client.airquality({ date_from: "2024-01-01", time_from: 1, date_to: "2024-01-01", time_to: 24, station: 143 })
 
 import { RequestEngine, type EngineOptions } from "./engine.js";
-import { LuftError } from "./errors.js";
+import { LuftValidationError } from "./errors.js";
 import type { QueryParams } from "./query.js";
 import type {
   AirDataResult,
@@ -148,7 +148,7 @@ export class LuftqualitaetClient {
     if (params.date_from !== undefined || params.date_to !== undefined) {
       assertWindow(params.date_from, params.time_from ?? 1, params.date_to, params.time_to ?? 24);
     } else if (params.time_from !== undefined || params.time_to !== undefined) {
-      throw new LuftError("Invalid meta window: time_from/time_to need date_from and date_to.");
+      throw new LuftValidationError("Invalid meta window: time_from/time_to need date_from and date_to.");
     }
     return this.engine.getJson(`${API}/meta/json`, prune({ ...params }));
   }

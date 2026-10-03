@@ -5,7 +5,10 @@
 import { CommanderError, type Command } from "commander";
 import { buildProgram, defaultDeps } from "./program.js";
 import type { CliDeps } from "./io.js";
-import { LuftApiError, LuftError } from "../client/errors.js";
+import { LuftApiError, LuftError, LuftValidationError } from "../client/errors.js";
+
+/** commander's exit code for a usage error (a rejected option value), kept for library rejections. */
+const USAGE_EXIT_CODE = 1;
 
 /**
  * Apply exitOverride + output redirection to every command in the tree.
@@ -64,6 +67,12 @@ export async function run(argv: string[], deps: CliDeps = defaultDeps): Promise<
       // Map a few notable statuses to distinct exit codes for scripting.
       if (err.status === 404) return 4;
       return 1;
+    }
+    if (err instanceof LuftValidationError) {
+      // An input the library refused before any request: the same usage-error
+      // exit code commander uses for a rejected option value.
+      deps.io.err(`Error: ${err.message}`);
+      return USAGE_EXIT_CODE;
     }
     if (err instanceof LuftError) {
       deps.io.err(`Error: ${err.message}`);

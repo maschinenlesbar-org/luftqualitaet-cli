@@ -1,0 +1,82 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { run } from "../src/cli/run.js";
+import { LuftqualitaetClient } from "../src/client/client.js";
+import { LuftError, LuftValidationError } from "../src/client/errors.js";
+import { assertValid, type Problem } from "../src/client/validate.js";
+import * as root from "../src/index.js";
+import type { CliDeps } from "../src/cli/io.js";
+import { jsonResponse, makeMockTransport, parity } from "./helpers.js";
+
+const nonBlank: Problem<string> = (v) => (v.trim() === "" ? "Expected a non-empty value." : undefined);
+
+test("assertValid returns a valid value unchanged", () => {
+  assert.equal(assertValid("lang", "de", nonBlank), "de");
+});
+
+test("assertValid throws LuftValidationError with 'Invalid <name>: <reason>'", () => {
+  assert.throws(
+    () => assertValid("lang", " ", nonBlank),
+    (err: unknown) =>
+      err instanceof LuftValidationError &&
+      err instanceof LuftError &&
+      err.name === "LuftValidationError" &&
+      err.message === "Invalid lang: Expected a non-empty value.",
+  );
+});
+
+test("LuftValidationError and assertValid are exported from the package root", () => {
+  assert.equal(root.LuftValidationError, LuftValidationError);
+  assert.equal(root.assertValid, assertValid);
+});
+
+test("a library parameter check rejects with LuftValidationError and sends nothing", async () => {
+  const mt = makeMockTransport(() => jsonResponse({}));
+  const client = new LuftqualitaetClient({ transport: mt.transport });
+  await assert.rejects(client.components({ lang: "fr" as "de" }), LuftValidationError);
+  assert.equal(mt.calls.length, 0);
+});
+
+function cliWith(createClient: CliDeps["createClient"]) {
+  const out: string[] = [];
+  const err: string[] = [];
+  const deps: CliDeps = { io: { out: (s) => out.push(s), err: (s) => err.push(s) }, createClient };
+  return { deps, out, err };
+}
+
+test("run() maps a LuftValidationError raised in an action to the usage exit code 1", async () => {
+  const mt = makeMockTransport(() => jsonResponse({}));
+  class Rejecting extends LuftqualitaetClient {
+    override async networks(): Promise<never> {
+      throw new LuftValidationError("Invalid index: expected one of id, code, got \"x\".");
+    }
+  }
+  const cli = cliWith((opts) => new Rejecting({ ...opts, transport: mt.transport }));
+  const code = await run(["networks"], cli.deps);
+  assert.equal(code, 1);
+  assert.equal(cli.err.join("\n"), 'Error: Invalid index: expected one of id, code, got "x".');
+  assert.equal(mt.calls.length, 0);
+});
+
+test("run() maps a LuftValidationError from building the client to exit code 1", async () => {
+  const cli = cliWith(() => {
+    throw new LuftValidationError("Invalid baseUrl: Expected a valid URL.");
+  });
+  const code = await run(["networks"], cli.deps);
+  assert.equal(code, 1);
+  assert.equal(cli.err.join("\n"), "Error: Invalid baseUrl: Expected a valid URL.");
+});
+
+test("parity() runs one input through the CLI and the library on one transport", async () => {
+  const { cli, lib } = await parity(
+    ["--compact", "components", "--lang", "en"],
+    (transport) => new LuftqualitaetClient({ transport }).components({ lang: "en" }),
+    () => jsonResponse({ count: 0 }),
+  );
+  assert.equal(cli.code, 0);
+  assert.equal(cli.out, '{"count":0}');
+  assert.ok(lib.ok);
+  assert.deepEqual(lib.value, { count: 0 });
+  assert.equal(cli.requests.length, 1);
+  assert.deepEqual(cli.requests, lib.requests);
+});

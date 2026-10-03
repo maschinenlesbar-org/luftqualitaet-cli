@@ -1,22 +1,44 @@
 // Parameter checks for the library client. The CLI validates its options at parse
 // time, but library callers reach the client directly, and the API does not reject
 // most bad values: it answers with an empty result or fills in its own defaults.
-// So the client checks what it sends and throws a LuftError (a rejected promise,
-// no request) with `Invalid <name>: expected <what>, got <value>.`
+// So the client checks what it sends and throws a LuftValidationError (a rejected
+// promise, no request) with `Invalid <name>: <reason>`.
+//
+// A rule is a pure function: `<thing>Problem(value)` returns the reason a value is
+// invalid, or `undefined` when it is valid. The library enforces it with
+// assertValid() before any request; the CLI's commander parsers call the same
+// function and turn the reason into a usage error, so a rule is written once and
+// the CLI and the library cannot drift apart.
 
-import { LuftError } from "./errors.js";
+import { LuftValidationError } from "./errors.js";
 import { IndexValues, LangValues } from "./enums.js";
 import type { WindowParams } from "./types.js";
 
 /** The earliest year the annual endpoints (`annualBalances`, `transgressions`) serve. */
 export const MIN_YEAR = 2016;
 
+/** A rule: the reason `value` is invalid, or `undefined` when it is valid. */
+export type Problem<T = unknown> = (value: T) => string | undefined;
+
+/**
+ * Throw a {@link LuftValidationError} with the message `Invalid <name>: <reason>`
+ * when `problem(value)` finds a reason; otherwise return `value` unchanged. Call it
+ * before any request, so a rejected input sends nothing. Async methods call it
+ * inside their body, so the rejection arrives as a rejected promise rather than a
+ * synchronous throw.
+ */
+export function assertValid<T>(name: string, value: T, problem: Problem<T>): T {
+  const reason = problem(value);
+  if (reason !== undefined) throw new LuftValidationError(`Invalid ${name}: ${reason}`);
+  return value;
+}
+
 function describe(value: unknown): string {
   return typeof value === "string" ? JSON.stringify(value) : String(value);
 }
 
 function invalid(name: string, expected: string, value: unknown): never {
-  throw new LuftError(`Invalid ${name}: expected ${expected}, got ${describe(value)}.`);
+  throw new LuftValidationError(`Invalid ${name}: expected ${expected}, got ${describe(value)}.`);
 }
 
 /** A real calendar date in `YYYY-MM-DD` form. */
@@ -78,7 +100,7 @@ export function assertWindow(dateFrom: unknown, timeFrom: unknown, dateTo: unkno
   const dt = assertDate("date_to", dateTo);
   const tt = assertHour("time_to", timeTo);
   if (df > dt || (df === dt && tf > tt)) {
-    throw new LuftError(`Invalid window: the start (${df} hour ${tf}) is after the end (${dt} hour ${tt}).`);
+    throw new LuftValidationError(`Invalid window: the start (${df} hour ${tf}) is after the end (${dt} hour ${tt}).`);
   }
 }
 

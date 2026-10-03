@@ -73,9 +73,13 @@ option (`Invalid option timeoutMs: expected an integer from 0 to 2147483647, got
 The methods check their parameters before any request, like the CLI: dates as real
 `YYYY-MM-DD` calendar dates, hours `1..24`, a window in order, positive integer ids,
 `year >= 2016`, and `lang`/`index`/`use` from their value sets. A bad value is a
-rejected promise with a `LuftError` (`Invalid time_to: expected an hour from 1 to 24,
-got 99.`). The checks (`assertDate`, `assertHour`, `assertId`, `assertWindow`,
-`assertYear`, `MIN_YEAR`) are exported. Unlike the CLI, `meta()` does not fill in
+rejected promise with a `LuftValidationError` (a `LuftError`; `Invalid time_to: expected
+an hour from 1 to 24, got 99.`), and no request is sent. The checks (`assertDate`,
+`assertHour`, `assertId`, `assertWindow`, `assertYear`, `MIN_YEAR`) are exported, as is
+`assertValid(name, value, problem)` with its `Problem` type: a rule is a pure function
+that returns the reason a value is invalid (or `undefined`), and `assertValid` throws
+`LuftValidationError` with `Invalid <name>: <reason>`. The CLI uses the same rules, and
+`run()` maps a `LuftValidationError` to the usage-error exit code `1`. Unlike the CLI, `meta()` does not fill in
 omitted window hours: the API then uses the current hour, so pass both.
 
 ### Methods
@@ -95,7 +99,8 @@ src/
     query.ts     # dependency-free query-string builder
     http.ts      # the Transport interface + default node:http/https transport
     engine.ts    # URL building, retry/backoff, redirects (cross-origin headers stripped), JSON decoding, error mapping
-    errors.ts    # LuftError / LuftApiError / LuftNetworkError / LuftParseError
+    errors.ts    # LuftError / LuftApiError / LuftNetworkError / LuftParseError / LuftValidationError
+    validate.ts  # the parameter rules (Problem, assertValid, assertDate, ...)
     client.ts    # LuftqualitaetClient — the air-data surface over the engine
   cli/
     io.ts        # injectable I/O seam (stdout/stderr)
@@ -146,8 +151,9 @@ subprocess.
 
 **Error types.** [`errors.ts`](src/client/errors.ts): `LuftApiError` (non-2xx,
 carries `status`/`detail`), `LuftNetworkError` (transport failure/timeout),
-`LuftParseError` (bad JSON), all extending `LuftError`. The CLI maps a `404` to
-exit code `4`, other errors to `1`.
+`LuftParseError` (bad JSON) and `LuftValidationError` (a rejected input, thrown before
+any request), all extending `LuftError`. The CLI maps a `404` to exit code `4`, a
+`LuftValidationError` to the usage-error code `1`, other errors to `1`.
 
 **Query builder.** [`buildQueryString`](src/client/query.ts) — a dependency-free
 serialiser: omits `undefined`/`null`, repeats keys for arrays, renders booleans
@@ -195,6 +201,8 @@ npm test          # builds, then runs `node --test` over dist/test
 - **`http.test.ts`** — the default transport against a real loopback `http.createServer`.
 - **`engine.test.ts`** — URL building, JSON decoding, error mapping, 429/503 retry, redirects — mocked transport.
 - **`client.test.ts`** — a parameterized table over all 15 client methods asserting URL/query mapping plus parameter pruning — mocked transport.
+- **`validate.test.ts`** — `assertValid`, `LuftValidationError` and its exit-code mapping, and the `parity()` helper.
+- **`parity.test.ts`** — CLI ↔ library parity: one input through `run()` and through the library call on one recording mock transport (`parity()` in `test/helpers.ts`), asserting the same outcome.
 - **`cli.test.ts`** — end-to-end command parsing, domain validation (hour `1..24`, year `>= 2016`, positive ids, date format, conditional `meta` window) and exit codes — mocked client.
 
 ## Continuous integration

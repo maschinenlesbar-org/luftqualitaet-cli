@@ -314,7 +314,7 @@ test("meta rejects --time-from/--time-to without dates", async () => {
   const code = await run(["meta", "--use", "measure", "--time-from", "1", "--time-to", "5"], cli.deps);
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
-  assert.match(cli.err.join("\n"), /need --date-from and --date-to/);
+  assert.match(cli.err.join("\n"), /time_from\/time_to need date_from and date_to/);
 });
 
 test("meta checks the window for every use, not only airquality", async () => {

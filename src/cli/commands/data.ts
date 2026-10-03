@@ -2,9 +2,6 @@ import { InvalidArgumentError, type Command } from "commander";
 import type { CliDeps } from "../io.js";
 import {
   action,
-  assertEnum,
-  index,
-  lang,
   parseHour,
   parseIndexArg,
   parseLangArg,
@@ -13,9 +10,16 @@ import {
   parseYear,
   renderJson,
 } from "../shared.js";
-import { MetaUseValues, ThresholdUseValues } from "../../client/enums.js";
+import {
+  MetaUseValues,
+  ThresholdUseValues,
+  type IndexKind,
+  type Lang,
+  type MetaUse,
+  type ThresholdUse,
+} from "../../client/enums.js";
 import { DEFAULT_META_TIME_FROM, DEFAULT_META_TIME_TO } from "../../client/client.js";
-import { LuftApiError, LuftError } from "../../client/errors.js";
+import { LuftApiError } from "../../client/errors.js";
 
 /**
  * From this year on `transgressions` works for every component; before it, the API
@@ -43,24 +47,6 @@ function parseDate(value: string): string {
     throw new InvalidArgumentError(`Expected a valid calendar date, got "${value}".`);
   }
   return value;
-}
-
-/**
- * Reject a reversed time window (start after end) locally, consistent with the
- * other client-side guards (positive ids, year floor). The window is ordered by
- * date first, then by hour-ending within the same date.
- */
-function assertWindowOrdered(
-  dateFrom: string,
-  timeFrom: number,
-  dateTo: string,
-  timeTo: number,
-): void {
-  if (dateFrom > dateTo || (dateFrom === dateTo && timeFrom > timeTo)) {
-    throw new LuftError(
-      `Window start (${dateFrom} ${timeFrom}:00) is after window end (${dateTo} ${timeTo}:00).`,
-    );
-  }
 }
 
 /**
@@ -97,12 +83,6 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
     program.command("airquality").description("Air-quality index data for a station/window"),
   ).action(
     action(deps, async ({ client, global, opts }) => {
-      assertWindowOrdered(
-        String(opts["dateFrom"]),
-        opts["timeFrom"] as number,
-        String(opts["dateTo"]),
-        opts["timeTo"] as number,
-      );
       renderJson(
         deps,
         global,
@@ -138,12 +118,6 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
       .requiredOption("--scope <id>", "scope id (averaging, see `scopes`)", parsePositiveIntArg),
   ).action(
     action(deps, async ({ client, global, opts }) => {
-      assertWindowOrdered(
-        String(opts["dateFrom"]),
-        opts["timeFrom"] as number,
-        String(opts["dateTo"]),
-        opts["timeTo"] as number,
-      );
       renderJson(
         deps,
         global,
@@ -205,8 +179,8 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
             result = await client[method]({
               component: opts["component"] as number,
               year,
-              lang: lang(opts),
-              index: index(opts),
+              lang: opts["lang"] as Lang | undefined,
+              index: opts["index"] as IndexKind | undefined,
             });
           } catch (err) {
             // Upstream has no transgressions for some components before 2019 (NO₂ and
@@ -243,8 +217,8 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
           deps,
           global,
           await client.thresholds({
-            use: assertEnum(String(opts["use"]), ThresholdUseValues, "use"),
-            lang: lang(opts),
+            use: opts["use"] as ThresholdUse,
+            lang: opts["lang"] as Lang | undefined,
             component: opts["component"] as number | undefined,
             scope: opts["scope"] as number | undefined,
           }),
@@ -267,35 +241,18 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
     .option("--time-to <1-24>", `window end hour (needs the dates; default ${DEFAULT_META_TIME_TO})`, parseHour)
     .action(
       action(deps, async ({ client, global, opts }) => {
-        const use = assertEnum(String(opts["use"]), MetaUseValues, "use");
-        const dateFrom = opts["dateFrom"] as string | undefined;
-        const dateTo = opts["dateTo"] as string | undefined;
-        const timeFrom = opts["timeFrom"] as number | undefined;
-        const timeTo = opts["timeTo"] as number | undefined;
-        if (dateFrom !== undefined || dateTo !== undefined) {
-          // The API applies the window to every use (use=measure returns only the
-          // stations active in it), so validate it whenever dates are given.
-          if (dateFrom === undefined || dateTo === undefined) {
-            throw new LuftError(
-              "meta --date-from and --date-to go together: give both, or neither.",
-            );
-          }
-          // The window order, with omitted hours defaulting to the full day (1..24),
-          // is checked by client.meta(), which also sends those default hours.
-        } else if (timeFrom !== undefined || timeTo !== undefined) {
-          // Hours without dates would be sent against a window the API makes up.
-          throw new LuftError("meta --time-from/--time-to need --date-from and --date-to.");
-        }
         renderJson(
           deps,
           global,
+          // The library checks the use, the window (both dates or neither, hours
+          // only with dates, in order) and fills in the default hours.
           await client.meta({
-            use,
-            lang: lang(opts),
-            date_from: dateFrom,
-            date_to: dateTo,
-            time_from: timeFrom,
-            time_to: timeTo,
+            use: opts["use"] as MetaUse,
+            lang: opts["lang"] as Lang | undefined,
+            date_from: opts["dateFrom"] as string | undefined,
+            date_to: opts["dateTo"] as string | undefined,
+            time_from: opts["timeFrom"] as number | undefined,
+            time_to: opts["timeTo"] as number | undefined,
           }),
         );
       }),

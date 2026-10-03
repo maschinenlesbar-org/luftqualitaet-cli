@@ -85,8 +85,12 @@ an hour from 1 to 24, got 99.`), and no request is sent. The checks (`assertDate
 `assertHour`, `assertId`, `assertWindow`, `assertYear`, `MIN_YEAR`) are exported, as is
 `assertValid(name, value, problem)` with its `Problem` type: a rule is a pure function
 that returns the reason a value is invalid (or `undefined`), and `assertValid` throws
-`LuftValidationError` with `Invalid <name>: <reason>`. The CLI uses the same rules, and
-`run()` maps a `LuftValidationError` to the usage-error exit code `1`.
+`LuftValidationError` with `Invalid <name>: <reason>`. The CLI uses the same rules and
+keeps no copies: its commands pass the parsed options to the client, which checks the
+window order, the `meta` window pairing and the `lang`/`index`/`use` value sets, and
+`run()` prints the library's message and maps a `LuftValidationError` to the
+usage-error exit code `1`. A half `meta` window reads `Invalid meta window: date_from
+and date_to go together; give both, or neither.`
 
 `measures()` requires `component` and `scope` (both required in `MeasuresParams`):
 the response holds one series, and without them the API would pick one itself, so a

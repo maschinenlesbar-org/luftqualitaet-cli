@@ -217,3 +217,46 @@ test("baseUrl: every invalid shape is a LuftValidationError with the CLI's reaso
     assert.equal(lib.requests.length, 0, label);
   }
 });
+
+// ---- Finding 6: one check, one message — the CLI reports the library's error ----
+
+test("rejected inputs give the library's message on both sides, with no request", async () => {
+  const win = { date_from: "2024-01-02", time_from: 1, date_to: "2024-01-01", time_to: 24, station: 143 };
+  const cases: [string[], (c: LuftqualitaetClient) => Promise<unknown>][] = [
+    [
+      ["airquality", "--date-from", "2024-01-02", "--time-from", "1", "--date-to", "2024-01-01", "--time-to", "24", "--station", "143"],
+      (c) => c.airquality(win),
+    ],
+    [
+      ["measures", "--date-from", "2024-01-01", "--time-from", "5", "--date-to", "2024-01-01", "--time-to", "3", "--station", "143", "--component", "1", "--scope", "2"],
+      (c) => c.measures({ date_from: "2024-01-01", time_from: 5, date_to: "2024-01-01", time_to: 3, station: 143, component: 1, scope: 2 }),
+    ],
+    [["meta", "--use", "measure", "--date-from", "2024-01-01"], (c) => c.meta({ use: "measure", date_from: "2024-01-01" })],
+    [["meta", "--use", "map", "--date-to", "2024-01-01"], (c) => c.meta({ use: "map", date_to: "2024-01-01" })],
+    [["meta", "--use", "measure", "--time-from", "3"], (c) => c.meta({ use: "measure", time_from: 3 })],
+    [["meta", "--use", ""], (c) => c.meta({ use: "" as "map" })],
+    [["thresholds", "--use", "map"], (c) => c.thresholds({ use: "map" as "measure" })],
+    [["components", "--lang", ""], (c) => c.components({ lang: "" as "de" })],
+    [["networks", "--index", "x"], (c) => c.networks({ index: "x" as "id" })],
+    [["station-types", "--lang", "fr"], (c) => c.stationTypes("fr" as "de")],
+    [["annual-balances", "--component", "1", "--year", "2020", "--index", "name"], (c) => c.annualBalances({ component: 1, year: 2020, index: "name" as "id" })],
+  ];
+  for (const [argv, call] of cases) {
+    const { cli, lib } = await parity(["--compact", ...argv], (transport) => call(new LuftqualitaetClient({ transport })));
+    const label = argv.join(" ");
+    assert.ok(!lib.ok && lib.error instanceof LuftValidationError, label);
+    assert.equal(lib.requests.length, 0, label);
+    assert.equal(cli.code, 1, label);
+    assert.equal(cli.requests.length, 0, label);
+    assert.equal(cli.err, `Error: ${(lib as { error: Error }).error.message}`, label);
+  }
+});
+
+test("meta: a half date window names the pairing rule", async () => {
+  const { lib } = await parity(["--compact", "meta", "--use", "measure", "--date-from", "2024-01-01"], meta({ use: "measure", date_from: "2024-01-01" }));
+  assert.ok(!lib.ok);
+  assert.equal(
+    (lib as { error: Error }).error.message,
+    "Invalid meta window: date_from and date_to go together; give both, or neither.",
+  );
+});

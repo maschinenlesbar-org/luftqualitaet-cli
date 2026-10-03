@@ -192,6 +192,11 @@ export class LuftqualitaetClient {
     // day (DEFAULT_META_TIME_FROM/TO) and are sent: the API would otherwise fill a
     // missing hour with the current hour, which can reverse an accepted window.
     if (params.date_from !== undefined || params.date_to !== undefined) {
+      if (params.date_from === undefined || params.date_to === undefined) {
+        throw new LuftValidationError(
+          "Invalid meta window: date_from and date_to go together; give both, or neither.",
+        );
+      }
       const time_from = params.time_from ?? DEFAULT_META_TIME_FROM;
       const time_to = params.time_to ?? DEFAULT_META_TIME_TO;
       assertWindow(params.date_from, time_from, params.date_to, time_to);

@@ -1,6 +1,7 @@
 import type { Command } from "commander";
 import type { CliDeps } from "../io.js";
-import { action, index, lang, parseIndexArg, parseLangArg, renderJson } from "../shared.js";
+import type { IndexKind, Lang } from "../../client/enums.js";
+import { action, parseIndexArg, parseLangArg, renderJson } from "../shared.js";
 
 export function registerReferenceCommands(program: Command, deps: CliDeps): void {
   const indexed: { name: string; method: "components" | "networks" | "scopes"; desc: string }[] = [
@@ -16,7 +17,10 @@ export function registerReferenceCommands(program: Command, deps: CliDeps): void
       .option("--index <index>", "id | code", parseIndexArg)
       .action(
         action(deps, async ({ client, global, opts }) => {
-          renderJson(deps, global, await client[method]({ lang: lang(opts), index: index(opts) }));
+          renderJson(deps, global, await client[method]({
+              lang: opts["lang"] as Lang | undefined,
+              index: opts["index"] as IndexKind | undefined,
+            }));
         }),
       );
   }
@@ -37,7 +41,7 @@ export function registerReferenceCommands(program: Command, deps: CliDeps): void
       .option("--lang <lang>", "de | en", parseLangArg)
       .action(
         action(deps, async ({ client, global, opts }) => {
-          renderJson(deps, global, await client[method](lang(opts)));
+          renderJson(deps, global, await client[method](opts["lang"] as Lang | undefined));
         }),
       );
   }

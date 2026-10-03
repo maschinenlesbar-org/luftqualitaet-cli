@@ -264,7 +264,7 @@ const invalidCalls: [string, (c: LuftqualitaetClient) => Promise<unknown>, RegEx
   ["stationTypes lang", (c) => c.stationTypes("xx" as "de"), /^Invalid lang/],
   ["thresholds use", (c) => c.thresholds({ use: "map" as "measure" }), /^Invalid use: expected one of airquality, measure, got "map"\.$/],
   ["meta use", (c) => c.meta({ use: "bogus" as "map" }), /^Invalid use/],
-  ["meta half window", (c) => c.meta({ use: "measure", date_from: "2024-01-01" }), /^Invalid date_to/],
+  ["meta half window", (c) => c.meta({ use: "measure", date_from: "2024-01-01" }), /^Invalid meta window: date_from and date_to go together; give both, or neither\.$/],
   ["meta reversed", (c) => c.meta({ use: "airquality", date_from: "2024-01-01", date_to: "2024-01-01", time_from: 20, time_to: 3 }), /^Invalid window/],
   ["meta airquality without dates", (c) => c.meta({ use: "airquality" }), /^Invalid meta window: use=airquality requires date_from and date_to\.$/],
   ["meta hours alone", (c) => c.meta({ use: "measure", time_from: 3 }), /^Invalid meta window: time_from\/time_to need date_from and date_to\.$/],

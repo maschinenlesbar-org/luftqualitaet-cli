@@ -7,9 +7,7 @@ import type { CliDeps } from "./io.js";
 import { LuftError } from "../client/errors.js";
 import { baseUrlApiPathProblem } from "../client/client.js";
 import type { EngineOptions } from "../client/engine.js";
-import { IndexValues, LangValues } from "../client/enums.js";
 import { baseUrlProblem, headerValueProblem } from "../client/validate.js";
-import type { IndexKind, Lang } from "../client/enums.js";
 
 /**
  * Strictly parse a plain decimal integer string into a number.
@@ -118,7 +116,7 @@ export function parseYear(value: string): number {
  * commander value-parser for `--lang`. Rejects a flag-like value (one starting
  * with `-`): commander would otherwise consume the *next* option (e.g. `--index`)
  * as this option's value, producing a confusing downstream "too many arguments"
- * error. Membership in the allowed set is still validated later by `lang()`.
+ * error. Membership in the allowed set is checked by the client, before any request.
  */
 export function parseLangArg(value: string): string {
   if (value.startsWith("-")) {
@@ -141,36 +139,6 @@ export function parseIndexArg(value: string): string {
     throw new InvalidArgumentError("Option '--index' requires a value (e.g. id | code).");
   }
   return value;
-}
-
-/**
- * Validate a positional argument against an allowed set (commander does not
- * support .choices() on positional args). Throws a LuftError so run() prints a
- * clear message and exits 1.
- */
-export function assertEnum<T extends string>(
-  value: string,
-  allowed: readonly T[],
-  argName: string,
-): T {
-  if (!(allowed as readonly string[]).includes(value)) {
-    throw new LuftError(`Invalid ${argName} "${value}". Expected one of: ${allowed.join(", ")}.`);
-  }
-  return value as T;
-}
-
-/** Resolve and validate the optional `--lang` option shared by many commands. */
-export function lang(opts: Record<string, unknown>): Lang | undefined {
-  return opts["lang"] === undefined
-    ? undefined
-    : assertEnum(String(opts["lang"]), LangValues, "lang");
-}
-
-/** Resolve and validate the optional `--index` option shared by many commands. */
-export function index(opts: Record<string, unknown>): IndexKind | undefined {
-  return opts["index"] === undefined
-    ? undefined
-    : assertEnum(String(opts["index"]), IndexValues, "index");
 }
 
 export interface GlobalOptions {

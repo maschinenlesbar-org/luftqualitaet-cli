@@ -64,7 +64,7 @@ CLI: `airquality-limits`.
 **measures (`/measures/json`).** Raw measurement data for a station over a
 window, for one component and one scope: the response holds one series (one value
 per hour), so without `component`/`scope` the API picks one rather than returning
-all. The CLI requires both. An id the station doesn't measure gives `"data": {}`.
+all. The client (and so the CLI) requires both. An id the station doesn't measure gives `"data": {}`.
 CLI: `measures`.
 
 **measures-limits (`/measures/limits`).** The available date range per

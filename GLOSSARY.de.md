@@ -64,7 +64,7 @@ CLI: `airquality-limits`.
 **measures (`/measures/json`).** Rohe Messdaten für eine Station über ein Zeitfenster,
 für eine Komponente und einen Messumfang: Die Antwort enthält eine Reihe (ein Wert je
 Stunde), ohne `component`/`scope` wählt die API also eine aus, statt alle zu liefern.
-Die CLI verlangt beide. Eine ID, die die Station nicht misst, ergibt `"data": {}`.
+Der Client (und damit die CLI) verlangt beide. Eine ID, die die Station nicht misst, ergibt `"data": {}`.
 CLI: `measures`.
 
 **measures-limits (`/measures/limits`).** Der verfügbare Datumsbereich je

@@ -76,13 +76,14 @@ export class LuftqualitaetClient {
   }
 
   /**
-   * Raw measurement data for a station over a window — one component/scope series;
-   * give both, or the API picks the series (see `MeasuresParams`).
+   * Raw measurement data for a station over a window — one component/scope series.
+   * Both are required: without them the API would pick a series itself (see
+   * `MeasuresParams`).
    */
   async measures(params: MeasuresParams): Promise<AirDataResult> {
     assertWindowParams(params);
-    optional(params.component, (v) => assertId("component", v));
-    optional(params.scope, (v) => assertId("scope", v));
+    assertId("component", params.component);
+    assertId("scope", params.scope);
     return this.engine.getJson(`${API}/measures/json`, prune({ ...params }));
   }
 

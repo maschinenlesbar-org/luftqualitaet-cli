@@ -34,8 +34,9 @@ id. Drop `--index` for the default id-keyed map. Use `--lang de` for German name
 
 ### 2. Look up scope ids (which averaging definition?)
 
-`measures` and `thresholds` take an optional scope id (the averaging/aggregation
-definition — daily average, hourly average, 8-hour max, ...). List them to pick one.
+`measures` needs a scope id and `thresholds` takes an optional one (the
+averaging/aggregation definition — daily average, hourly average, 8-hour max, ...).
+List them to pick one.
 
 ```bash
 luftqualitaet scopes --lang en

@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { LuftqualitaetClient } from "../src/client/client.js";
 import { LuftValidationError } from "../src/client/errors.js";
 import type { Transport } from "../src/client/http.js";
-import type { MetaParams } from "../src/client/types.js";
+import type { MeasuresParams, MetaParams } from "../src/client/types.js";
 import { parity } from "./helpers.js";
 
 const meta = (params: MetaParams) => (transport: Transport) => new LuftqualitaetClient({ transport }).meta(params);
@@ -71,6 +71,44 @@ test("meta: use=airquality with a full window sends the same request on both sid
   const { cli, lib } = await parity(
     ["--compact", "meta", "--use", "airquality", "--date-from", "2024-01-01", "--date-to", "2024-01-02"],
     meta({ use: "airquality", date_from: "2024-01-01", date_to: "2024-01-02" }),
+  );
+  assert.equal(cli.code, 0);
+  assert.ok(lib.ok);
+  assert.deepEqual(lib.requests.map((r) => r.url), cli.requests.map((r) => r.url));
+});
+
+// ---- Finding 3: measures needs component and scope on both sides ----
+
+const measuresWindow = ["--date-from", "2024-01-01", "--time-from", "1", "--date-to", "2024-01-02", "--time-to", "24", "--station", "143"];
+const measuresParams = { date_from: "2024-01-01", time_from: 1, date_to: "2024-01-02", time_to: 24, station: 143 };
+
+test("measures: a missing component or scope is rejected by both, with no request", async () => {
+  for (const [extra, params, missing] of [
+    [[], {}, "component"],
+    [["--scope", "2"], { scope: 2 }, "component"],
+    [["--component", "1"], { component: 1 }, "scope"],
+  ] as const) {
+    const { cli, lib } = await parity(["--compact", "measures", ...measuresWindow, ...extra], (transport) =>
+      new LuftqualitaetClient({ transport }).measures({ ...measuresParams, ...params } as MeasuresParams),
+    );
+    const label = extra.join(" ") || "neither";
+    assert.equal(cli.code, 1, label);
+    assert.equal(cli.requests.length, 0, label);
+    assert.match(cli.err, new RegExp(`required option '--${missing} <id>' not specified`), label);
+    assert.ok(!lib.ok && lib.error instanceof LuftValidationError, label);
+    assert.equal(
+      (lib as { error: Error }).error.message,
+      `Invalid ${missing}: expected a positive integer, got undefined.`,
+      label,
+    );
+    assert.equal(lib.requests.length, 0, label);
+  }
+});
+
+test("measures: with component and scope both sides send the same request", async () => {
+  const { cli, lib } = await parity(
+    ["--compact", "measures", ...measuresWindow, "--component", "1", "--scope", "2"],
+    (transport) => new LuftqualitaetClient({ transport }).measures({ ...measuresParams, component: 1, scope: 2 }),
   );
   assert.equal(cli.code, 0);
   assert.ok(lib.ok);

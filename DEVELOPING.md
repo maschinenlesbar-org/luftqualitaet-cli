@@ -81,6 +81,10 @@ that returns the reason a value is invalid (or `undefined`), and `assertValid` t
 `LuftValidationError` with `Invalid <name>: <reason>`. The CLI uses the same rules, and
 `run()` maps a `LuftValidationError` to the usage-error exit code `1`.
 
+`measures()` requires `component` and `scope` (both required in `MeasuresParams`):
+the response holds one series, and without them the API would pick one itself, so a
+call without either is a `LuftValidationError`.
+
 `meta({ use: "airquality" })` without both `date_from` and `date_to` is a
 `LuftValidationError` (`Invalid meta window: use=airquality requires date_from and
 date_to.`), as the API needs a window for that bundle; the CLI's `meta` reports the

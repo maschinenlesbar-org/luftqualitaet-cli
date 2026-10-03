@@ -146,12 +146,20 @@ export class LuftqualitaetClient {
     return this.engine.getJson(`${API}/thresholds/json`, prune({ ...params }));
   }
 
-  /** Combined metadata for a use (components, scopes, networks, stations, ...). */
+  /**
+   * Combined metadata for a use (components, scopes, networks, stations, ...).
+   * `use: "airquality"` needs `date_from` and `date_to`; omitted hours are sent as
+   * `DEFAULT_META_TIME_FROM`/`DEFAULT_META_TIME_TO`.
+   */
   async meta(params: MetaParams): Promise<AirDataResult> {
     assertOneOf("use", params.use, MetaUseValues);
     optional(params.lang, (v) => assertOneOf("lang", v, LangValues));
-    // Dates are optional (required for use=airquality by the API); when given, both
-    // are needed and the whole window is checked. Omitted hours default to the full
+    // use=airquality needs a date window: the API requires one for that bundle.
+    if (params.use === "airquality" && (params.date_from === undefined || params.date_to === undefined)) {
+      throw new LuftValidationError("Invalid meta window: use=airquality requires date_from and date_to.");
+    }
+    // For the other uses dates are optional; when given, both are needed and the
+    // whole window is checked. Omitted hours default to the full
     // day (DEFAULT_META_TIME_FROM/TO) and are sent: the API would otherwise fill a
     // missing hour with the current hour, which can reverse an accepted window.
     if (params.date_from !== undefined || params.date_to !== undefined) {

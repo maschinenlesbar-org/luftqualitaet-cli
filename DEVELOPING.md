@@ -81,7 +81,10 @@ that returns the reason a value is invalid (or `undefined`), and `assertValid` t
 `LuftValidationError` with `Invalid <name>: <reason>`. The CLI uses the same rules, and
 `run()` maps a `LuftValidationError` to the usage-error exit code `1`.
 
-`meta()` fills in omitted window hours when dates are given: `DEFAULT_META_TIME_FROM`
+`meta({ use: "airquality" })` without both `date_from` and `date_to` is a
+`LuftValidationError` (`Invalid meta window: use=airquality requires date_from and
+date_to.`), as the API needs a window for that bundle; the CLI's `meta` reports the
+same error. `meta()` fills in omitted window hours when dates are given: `DEFAULT_META_TIME_FROM`
 (`1`) and `DEFAULT_META_TIME_TO` (`24`, both exported). It checks the window with them
 and sends them, because the API would otherwise use the current hour and could reverse
 a window that passed the check. The CLI's `meta` passes its options straight through.

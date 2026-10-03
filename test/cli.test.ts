@@ -197,7 +197,7 @@ test("meta --use airquality requires a date window (no request)", async () => {
   const code = await run(["meta", "--use", "airquality"], cli.deps);
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
-  assert.match(cli.err.join("\n"), /requires --date-from and --date-to/);
+  assert.match(cli.err.join("\n"), /use=airquality requires date_from and date_to/);
 });
 
 test("meta --use measure needs no window", async () => {

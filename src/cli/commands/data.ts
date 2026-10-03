@@ -272,9 +272,6 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
         const dateTo = opts["dateTo"] as string | undefined;
         const timeFrom = opts["timeFrom"] as number | undefined;
         const timeTo = opts["timeTo"] as number | undefined;
-        if (use === "airquality" && (dateFrom === undefined || dateTo === undefined)) {
-          throw new LuftError("meta --use airquality requires --date-from and --date-to.");
-        }
         if (dateFrom !== undefined || dateTo !== undefined) {
           // The API applies the window to every use (use=measure returns only the
           // stations active in it), so validate it whenever dates are given.

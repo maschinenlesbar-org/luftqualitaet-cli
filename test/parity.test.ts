@@ -5,6 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { LuftqualitaetClient } from "../src/client/client.js";
+import { LuftValidationError } from "../src/client/errors.js";
 import type { Transport } from "../src/client/http.js";
 import type { MetaParams } from "../src/client/types.js";
 import { parity } from "./helpers.js";
@@ -42,4 +43,36 @@ test("meta: without dates no hours are sent on either side", async () => {
   assert.ok(lib.ok);
   assert.deepEqual(lib.requests.map((r) => r.url), cli.requests.map((r) => r.url));
   assert.equal(new URL(lib.requests[0]!.url).search, "?use=measure");
+});
+
+// ---- Finding 2: meta use=airquality needs a date window on both sides ----
+
+test("meta: use=airquality without dates is rejected by both, with no request", async () => {
+  for (const [argv, params] of [
+    [["--use", "airquality"], { use: "airquality" }],
+    [["--use", "airquality", "--lang", "en"], { use: "airquality", lang: "en" }],
+  ] as const) {
+    const { cli, lib } = await parity(["--compact", "meta", ...argv], meta(params as MetaParams));
+    const label = argv.join(" ");
+    assert.equal(cli.code, 1, label);
+    assert.equal(cli.requests.length, 0, label);
+    assert.ok(!lib.ok && lib.error instanceof LuftValidationError, label);
+    assert.equal(
+      (lib as { error: Error }).error.message,
+      "Invalid meta window: use=airquality requires date_from and date_to.",
+      label,
+    );
+    assert.equal(cli.err, `Error: ${(lib as { error: Error }).error.message}`, label);
+    assert.equal(lib.requests.length, 0, label);
+  }
+});
+
+test("meta: use=airquality with a full window sends the same request on both sides", async () => {
+  const { cli, lib } = await parity(
+    ["--compact", "meta", "--use", "airquality", "--date-from", "2024-01-01", "--date-to", "2024-01-02"],
+    meta({ use: "airquality", date_from: "2024-01-01", date_to: "2024-01-02" }),
+  );
+  assert.equal(cli.code, 0);
+  assert.ok(lib.ok);
+  assert.deepEqual(lib.requests.map((r) => r.url), cli.requests.map((r) => r.url));
 });

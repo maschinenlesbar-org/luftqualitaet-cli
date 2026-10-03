@@ -8,7 +8,7 @@ import { LuftqualitaetClient } from "../src/client/client.js";
 import { LuftValidationError } from "../src/client/errors.js";
 import type { Transport } from "../src/client/http.js";
 import type { MeasuresParams, MetaParams } from "../src/client/types.js";
-import { parity } from "./helpers.js";
+import { parity, requestShapes } from "./helpers.js";
 
 const meta = (params: MetaParams) => (transport: Transport) => new LuftqualitaetClient({ transport }).meta(params);
 
@@ -113,4 +113,41 @@ test("measures: with component and scope both sides send the same request", asyn
   assert.equal(cli.code, 0);
   assert.ok(lib.ok);
   assert.deepEqual(lib.requests.map((r) => r.url), cli.requests.map((r) => r.url));
+});
+
+// ---- Finding 5: the User-Agent rules are the library's ----
+
+test("userAgent: blank, control and non-Latin-1 values are rejected by both, with no request", async () => {
+  for (const [ua, reason] of [
+    ["", "Expected a non-empty value."],
+    ["   ", "Expected a non-empty value."],
+    ["a\r\nX-Evil: 1", "Value contains control characters."],
+    ["a\u0000b", "Value contains control characters."],
+    ["a\u007fb", "Value contains control characters."],
+    ["€", "Value contains characters outside Latin-1 (above U+00FF)."],
+    ["日本", "Value contains characters outside Latin-1 (above U+00FF)."],
+  ] as const) {
+    const { cli, lib } = await parity([`--user-agent=${ua}`, "--compact", "scopes"], (transport) =>
+      new LuftqualitaetClient({ userAgent: ua, transport }).scopes(),
+    );
+    const label = JSON.stringify(ua);
+    assert.equal(cli.code, 1, label);
+    assert.equal(cli.requests.length, 0, label);
+    assert.ok(cli.err.includes(reason), label);
+    assert.ok(!lib.ok && lib.error instanceof LuftValidationError, label);
+    assert.equal((lib as { error: Error }).error.message, `Invalid userAgent: ${reason}`, label);
+    assert.equal(lib.requests.length, 0, label);
+  }
+});
+
+test("userAgent: tab and Latin-1 values are sent identically by both", async () => {
+  for (const ua of ["a\tb", "café/1.0"]) {
+    const { cli, lib } = await parity([`--user-agent=${ua}`, "--compact", "scopes"], (transport) =>
+      new LuftqualitaetClient({ userAgent: ua, transport }).scopes(),
+    );
+    assert.equal(cli.code, 0, ua);
+    assert.ok(lib.ok, ua);
+    assert.deepEqual(requestShapes(lib.requests), requestShapes(cli.requests), ua);
+    assert.equal(lib.requests[0]!.headers?.["User-Agent"], ua);
+  }
 });

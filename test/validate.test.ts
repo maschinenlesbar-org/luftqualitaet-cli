@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { run } from "../src/cli/run.js";
 import { LuftqualitaetClient } from "../src/client/client.js";
 import { LuftError, LuftValidationError } from "../src/client/errors.js";
-import { assertValid, type Problem } from "../src/client/validate.js";
+import { assertValid, headerValueProblem, nonBlankProblem, type Problem } from "../src/client/validate.js";
 import * as root from "../src/index.js";
 import type { CliDeps } from "../src/cli/io.js";
 import { jsonResponse, makeMockTransport, parity } from "./helpers.js";
@@ -79,4 +79,33 @@ test("parity() runs one input through the CLI and the library on one transport",
   assert.deepEqual(lib.value, { count: 0 });
   assert.equal(cli.requests.length, 1);
   assert.deepEqual(cli.requests, lib.requests);
+});
+
+test("nonBlankProblem rejects a non-string and a blank string", () => {
+  assert.equal(nonBlankProblem("x"), undefined);
+  assert.equal(nonBlankProblem(""), "Expected a non-empty value.");
+  assert.equal(nonBlankProblem(" \t"), "Expected a non-empty value.");
+  assert.equal(nonBlankProblem(5), "Expected a string.");
+});
+
+test("headerValueProblem allows tab and Latin-1, rejects blank, controls, DEL and > U+00FF", () => {
+  assert.equal(headerValueProblem("my-app/1.0"), undefined);
+  assert.equal(headerValueProblem("a\tb"), undefined);
+  assert.equal(headerValueProblem("café ÿ"), undefined);
+  assert.equal(headerValueProblem("  "), "Expected a non-empty value.");
+  for (const bad of ["a\r\nb", "a\nb", "a\u0000b", "a\u001bb", "a\u007fb"]) {
+    assert.equal(headerValueProblem(bad), "Value contains control characters.", JSON.stringify(bad));
+  }
+  for (const bad of ["€", "日本", "aĀ"]) {
+    assert.equal(headerValueProblem(bad), "Value contains characters outside Latin-1 (above U+00FF).", bad);
+  }
+});
+
+test("the client constructor rejects a bad userAgent with LuftValidationError", () => {
+  assert.throws(
+    () => new LuftqualitaetClient({ userAgent: "a\r\nX-Evil: 1" }),
+    (err: unknown) =>
+      err instanceof LuftValidationError && err.message === "Invalid userAgent: Value contains control characters.",
+  );
+  assert.equal(root.assertHeaderValue("User-Agent", "ok/1"), "ok/1");
 });

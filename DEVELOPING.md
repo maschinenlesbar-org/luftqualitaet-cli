@@ -70,6 +70,13 @@ The numeric options must be integers in range — `timeoutMs` 0..2^31−1, `maxR
 `maxResponseBytes` 0..2^53−1 — or the constructor throws a `LuftError` naming the
 option (`Invalid option timeoutMs: expected an integer from 0 to 2147483647, got NaN.`).
 
+`userAgent` is checked there too, with the same rule as the CLI's `--user-agent`
+(`headerValueProblem`, also exported as `assertHeaderValue(name, value)`): a blank value,
+a control character other than tab (CR/LF included), DEL or a character above U+00FF
+throws a `LuftValidationError` (`Invalid userAgent: Value contains control characters.`)
+instead of reaching a custom transport or failing at request time with Node's raw
+`TypeError`. Only an omitted `userAgent` selects the default.
+
 The methods check their parameters before any request, like the CLI: dates as real
 `YYYY-MM-DD` calendar dates, hours `1..24`, a window in order, positive integer ids,
 `year >= 2016`, and `lang`/`index`/`use` from their value sets. A bad value is a

@@ -5,7 +5,7 @@
 import { MAX_TIMEOUT_MS, nodeHttpTransport, type Transport } from "./http.js";
 import { buildQueryString, type QueryParams } from "./query.js";
 import { LuftApiError, LuftError, LuftNetworkError, LuftParseError, redactUrl } from "./errors.js";
-import { assertValid, headerValueProblem } from "./validate.js";
+import { assertValid, baseUrlWhitespaceProblem, headerValueProblem } from "./validate.js";
 
 /**
  * The API's host. The client appends the API path (`API_PATH`, `/api/air-data/v3`).
@@ -29,7 +29,9 @@ export interface RawResponse {
 export interface EngineOptions {
   /**
    * Base URL of the API: the host (plus an optional path prefix on a mirror), without
-   * the API path, which the client appends. Defaults to https://luftdaten.umweltbundesamt.de
+   * the API path, which the client appends. Defaults to https://luftdaten.umweltbundesamt.de.
+   * Surrounding or inner whitespace and control characters throw a LuftValidationError,
+   * and so does (in the client) a path that already ends in the API path.
    */
   baseUrl?: string;
   /** Swappable transport. Defaults to the built-in node http/https transport. */
@@ -195,7 +197,13 @@ export class RequestEngine {
   private readonly sleep: (ms: number) => Promise<void>;
 
   constructor(options: EngineOptions = {}) {
-    this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
+    // The raw value is checked before the trailing-slash strip, so "https://h/ "
+    // cannot slip past it; only an omitted baseUrl selects the default.
+    const baseUrl =
+      options.baseUrl === undefined
+        ? DEFAULT_BASE_URL
+        : assertValid("baseUrl", options.baseUrl, baseUrlWhitespaceProblem);
+    this.baseUrl = baseUrl.replace(/\/+$/, "");
     // Re-check the base-URL scheme here, not only in the default transport: a
     // library consumer that injects a custom transport would otherwise get no
     // gating at all, and could be steered to a non-http(s) scheme.

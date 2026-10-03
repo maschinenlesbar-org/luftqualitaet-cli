@@ -34,7 +34,8 @@ data this tool wraps.
 client targets the live API path `/api/air-data/v3` on
 `https://luftdaten.umweltbundesamt.de` (the default base URL; the older address
 `https://www.umweltbundesamt.de/api/air_data/v3` answers with a permanent redirect
-there). `--base-url` takes the host only — the CLI adds the API path. It supersedes the **v2**
+there). `--base-url` (the client's `baseUrl`) takes the host only — the client adds the
+API path, and refuses a base URL that already ends in it. It supersedes the **v2**
 OpenAPI spec published at
 [luftqualitaet.api.bund.dev](https://luftqualitaet.api.bund.dev/).
 

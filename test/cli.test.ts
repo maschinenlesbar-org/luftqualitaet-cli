@@ -419,7 +419,7 @@ for (const [base, hint] of [
     assert.equal(await run(["--base-url", base, "scopes"], cli.deps), 1);
     assert.equal(cli.mt.calls.length, 0);
     const text = cli.err.join("\n");
-    assert.match(text, /Leave out \/api\/air[-_]data\/v3: the base URL is the host, and the CLI adds \/api\/air-data\/v3 itself/);
+    assert.match(text, /Leave out \/api\/air[-_]data\/v3: the base URL is the host, and the client adds \/api\/air-data\/v3 itself/);
     assert.ok(text.includes(hint), text);
   });
 }

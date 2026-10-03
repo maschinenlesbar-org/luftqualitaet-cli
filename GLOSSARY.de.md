@@ -34,7 +34,8 @@ Luftqualitätsdaten, die dieses Tool abfragt.
 Dieser Client nutzt den Live-API-Pfad `/api/air-data/v3` auf
 `https://luftdaten.umweltbundesamt.de` (die Standard-Basis-URL; die ältere Adresse
 `https://www.umweltbundesamt.de/api/air_data/v3` leitet dauerhaft dorthin um).
-`--base-url` nimmt nur den Host – den API-Pfad ergänzt die CLI. Sie löst die
+`--base-url` (im Client `baseUrl`) nimmt nur den Host – den API-Pfad ergänzt der Client
+und lehnt eine Basis-URL ab, die schon darauf endet. Sie löst die
 OpenAPI-Spezifikation **v2** ab, die unter
 [luftqualitaet.api.bund.dev](https://luftqualitaet.api.bund.dev/) veröffentlicht ist.
 

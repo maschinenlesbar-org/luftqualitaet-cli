@@ -20,11 +20,13 @@ import { LangValues, MetaUseValues, ThresholdUseValues, type Lang } from "./enum
 import {
   assertId,
   assertListParams,
+  assertValid,
   assertOneOf,
   assertWindow,
   assertWindowParams,
   assertYear,
   optional,
+  type Problem,
 } from "./validate.js";
 
 /**
@@ -38,6 +40,31 @@ export const DEFAULT_META_TIME_TO = 24;
 /** The API path the client appends to the base URL (the host). */
 export const API_PATH = "/api/air-data/v3";
 const API = API_PATH;
+
+/**
+ * A base URL must not already end in the API path, in the current or the old
+ * spelling (`/api/air-data/v3`, `/api/air_data/v3`): the client appends it, so the
+ * API's documented address would request `/api/air-data/v3/api/air-data/v3/...` and
+ * get a 404. The reason names the host to use instead. A value that does not parse
+ * passes here (the engine reports it).
+ */
+export const baseUrlApiPathProblem: Problem<unknown> = (value) => {
+  if (typeof value !== "string") return undefined;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return undefined;
+  }
+  const apiPath = /\/api\/air[-_]data\/v3\/*$/.exec(url.pathname);
+  if (!apiPath) return undefined;
+  // (url.origin carries no userinfo, so nothing secret is echoed.)
+  const prefix = url.pathname.slice(0, apiPath.index);
+  return (
+    `Leave out ${apiPath[0].replace(/\/+$/, "")}: the base URL is the host, and the client adds ` +
+    `${API_PATH} itself (try ${url.origin}${prefix}).`
+  );
+};
 
 /** `component` + `year` (+ optional lang/index) of the annual endpoints. */
 function assertYearComponent(params: YearComponentParams): void {
@@ -60,6 +87,7 @@ export class LuftqualitaetClient {
 
   constructor(options: EngineOptions = {}) {
     this.engine = new RequestEngine(options);
+    if (options.baseUrl !== undefined) assertValid("baseUrl", options.baseUrl, baseUrlApiPathProblem);
   }
 
   // --- Air-quality index & raw measures -------------------------------------

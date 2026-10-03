@@ -1,6 +1,12 @@
 // Public entry point for the API client library.
 
-export { LuftqualitaetClient, API_PATH, DEFAULT_META_TIME_FROM, DEFAULT_META_TIME_TO } from "./client.js";
+export {
+  LuftqualitaetClient,
+  API_PATH,
+  DEFAULT_META_TIME_FROM,
+  DEFAULT_META_TIME_TO,
+  baseUrlApiPathProblem,
+} from "./client.js";
 export {
   RequestEngine,
   DEFAULT_BASE_URL,
@@ -32,6 +38,7 @@ export {
   assertWindow,
   assertValid,
   assertYear,
+  baseUrlWhitespaceProblem,
   headerValueProblem,
   nonBlankProblem,
 } from "./validate.js";

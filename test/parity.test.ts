@@ -151,3 +151,43 @@ test("userAgent: tab and Latin-1 values are sent identically by both", async () 
     assert.equal(lib.requests[0]!.headers?.["User-Agent"], ua);
   }
 });
+
+// ---- Finding 4: base-URL whitespace and API-path rules are the library's ----
+
+test("baseUrl: the API path or whitespace in it is rejected by both, with no request", async () => {
+  const leaveOut = (spelling: string, origin: string) =>
+    `Leave out ${spelling}: the base URL is the host, and the client adds /api/air-data/v3 itself (try ${origin}).`;
+  for (const [baseUrl, reason] of [
+    ["https://luftdaten.umweltbundesamt.de/api/air-data/v3", leaveOut("/api/air-data/v3", "https://luftdaten.umweltbundesamt.de")],
+    ["https://www.umweltbundesamt.de/api/air_data/v3/", leaveOut("/api/air_data/v3", "https://www.umweltbundesamt.de")],
+    ["http://mirror.test/uba/api/air-data/v3", leaveOut("/api/air-data/v3", "http://mirror.test/uba")],
+    ["https://luftdaten.umweltbundesamt.de ", "A base URL cannot have surrounding whitespace."],
+    [" https://luftdaten.umweltbundesamt.de", "A base URL cannot have surrounding whitespace."],
+    ["https://luftdaten.umweltbundesamt.de\n", "A base URL cannot have surrounding whitespace."],
+    ["https://luftdaten.umweltbundesamt.de/ ", "A base URL cannot have surrounding whitespace."],
+    ["https://mirror.test/a\tb", "A base URL cannot contain whitespace or control characters."],
+    ["https://mirror.test/a b", "A base URL cannot contain whitespace or control characters."],
+  ] as const) {
+    const { cli, lib } = await parity(["--compact", "--base-url", baseUrl, "networks"], (transport) =>
+      new LuftqualitaetClient({ baseUrl, transport }).networks(),
+    );
+    const label = JSON.stringify(baseUrl);
+    assert.equal(cli.code, 1, label);
+    assert.equal(cli.requests.length, 0, label);
+    assert.ok(cli.err.includes(reason), `${label}: ${cli.err}`);
+    assert.ok(!lib.ok && lib.error instanceof LuftValidationError, label);
+    assert.equal((lib as { error: Error }).error.message, `Invalid baseUrl: ${reason}`, label);
+    assert.equal(lib.requests.length, 0, label);
+  }
+});
+
+test("baseUrl: a host or a mirror prefix gives the identical request on both sides", async () => {
+  for (const baseUrl of ["https://luftdaten.umweltbundesamt.de", "http://mirror.test/uba/"]) {
+    const { cli, lib } = await parity(["--compact", "--base-url", baseUrl, "networks"], (transport) =>
+      new LuftqualitaetClient({ baseUrl, transport }).networks(),
+    );
+    assert.equal(cli.code, 0, baseUrl);
+    assert.ok(lib.ok, baseUrl);
+    assert.deepEqual(requestShapes(lib.requests), requestShapes(cli.requests), baseUrl);
+  }
+});

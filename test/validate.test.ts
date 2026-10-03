@@ -1,9 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { run } from "../src/cli/run.js";
-import { LuftqualitaetClient } from "../src/client/client.js";
+import { LuftqualitaetClient, baseUrlApiPathProblem } from "../src/client/client.js";
 import { LuftError, LuftValidationError } from "../src/client/errors.js";
-import { assertValid, headerValueProblem, nonBlankProblem, type Problem } from "../src/client/validate.js";
+import {
+  assertValid,
+  baseUrlWhitespaceProblem,
+  headerValueProblem,
+  nonBlankProblem,
+  type Problem,
+} from "../src/client/validate.js";
 import * as root from "../src/index.js";
 import type { CliDeps } from "../src/cli/io.js";
 import { jsonResponse, makeMockTransport, parity } from "./helpers.js";
@@ -108,4 +114,23 @@ test("the client constructor rejects a bad userAgent with LuftValidationError", 
       err instanceof LuftValidationError && err.message === "Invalid userAgent: Value contains control characters.",
   );
   assert.equal(root.assertHeaderValue("User-Agent", "ok/1"), "ok/1");
+});
+
+test("baseUrlWhitespaceProblem rejects surrounding and inner whitespace and controls", () => {
+  assert.equal(baseUrlWhitespaceProblem("https://h.example/p/"), undefined);
+  assert.equal(baseUrlWhitespaceProblem(" https://h.example"), "A base URL cannot have surrounding whitespace.");
+  assert.equal(baseUrlWhitespaceProblem("https://h.example/\n"), "A base URL cannot have surrounding whitespace.");
+  for (const bad of ["https://h.example/a b", "https://h.example/a\tb", "https://h.example/a\u0000b", "https://h.example/a\u007fb"]) {
+    assert.equal(baseUrlWhitespaceProblem(bad), "A base URL cannot contain whitespace or control characters.", JSON.stringify(bad));
+  }
+});
+
+test("baseUrlApiPathProblem rejects a path ending in the API path, either spelling", () => {
+  assert.equal(baseUrlApiPathProblem("https://luftdaten.umweltbundesamt.de"), undefined);
+  assert.equal(baseUrlApiPathProblem("http://mirror.test/uba/"), undefined);
+  assert.equal(baseUrlApiPathProblem("notaurl"), undefined);
+  assert.equal(
+    baseUrlApiPathProblem("https://user:pw@h.example/x/api/air_data/v3//"),
+    "Leave out /api/air_data/v3: the base URL is the host, and the client adds /api/air-data/v3 itself (try https://h.example/x).",
+  );
 });

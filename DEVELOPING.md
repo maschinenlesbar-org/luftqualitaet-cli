@@ -153,8 +153,9 @@ maps errors. Sits between the client's resource methods and the transport.
 `DEFAULT_BASE_URL` is `https://luftdaten.umweltbundesamt.de`; the client appends
 `API_PATH` (`/api/air-data/v3`), both exported. The old `https://www.umweltbundesamt.de`
 + `/api/air_data/v3` answers every request with a permanent 301 to that host and path.
-The CLI's `parseBaseUrl` rejects a `--base-url` that already ends in the API path (either
-spelling) with a hint naming the host to use instead.
+The client constructor rejects a `baseUrl` that already ends in the API path (either
+spelling) with a `LuftValidationError` naming the host to use instead
+(`baseUrlApiPathProblem`, exported); the CLI's `parseBaseUrl` uses the same rule.
 
 **RawResponse.** The low-level result of a request: `{ data: Buffer,
 contentType, status }` — raw bytes, never lossily decoded.
@@ -203,9 +204,12 @@ throws a typed `LuftNetworkError`, so a library consumer that injects a custom
 transport can never hand it a non-http(s) base URL. And the default transport
 ([`http.ts`](src/client/http.ts)) gates the scheme on **every redirect hop**.
 Paths are appended to the base URL as a string, so a base URL with a query (`?`) or
-fragment (`#`) is refused too — by `parseBaseUrl` (usage error, also for surrounding
-whitespace) and by the engine constructor (`LuftNetworkError`) — instead of swallowing
-every request path. Userinfo (`http://user:secret@mirror/`) is allowed — Node sends it
+fragment (`#`) is refused too — by `parseBaseUrl` (usage error) and by the engine
+constructor (`LuftNetworkError`) — instead of swallowing every request path. The engine
+constructor also checks the raw value, before trailing slashes are stripped, for
+surrounding or inner whitespace and control characters (`baseUrlWhitespaceProblem`,
+exported, and used by `parseBaseUrl` too): `new URL()` would hide them, while the raw
+string is joined to each path. That throws a `LuftValidationError`. Userinfo (`http://user:secret@mirror/`) is allowed — Node sends it
 as Basic auth — but `redactUrl` (exported from [`errors.ts`](src/client/errors.ts))
 shows it as `***@` in every error message and in `LuftApiError.url`.
 

@@ -319,6 +319,14 @@ npm test          # builds, then runs `node --test` over dist/test
 - **`validate.test.ts`** — `assertValid`, `LuftValidationError` and its exit-code mapping, and the `parity()` helper.
 - **`parity.test.ts`** — CLI ↔ library parity: one input through `run()` and through the library call on one recording mock transport (`parity()` in `test/helpers.ts`), asserting the same outcome.
 - **`cli.test.ts`** — end-to-end command parsing, domain validation (hour `1..24`, year `>= 2016`, positive ids, date format, conditional `meta` window) and exit codes — mocked client.
+- **`conformance-p*.test.ts`** — the checks shared across the `*-cli` repos (fix plan
+  `.reviews/2026-10-05-exploratory/fix-plan.md` in the workspace), one file per pattern, the same
+  code in every repo apart from an adapter block at the top: P1 credential redaction in CLI output,
+  P2 in library objects and errors, P3 credentials across redirects, P4/P19 base-URL validation
+  (P19 skipped: no environment variable here), P5 the transport contract (timeout, size cap, body
+  types, header shapes, resets), P6 the retry floor, P7 pipes and exit codes (spawns the built
+  bin), P8/P9/P13 charset, 2xx envelopes and error classes, P10 unknown parameters, repeated
+  options and the empty-answer note.
 
 ## Continuous integration
 

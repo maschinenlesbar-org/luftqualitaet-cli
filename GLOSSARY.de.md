@@ -181,7 +181,9 @@ liefert: `airquality` | `measure`. CLI: `thresholds --use`.
 **503** antworten; die Engine wiederholt solche Anfragen automatisch und wartet dabei das
 `Retry-After` der Antwort ab (Sekunden oder ein HTTP-Datum), sonst linear steigend (200 ms,
 400 ms, …). Ein `Retry-After` über 30 s wird nicht abgewartet: Der Fehler erscheint sofort
-(`--max-retries`, `0..10`, Standard `2`).
+(`--max-retries`, `0..10`, Standard `2`). Eine Verbindung, die der Server mitten in der
+Anfrage abbricht, wird ebenso wiederholt (linear steigend); eine abgelehnte Verbindung, ein
+DNS-Fehler oder eine Zeitüberschreitung nicht.
 
 **Weiterleitungen.** Die Engine folgt standardmäßig bis zu 5 HTTP-Weiterleitungen
 (einstellbar mit `--max-redirects`; `0` schaltet das Folgen ab). Bei einer
@@ -195,7 +197,9 @@ verwenden). Zugangsdaten im `Location` eines Servers werden nie verwendet.
 
 **Obergrenze der Antwortgröße (`maxResponseBytes`).** Eine feste Obergrenze für die Größe
 des Antwort-Bodys (Standard 100 MiB; `0` = unbegrenzt), die vor Speichererschöpfung durch
-einen feindseligen oder fehlerhaften Endpoint schützt. CLI: `--max-response-bytes`.
+einen feindseligen oder fehlerhaften Endpoint schützt. CLI: `--max-response-bytes`. Die
+Engine setzt sie, wie auch das Zeitlimit, auch für einen eigenen Transport eines
+Bibliotheksnutzers durch.
 
 **Nur lesend, ohne Authentifizierung.** Die Air-Data-API des UBA benötigt keinen
 API-Schlüssel; dieser Client implementiert nur die offenen, lesenden `GET`-Endpoints.

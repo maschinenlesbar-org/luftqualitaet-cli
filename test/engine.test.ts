@@ -311,3 +311,41 @@ test("numeric engine options must be integers in range", () => {
   new RequestEngine({ timeoutMs: 0, maxRetries: 10, retryDelayMs: 30_000, maxRedirects: 20, maxResponseBytes: 0 });
   new RequestEngine({});
 });
+
+test("a Location in a Headers object or with a capitalised key is followed (findings 04#2)", async () => {
+  for (const headers of [new Headers({ Location: "/moved" }), { Location: "/moved" }]) {
+    const seen: string[] = [];
+    const transport = async (req: { url: string }) => {
+      seen.push(req.url);
+      return req.url.endsWith("/moved")
+        ? jsonResponse({ ok: true })
+        : { status: 301, headers: headers as unknown as Record<string, string>, body: Buffer.alloc(0) };
+    };
+    const e = new RequestEngine({ baseUrl: "https://a.test", transport });
+    assert.deepEqual(await e.getJson("/start"), { ok: true });
+    assert.deepEqual(seen, ["https://a.test/start", "https://a.test/moved"]);
+  }
+});
+
+test("a redirect to a non-http(s) scheme is refused before the transport sees it", async () => {
+  for (const location of ["file:///etc/passwd", "data:text/plain,x", "javascript:alert(1)"]) {
+    const mt = makeMockTransport(() => ({ status: 302, headers: { location }, body: Buffer.alloc(0) }));
+    const e = new RequestEngine({ baseUrl: "https://a.test", transport: mt.transport });
+    await assert.rejects(
+      () => e.getJson("/start"),
+      (err: unknown) => err instanceof LuftNetworkError && /unsupported protocol/.test(err.message),
+    );
+    assert.equal(mt.calls.length, 1, location);
+  }
+});
+
+test("a thrown ECONNRESET reaches the caller as a LuftNetworkError once retries are spent (finding 04#4)", async () => {
+  let n = 0;
+  const transport = async () => {
+    n++;
+    throw Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET" });
+  };
+  const e = new RequestEngine({ baseUrl: "https://a.test", transport, maxRetries: 1, sleep: async () => {} });
+  await assert.rejects(() => e.getJson("/x"), LuftNetworkError);
+  assert.equal(n, 2, "one retry");
+});

@@ -182,7 +182,9 @@ endpoint returns: `airquality` | `measure`. CLI: `thresholds --use`.
 **503** responses; the engine retries those automatically, waiting the response's
 `Retry-After` (seconds or an HTTP date) or else backing off linearly (200 ms, 400 ms,
 …). A `Retry-After` above 30 s is not retried: the error surfaces at once
-(`--max-retries`, `0..10`, default `2`).
+(`--max-retries`, `0..10`, default `2`). A connection the server resets mid-request is
+retried the same way (linear backoff); a refused connection, a DNS failure or a timeout
+is not.
 
 **Redirects.** The engine follows up to 5 HTTP redirects by default
 (configurable with `--max-redirects`; `0` disables following). On a
@@ -195,7 +197,8 @@ http→https redirect: use an https base URL). Userinfo in a server's `Location`
 
 **Response size cap (`maxResponseBytes`).** A hard cap on response body size
 (default 100 MiB; `0` = unlimited) that defends against memory exhaustion from a
-hostile or buggy endpoint. CLI: `--max-response-bytes`.
+hostile or buggy endpoint. CLI: `--max-response-bytes`. The engine enforces it, and the
+timeout, for a library user's own transport too.
 
 **Read-only, no auth.** The UBA Air Data API needs no API key; this client
 implements only the open, read-only `GET` endpoints.

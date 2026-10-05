@@ -188,7 +188,10 @@ retried automatically, up to `--max-retries` (`0..MAX_RETRIES` = `0..10`, defaul
 Each retry waits the response's `Retry-After` (`parseRetryAfter`: delay-seconds or an
 IMF-fixdate; anything else is ignored), or else `retryDelayMs * attempt`. A
 `Retry-After` above `MAX_RETRY_AFTER_MS` (30 s) is not retried: the `LuftApiError`
-surfaces at once.
+surfaces at once. A GET whose connection was reset (`ECONNRESET`, `EPIPE`,
+`ECONNABORTED`, undici's `UND_ERR_SOCKET`, anywhere in the error's `cause` chain;
+`isTransientNetworkError`) is retried the same number of times, after
+`retryDelayMs * attempt`; a refused connection, a DNS failure or a timeout is not.
 
 **Redirects.** The engine follows up to 5 HTTP redirects by default (the
 `maxRedirects` option / `--max-redirects` flag; `0` disables following). On a
@@ -209,6 +212,17 @@ that followed one) is rejected as a `LuftNetworkError`.
 **maxResponseBytes.** A hard cap on response body size (default 100 MiB; `0` =
 unlimited) that defends against memory exhaustion from a hostile or buggy
 endpoint. CLI: `--max-response-bytes`.
+
+**The transport contract, enforced by the engine.** `timeoutMs` and `maxResponseBytes`
+hold for every transport, not only the built-in one: the engine runs each transport call
+under the overall deadline (it passes an `AbortSignal` in `HttpRequest.signal`, which the
+built-in transport honours and a fetch transport should pass on, and rejects at the
+deadline either way) and checks the size of the body it gets back. Response headers are
+read in any case and from a `Headers` object or a `Map` too; the body may be a `Buffer`,
+any `ArrayBuffer` view (fetch's `Uint8Array`) or an `ArrayBuffer`. Whatever a transport
+throws, and a response without a valid status, headers object or body, becomes a
+`LuftNetworkError`. A redirect to a scheme other than `http:`/`https:` is refused before
+the transport is called.
 
 **`--base-url` validation.** The base URL is checked at three points. The engine
 constructor checks the raw configured value, before trailing slashes are stripped, with

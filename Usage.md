@@ -105,7 +105,10 @@ luftqualitaet measures-limits --compact | jq '.data[] | select(.[0]=="1")' | hea
 
 ### 7. Read the annual balance for a pollutant
 
-Annual tabulations (*Jahresbilanzen*) summarise a component over a full year.
+Annual tabulations (*Jahresbilanzen*) summarise a component over a full year: the annual
+mean and the exceedance counts of its limit values, evaluated by UBA from the final,
+checked data (published in June of the following year). For "how many days over the limit
+in 2023?" this is the figure to use.
 Example: the PM₁₀ (component `1`) balance for 2023, in German.
 
 ```bash
@@ -118,11 +121,14 @@ either value (only the echoed `request` differs).
 
 ### 8. List exceedances for a pollutant and year
 
-Where did NO₂ (component `5`) exceed its limits in 2022? `transgressions` returns
-the recorded exceedances per component and year.
+How often has PM₁₀ exceeded its limit **this year** so far, month by month?
+`transgressions` is UBA's exceedance table for the running year, from preliminary data.
+For a completed year it is not updated to the final data — its counts can differ from the
+annual balance (and from the stations' own daily means), so use `annual-balances` there;
+the CLI prints a `Note:` on stderr saying so.
 
 ```bash
-luftqualitaet transgressions --component 5 --year 2022 --lang en
+luftqualitaet transgressions --component 1 --year 2026 --lang en
 ```
 
 Same constraints as annual balances: `--year >= 2016`, plus optional `--lang` (and

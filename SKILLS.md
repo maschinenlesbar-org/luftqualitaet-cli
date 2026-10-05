@@ -107,7 +107,10 @@ skills encode the non-obvious parts of this API, for example:
   response's `headers` object, while its `indices` array doesn't match the rows — read
   `headers` before ranking; for `transgressions`, `headers` names what the yearly count
   measures (hours or days), and the latest year may stop before December (see
-  **luftqualitaet-annual-report**).
+  **luftqualitaet-annual-report**);
+- `transgressions` is UBA's **running-year** table from preliminary data: for a completed
+  year its counts disagree with `annual-balances` (final data) and with the stations' daily
+  means, so the annual-report skill ranks a completed year on `annual-balances`.
 
 ## Contributing
 

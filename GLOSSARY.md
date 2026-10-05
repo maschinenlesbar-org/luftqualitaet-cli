@@ -75,14 +75,23 @@ scope/component/station for measurements. CLI: `measures-limits`.
 (*Jahresbilanzen*) for a component and a given year (`>= 2016`). Each row is a
 station id followed by figures whose number and meaning depend on the component
 (for O₃ there is no annual mean); the response's `headers` object names them by
-row position, and its `indices` array does not match the rows. CLI:
+row position, and its `indices` array does not match the rows. UBA evaluates them from
+the **final**, checked data ("auf Basis der endgültigen Daten"), published in June of the
+following year; until then the year has no rows. This is the authoritative yearly
+exceedance count, and it agrees with the stations' own daily means. CLI:
 `annual-balances`.
 
 **transgressions (`/transgressions/json`).** Exceedance (*Überschreitungen*)
 data for a component and year — how often a limit value was exceeded. The
 response's `headers` object says what the yearly count measures (hours or days
-above which value); `day_recent` shows how far the year's data reaches. CLI:
-`transgressions`.
+above which value); `day_recent` shows how far the year's data reaches. UBA offers these
+tables for the **running year** ("für das laufende Jahr"), built from preliminary data; a
+completed year's table is not brought up to the final data, so its yearly count differs
+from `annual-balances` at 10–35 % of PM₁₀ stations in 2019–2025, in both directions
+(Halle/Paracelsusstr., PM₁₀ 2024: 17 days here, 8 in the annual balance and in the
+station's daily means). Use it for the running year and its monthly breakdown; for a
+completed year rank on `annual-balances`. CLI: `transgressions` (with a `Note:` on stderr
+for a completed year).
 
 **thresholds (`/thresholds/json`).** The limit/threshold values for a given
 `use` (`airquality` or `measure`), optionally per component and scope. CLI:

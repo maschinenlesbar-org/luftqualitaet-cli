@@ -545,3 +545,19 @@ test("a deeply nested response fails pretty-printing cleanly and still prints wi
   if (code === 0) assert.equal(compact.out.join("").length, 2 * depth + '{"count":1,"indices":[],"1":}'.length);
   else assert.equal(compact.err.join("\n"), "Error: The response is nested too deeply to print.");
 });
+
+test("transgressions for a completed year prints the data and a note naming annual-balances (03#1, 06#1)", async () => {
+  const body = { request: {}, indices: [], headers: { "3": "Number of daily mean values above 50 µg/m³" }, data: [["1789", "2024-01-01", "2024-12-31", "17"]] };
+  const cli = makeCli(() => jsonResponse(body));
+  assert.equal(await run(["--compact", "transgressions", "--component", "1", "--year", "2019"], cli.deps), 0);
+  assert.deepEqual(JSON.parse(cli.out.join("")), body);
+  assert.match(cli.err.join("\n"), /^Note: transgressions is UBA's exceedance table for the running year, from preliminary data/);
+  assert.match(cli.err.join("\n"), /use annual-balances \(final data\)/);
+});
+
+test("annual-balances without rows says when the year's balance comes", async () => {
+  const cli = makeCli(() => jsonResponse({ request: {}, indices: [], headers: {}, data: {} }));
+  const next = new Date().getFullYear() + 1;
+  assert.equal(await run(["--compact", "annual-balances", "--component", "1", "--year", String(next)], cli.deps), 0);
+  assert.match(cli.err.join("\n"), new RegExp(`^Note: No annual balance for ${next}: UBA publishes it from the final data in June ${next + 1}`));
+});

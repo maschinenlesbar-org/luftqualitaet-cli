@@ -75,14 +75,22 @@ Messumfang, Komponente und Station für Messwerte. CLI: `measures-limits`.
 ein bestimmtes Jahr (`>= 2016`). Jede Zeile besteht aus einer Stations-ID und Kennzahlen,
 deren Anzahl und Bedeutung von der Komponente abhängen (für O₃ gibt es keinen
 Jahresmittelwert); das Objekt `headers` der Antwort benennt sie nach ihrer Position in der
-Zeile, das Array `indices` passt dagegen nicht zu den Zeilen. CLI:
-`annual-balances`.
+Zeile, das Array `indices` passt dagegen nicht zu den Zeilen. Das UBA wertet sie „auf
+Basis der endgültigen Daten“ aus, die im Juni des Folgejahres erscheinen; bis dahin hat das
+Jahr keine Zeilen. Das ist die maßgebliche Zahl der Überschreitungen eines Jahres, und sie
+stimmt mit den Tagesmittelwerten der Stationen überein. CLI: `annual-balances`.
 
 **transgressions (`/transgressions/json`).** Daten zu *Überschreitungen* für eine
 Komponente und ein Jahr – wie oft ein Grenzwert überschritten wurde. Das Objekt `headers`
 der Antwort gibt an, was die Jahressumme zählt (Stunden oder Tage über welchem Wert);
-`day_recent` zeigt, wie weit die Daten des Jahres reichen. CLI:
-`transgressions`.
+`day_recent` zeigt, wie weit die Daten des Jahres reichen. Das UBA bietet diese Tabellen
+„für das laufende Jahr“ an, aus vorläufigen Daten; die Tabelle eines abgeschlossenen
+Jahres wird nicht auf die endgültigen Daten gebracht, daher weicht ihre Jahressumme
+2019–2025 bei 10–35 % der PM₁₀-Stationen von `annual-balances` ab, in beide Richtungen
+(Halle/Paracelsusstr., PM₁₀ 2024: hier 17 Tage, in der Jahresbilanz und in den
+Tagesmittelwerten der Station 8). Für das laufende Jahr und die Monatswerte verwenden; für
+ein abgeschlossenes Jahr nach `annual-balances` ordnen. CLI: `transgressions` (mit einem
+`Note:` auf stderr für ein abgeschlossenes Jahr).
 
 **thresholds (`/thresholds/json`).** Die Grenz- und Schwellenwerte für eine bestimmte
 Verwendung `use` (`airquality` oder `measure`), optional je Komponente und Messumfang. CLI:

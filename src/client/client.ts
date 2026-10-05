@@ -133,6 +133,66 @@ export function responseShapeProblem(shape: ResponseShape, value: unknown): stri
 
 const shaped = (shape: ResponseShape) => (value: unknown) => responseShapeProblem(shape, value);
 
+/**
+ * The month (June) of the following year in which UBA publishes a year's final, checked
+ * data — and with it the annual balances ("Erst im Juni des Folgejahres werden die finalen
+ * Daten bereitgestellt", UBA, Schnittstellenbeschreibung Luftdaten-API, 17 Dec 2025).
+ */
+export const FINAL_DATA_MONTH = 6;
+
+/** True when `data` (an annual answer's rows) holds no row. */
+function hasNoRows(data: unknown): boolean {
+  if (Array.isArray(data)) return data.length === 0;
+  return isRecord(data) && Object.keys(data).length === 0;
+}
+
+/**
+ * What a reader of an annual answer for `year` must be told, or undefined. Upstream the two
+ * endpoints count from different data (UBA, Schnittstellenbeschreibung Luftdaten-API):
+ * `transgressions` is the exceedance table *for the running year*, built from preliminary
+ * data, while `annualBalances` is evaluated "auf Basis der endgültigen Daten", published in
+ * June of the following year. A completed year's transgressions table is not brought up to
+ * the final data: for 2019–2025 its yearly count differs from the annual balance at 10–35 %
+ * of PM₁₀ stations, in both directions, and the annual balance agrees with the station's
+ * own daily means (Halle/Paracelsusstr., PM₁₀ 2024: transgressions 17 days, annual balance
+ * and daily means 8). So:
+ *
+ * - `transgressions` for a completed year: say the counts are preliminary and name
+ *   `annualBalances` (CLI `annual-balances`) as the year's exceedance count.
+ * - `annualBalances` without rows: say there is no annual balance (yet), and when.
+ *
+ * `now` is the reference date (default: today); the CLI prints the note on stderr.
+ */
+export function annualDataNote(
+  kind: "transgressions" | "annualBalances",
+  year: number,
+  result: AirDataResult,
+  now: Date = new Date(),
+): string | undefined {
+  const current = now.getFullYear();
+  const finalOut = current > year + 1 || (current === year + 1 && now.getMonth() + 1 >= FINAL_DATA_MONTH);
+  if (kind === "annualBalances") {
+    if (!hasNoRows(result["data"])) return undefined;
+    if (year >= current) {
+      return `No annual balance for ${year}: UBA publishes it from the final data in June ${year + 1}. ` +
+        "For the running year's preliminary exceedance counts use transgressions.";
+    }
+    return finalOut
+      ? `No annual balance for ${year} for this component.`
+      : `No annual balance for ${year} yet: UBA publishes it from the final data in June ${year + 1}. ` +
+          "Until then transgressions has the (preliminary) exceedance counts.";
+  }
+  if (year >= current) return undefined;
+  return (
+    `transgressions is UBA's exceedance table for the running year, from preliminary data; ` +
+    `for ${year} its counts were not updated to the final data and can differ from the stations' ` +
+    `own values. ` +
+    (finalOut
+      ? `For ${year}'s exceedance counts use annual-balances (final data).`
+      : `annual-balances will have ${year}'s final counts from June ${year + 1}.`)
+  );
+}
+
 /** `component` + `year` (+ optional lang/index) of the annual endpoints. */
 function assertYearComponent(params: YearComponentParams): void {
   assertId("component", params.component);
@@ -193,7 +253,13 @@ export class LuftqualitaetClient {
 
   // --- Aggregations ---------------------------------------------------------
 
-  /** Annual tabulations for a component and year (>= 2016). */
+  /**
+   * Annual tabulations (*Jahresbilanzen*) for a component and year (>= 2016): per station
+   * the annual mean and the exceedance counts the limit values define, named by the
+   * answer's `headers`. Evaluated by UBA from the **final** (checked) data, published in
+   * June of the following year; before that the year has no rows (`data: {}`). This is the
+   * authoritative yearly exceedance count — see {@link annualDataNote}.
+   */
   async annualBalances(params: YearComponentParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("annualBalances", params, CALL_PARAMS.annualBalances, options);
@@ -201,7 +267,15 @@ export class LuftqualitaetClient {
     return this.engine.getJson(`${API}/annualbalances/json`, prune({ ...params }), shaped("annual"));
   }
 
-  /** Exceedance (Überschreitungen) data for a component and year. */
+  /**
+   * Exceedance tables (*Überschreitungen*) for a component and year: per station the
+   * yearly count (`[3]`, named by `headers`), the period covered (`day_first`,
+   * `day_recent`) and the monthly counts. UBA builds them for the **running year** from
+   * preliminary data; a completed year's table is not updated to the final data and its
+   * counts can differ from `annualBalances` and from the station's own daily values (10–35 %
+   * of PM₁₀ stations in 2019–2025). For a completed year's exceedance count use
+   * `annualBalances` — see {@link annualDataNote}.
+   */
   async transgressions(params: YearComponentParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("transgressions", params, CALL_PARAMS.transgressions, options);

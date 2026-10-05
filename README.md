@@ -117,7 +117,11 @@ them. A component the station doesn't measure, or an unknown scope, gives
 **`measures-limits`** — available date range per scope/component/station.
 Takes no options.
 
-**`annual-balances`** — annual tabulations for a component and year.
+**`annual-balances`** — annual tabulations for a component and year: per station the
+annual mean and the exceedance counts of the limit values (`.headers` names the columns).
+UBA evaluates them from the **final**, checked data, published in June of the following
+year — this is the figure for "how many days/hours over the limit" in a completed year.
+Before that the year has no rows, and the CLI says so on stderr.
 
 | Flag | Required | Meaning |
 | --- | --- | --- |
@@ -126,8 +130,13 @@ Takes no options.
 | `--lang de\|en` | no | label language |
 | `--index id\|code` | no | accepted, but **no effect** here: the rows are arrays led by the station id either way |
 
-**`transgressions`** — exceedance data for a component and year.
-Same flags as `annual-balances`. Before 2019 the API has no transgressions for some
+**`transgressions`** — UBA's exceedance table for the **running year**: per station the
+count so far, the period covered and the monthly counts, from preliminary data. A
+completed year's table is not updated to the final data, and its counts disagree with
+`annual-balances` and with the stations' own daily means (2019–2025: 10–35 % of PM₁₀
+stations, e.g. Halle/Paracelsusstr. 2024: 17 days here, 8 in `annual-balances` and in its
+daily means). For a completed year the CLI prints a `Note:` on stderr naming
+`annual-balances`. Same flags as `annual-balances`. Before 2019 the API has no transgressions for some
 components (NO₂ and PM₁₀ 2016–2018 fail with HTTP `500`; O₃ 2018 works); the CLI then
 adds a hint to the error.
 

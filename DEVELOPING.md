@@ -75,6 +75,15 @@ function. Every method checks that its parameter object is an object first
 never a raw `TypeError`. Server text in an error message is cut at 500 characters
 (`MAX_MESSAGE_TEXT`, `cutForMessage`); `LuftApiError.body` keeps the whole body.
 
+**Annual balances vs transgressions.** Both answer "how often was the limit exceeded",
+but from different data (UBA's Schnittstellenbeschreibung Luftdaten-API): `annualBalances`
+from the final data, published in June of the following year; `transgressions` is the
+running year's table from preliminary data and is not updated for a completed year (it
+disagrees at 10–35 % of PM₁₀ stations in 2019–2025). `annualDataNote(kind, year, result)`
+(exported) returns what to tell the reader — the CLI prints it as `Note:` on stderr: a
+completed year's transgressions are preliminary and `annual-balances` has the count; an
+annual balance without rows comes in June of the following year (`FINAL_DATA_MONTH`).
+
 **Unknown parameters.** The API ignores a query parameter it doesn't take and answers as
 if it weren't there, so each call checks its parameter object against the keys it
 documents (`CALL_PARAMS`, `assertKnownParams`): a misspelled key (`componet`), a key of

@@ -323,3 +323,21 @@ test("P10: { allowUnknownFilters: true } sends an unknown scalar parameter, neve
   );
   await assert.rejects(clientWith(mt).components({ future_param: "x" } as {}), /components takes only lang, index/);
 });
+
+// ---- transgressions vs annual balances (findings 03#1, 06#1) -----------------------
+
+test("annualDataNote: a completed year's transgressions are preliminary; annual balances are the count", async () => {
+  const { annualDataNote } = await import("../src/client/client.js");
+  const rows = { data: [["1789", "2024-01-01", "2024-12-31", "17"]] };
+  const oct2026 = new Date(2026, 9, 6);
+  // The running year: no note.
+  assert.equal(annualDataNote("transgressions", 2026, rows, oct2026), undefined);
+  // A completed year whose final data are out: name annual-balances.
+  assert.match(annualDataNote("transgressions", 2024, rows, oct2026) ?? "", /preliminary data.*For 2024's exceedance counts use annual-balances \(final data\)/);
+  // Last year, before June: the final counts are still to come.
+  assert.match(annualDataNote("transgressions", 2025, rows, new Date(2026, 2, 1)) ?? "", /annual-balances will have 2025's final counts from June 2026/);
+  // Annual balances: no note with rows; a hint without them.
+  assert.equal(annualDataNote("annualBalances", 2024, { data: [["1789", "21", "8", null]] }, oct2026), undefined);
+  assert.match(annualDataNote("annualBalances", 2026, { data: {} }, oct2026) ?? "", /No annual balance for 2026: UBA publishes it from the final data in June 2027/);
+  assert.match(annualDataNote("annualBalances", 2025, { data: {} }, new Date(2026, 2, 1)) ?? "", /not .*yet|yet:/);
+});

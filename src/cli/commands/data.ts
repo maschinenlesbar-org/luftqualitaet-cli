@@ -18,7 +18,7 @@ import {
   type MetaUse,
   type ThresholdUse,
 } from "../../client/enums.js";
-import { DEFAULT_META_TIME_FROM, DEFAULT_META_TIME_TO } from "../../client/client.js";
+import { DEFAULT_META_TIME_FROM, DEFAULT_META_TIME_TO, annualDataNote } from "../../client/client.js";
 import { LuftApiError } from "../../client/errors.js";
 
 /**
@@ -153,12 +153,12 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
     {
       name: "annual-balances",
       method: "annualBalances",
-      desc: "Annual tabulations for a component and year",
+      desc: "Annual tabulations for a component and year (final data; the year's exceedance counts)",
     },
     {
       name: "transgressions",
       method: "transgressions",
-      desc: "Exceedances for a component and year",
+      desc: "Exceedance table for a component and year (running year, preliminary data)",
     },
   ];
   for (const { name, method, desc } of yearComponent) {
@@ -200,6 +200,9 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
             throw err;
           }
           renderJson(deps, global, result);
+          // Which of the two annual figures to trust, and why a year may have none yet.
+          const note = annualDataNote(method, year, result);
+          if (note !== undefined) deps.io.err(`Note: ${note}`);
         }),
       );
   }

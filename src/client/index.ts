@@ -6,6 +6,8 @@ export {
   DEFAULT_META_TIME_FROM,
   DEFAULT_META_TIME_TO,
   CALL_PARAMS,
+  FINAL_DATA_MONTH,
+  annualDataNote,
   baseUrlApiPathProblem,
   responseShapeProblem,
 } from "./client.js";

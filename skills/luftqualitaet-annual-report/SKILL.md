@@ -7,7 +7,8 @@ description: >
   the limit last year?", "rank stations by ozone exceedances", "annual air-quality
   balance for Germany", or wants a yearly / nationwide / regional comparison. Joins
   the per-station annual rows to station names and locations and ranks them, instead
-  of returning anonymous numeric rows.
+  of returning anonymous numeric rows. Ranks a completed year on the annual balance
+  (UBA's final data) and uses the exceedance table only for the running year.
 compatibility: >
   Requires the `luftqualitaet` CLI (npm package
   @maschinenlesbar.org/luftqualitaet-cli) on PATH, installed by the user; the
@@ -20,6 +21,23 @@ compatibility: >
 Answer the yearly, comparative questions — *where was a pollutant worst, and where
 did it break the limit value* — by ranking the `annual-balances` /
 `transgressions` rows and joining them to real station names and places.
+
+**Which command answers which year** (UBA, *Schnittstellenbeschreibung Luftdaten-API*):
+
+| question | command | data |
+|---|---|---|
+| a **completed** year — means, "how many days/hours over the limit", rankings | `annual-balances` | final, checked data, published in **June of the following year** |
+| the **running** year so far, or a month-by-month breakdown | `transgressions` | preliminary data, updated during the year |
+| last year **before June** (`annual-balances` has no rows yet) | `transgressions`, labelled *preliminary* | preliminary |
+
+A completed year's `transgressions` table is **not** brought up to the final data. Its
+yearly count disagrees with `annual-balances` at 10–35 % of PM₁₀ stations in every year
+2019–2025, in both directions, and the stations' own daily means agree with
+`annual-balances` (Halle/Paracelsusstr., PM₁₀ 2024: `transgressions` 17 days,
+`annual-balances` 8, its daily means above 50 µg/m³: 8; checked live 2026-10-06). The CLI
+prints a `Note:` on stderr when you ask `transgressions` for a completed year, and when
+`annual-balances` has no rows yet — relay it. Always name the source (and "preliminary"
+for `transgressions`) in the answer.
 
 ## Tooling
 
@@ -75,17 +93,23 @@ luftqualitaet --compact annual-balances --component 3 --year 2025 --lang en \
 id","year","value","transgression type id"]`) that **does not describe** the rows —
 ignore it and use `.headers`.
 
-**Transgressions** — how often the limit value was exceeded, per station:
+For **exceedance counts in a completed year**, pick the `.headers` column that counts
+them — PM₁₀ `2` (daily means above 50 µg/m³), NO₂ `2` (hourly means above 200 µg/m³),
+O₃ `3` (days with 8-h max above 120 µg/m³) — and rank on it with the recipe above.
+
+**Transgressions** — the running year's exceedances so far, per station and month
+(preliminary data):
 
 ```bash
-luftqualitaet --compact transgressions --component 5 --year 2022 --lang en
+luftqualitaet --compact transgressions --component 1 --year 2026 --lang en
 ```
 
 Here `.data` is an array of rows and there **is** an `indices` array describing
 them: `["station id", "day_first", "day_recent", "value of year", "4-16 values of
-months"]`. Column `[3]` ("value of year") is the **total exceedance count for the
-year** — that's the number to rank on; `[4..]` are the monthly breakdown (January
-first; some rows are shorter because trailing months are left out).
+months"]`. Column `[3]` ("value of year") is the **count so far** — rank on it for the
+running year only; `[4..]` are the monthly breakdown (January first; some rows are
+shorter because trailing months are left out). For a completed year use the
+`annual-balances` column instead (see the table at the top).
 
 - **What `[3]` counts is in `.headers`**, a single entry keyed `"3"` — e.g. NO₂
   `"Number of hourly values above 200 µg/m³"` (hours), PM₁₀ `"Number of daily mean
@@ -94,12 +118,12 @@ first; some rows are shorter because trailing months are left out).
   (hours vs days). Don't label from `transgression-types`: upstream that
   list mixes real names with bare numbers (`"23":"1"`, `"26":"18480"`) and
   mis-encoded German (`"Jahresmittelwert in ng/mÂ³"`).
-- **The year may not be complete.** `day_recent` is the last day covered. As of
-  2026-09-15, 283 of 286 O₃ stations for 2025 end at `2025-11-30` — December is
-  missing — and some stations end months earlier. Report the period you ranked.
+- **The year may not be complete.** `day_recent` is the last day covered (for the running
+  year, usually yesterday or a few days back; the 2025 table stops at the end of
+  November). Report the period you ranked.
 
 ```bash
-luftqualitaet --compact transgressions --component 3 --year 2025 --lang en \
+luftqualitaet --compact transgressions --component 1 --year 2026 --lang en \
   | jq -r '(.data | map(.[2]) | max) as $end
            | "counts: \(.headers | to_entries[0].value)",
              "data up to: \($end) (\(.data | map(select(.[2] < $end)) | length) stations end earlier)",
@@ -130,19 +154,19 @@ station isn't in the active catalogue — keep the row, label it by id.
 
 ## Step 4 — Rank and report
 
-Sort descending by the figure that answers the question — the chosen `.headers` column for
-balances, the yearly exceedance count (`[3]`) for transgressions — and report the
-top N with names and places:
+Sort descending by the figure that answers the question — the chosen `.headers` column of
+`annual-balances` for a completed year, the count so far (`[3]`) of `transgressions` for the
+running year — and report the top N with names and places:
 
 ```
 Most PM₁₀ exceedance days (daily mean above 50 µg/m³), 2024 (component 1)
-— top 5 of 379 stations, data to 2024-12-31
-  1. 17 days  Halle/Paracelsusstr.         traffic · ST  (51.4948, 11.9813)
-  2. 10 days  Berlin Silbersteinstraße 5   traffic · BE
-  2. 10 days  Wittenberg/Dessauer Strasse  traffic · ST
-  2. 10 days  Leipzig Lützner Str.         traffic · SN
-  2. 10 days  Berlin Frankfurter Allee     traffic · BE
-230 of 379 stations recorded at least one exceedance day.
+— annual balance (UBA, final data), top 5 of 388 stations
+  1. 11 days  Leipzig Lützner Str.          traffic · SN  (51.3359, 12.3347)
+  2. 10 days  Berlin Frankfurter Allee      traffic · BE
+  2. 10 days  Tübingen Mühlstraße           traffic · BW
+  2. 10 days  Berlin Silbersteinstraße 5    traffic · BE
+  5.  9 days  Berlin Mariendorfer Damm 148  traffic · BE
+231 of 388 stations had at least one exceedance day; none passed the 35 allowed.
 ```
 
 Rules:
@@ -150,8 +174,9 @@ Rules:
   plus the period covered (`day_recent`) if the year isn't complete; show **how many
   stations** were in the set and how many were at/above the limit (count of rows with
   exceedances > 0).
-- Rank by the right column — the `.headers` column you chose for balances, exceedance
-  **count** (`[3]`) for transgressions — and **don't confuse the two**.
+- Rank a completed year on `annual-balances` (the `.headers` column that counts the
+  exceedances), the running year on `transgressions` `[3]` — and **don't mix the two**
+  in one ranking. Say which one you used; for `transgressions` say "preliminary".
 - Always show the **station type** (idx 16): traffic stations dominate NO₂ rankings
   by design; calling that out is the insight.
 - Filter to a region when asked (idx 12 network code / idx 13 state name).

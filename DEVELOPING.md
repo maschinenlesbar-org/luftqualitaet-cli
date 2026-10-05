@@ -217,7 +217,8 @@ the exported `validateBaseUrl` (rule: `baseUrlProblem`, the same one the CLI's
 `http:`/`https:` (`file:///etc/passwd`, `ftp://…`), a query (`?`) or fragment (`#`) —
 paths are appended to the base URL as a string, so they would swallow every request
 path — and surrounding or inner whitespace or control characters (`new URL()` would hide
-them, while the raw string is joined to each path) each throw a `LuftValidationError`
+them, while the raw string is joined to each path), and a `%` in the user name or password
+that doesn't start an escape (write a literal `%` as `%25`) each throw a `LuftValidationError`
 (`Invalid baseUrl: <reason>`). That is a configuration error, not a `LuftNetworkError`,
 and it holds for a library consumer that injects a custom transport too. Only an
 omitted `baseUrl` selects the default. The client constructor adds the API-path rule

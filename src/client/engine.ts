@@ -559,15 +559,28 @@ export class RequestEngine {
     }
   }
 
-  /** Perform a GET expecting JSON and parse it into `T`. */
-  async getJson<T>(path: string, query?: QueryParams): Promise<T> {
+  /**
+   * Perform a GET expecting JSON and parse it into `T`. With `shape`, the parsed body must
+   * pass it (see `responseShapeProblem` in client.ts): a 2xx body without the documented
+   * envelope (`null`, `{}`, an error object, a proxy's text) is a LuftParseError naming the
+   * path, never data.
+   */
+  async getJson<T>(path: string, query?: QueryParams, shape?: (value: unknown) => string | undefined): Promise<T> {
     const res = await this.request("GET", path, { query, accept: "application/json" });
     const text = decodeBody(res.data, res.contentType, path);
+    let value: unknown;
     try {
-      return JSON.parse(text) as T;
+      value = JSON.parse(text);
     } catch (cause) {
-      throw new LuftParseError(`Failed to parse JSON response from ${path}`, { cause });
+      // A maintenance or proxy page answered with 200: say what it was.
+      const type = res.contentType === "" ? "" : ` (Content-Type ${JSON.stringify(sanitizeServerText(res.contentType))})`;
+      throw new LuftParseError(`Failed to parse JSON response from ${path}${type}`, { cause });
     }
+    const problem = shape?.(value);
+    if (problem !== undefined) {
+      throw new LuftParseError(`Unexpected response from ${path}: ${problem}. The server may be down or behind a proxy.`);
+    }
+    return value as T;
   }
 
   private toApiError(

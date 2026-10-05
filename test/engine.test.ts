@@ -9,7 +9,7 @@ import {
   LuftValidationError,
   redactUrl,
 } from "../src/client/errors.js";
-import { makeMockTransport, jsonResponse, rawResponse } from "./helpers.js";
+import { makeMockTransport, jsonResponse, rawResponse, OK_BODY } from "./helpers.js";
 
 // Built via char codes so no raw control bytes ever appear in this source file.
 const ESC = String.fromCharCode(0x1b);
@@ -34,7 +34,7 @@ test("buildUrl normalises the path and appends the query", () => {
 });
 
 test("the constructor rejects a malformed base URL with a clear, base-only message", () => {
-  const mt = makeMockTransport(() => jsonResponse({}));
+  const mt = makeMockTransport(() => jsonResponse(OK_BODY));
   assert.throws(
     () => new RequestEngine({ baseUrl: "notaurl", transport: mt.transport }),
     (err: unknown) =>
@@ -45,7 +45,7 @@ test("the constructor rejects a malformed base URL with a clear, base-only messa
 
 for (const bad of ["file:///etc/passwd", "ftp://example.org"]) {
   test(`the constructor rejects a non-http(s) base URL (${bad}) before a custom transport sees it`, () => {
-    const mt = makeMockTransport(() => jsonResponse({}));
+    const mt = makeMockTransport(() => jsonResponse(OK_BODY));
     assert.throws(
       () => new RequestEngine({ baseUrl: bad, transport: mt.transport }),
       (err: unknown) =>
@@ -195,7 +195,7 @@ test("an unparsable redirect Location keeps the base URL's password out of the e
 });
 
 test("the User-Agent and Accept headers are sent", async () => {
-  const mt = makeMockTransport(() => jsonResponse({}));
+  const mt = makeMockTransport(() => jsonResponse(OK_BODY));
   const e = new RequestEngine({ transport: mt.transport, userAgent: "ua/1" });
   await e.getJson("/x");
   assert.equal(mt.last().headers?.["User-Agent"], "ua/1");
@@ -263,7 +263,7 @@ test("parseRetryAfter reads delay-seconds and IMF-fixdate HTTP-dates", () => {
 
 test("a base URL with a query or fragment is rejected at construction", () => {
   for (const baseUrl of ["https://example.test/?x=1", "https://example.test/#frag", "https://example.test?"]) {
-    const mt = makeMockTransport(() => jsonResponse({}));
+    const mt = makeMockTransport(() => jsonResponse(OK_BODY));
     assert.throws(
       () => new RequestEngine({ transport: mt.transport, baseUrl }),
       (err: unknown) =>

@@ -18,7 +18,11 @@ const USAGE = { argv: ["--no-such-option"], exit: 1 }; // luftqualitaet: command
 /** argv that prints the server's big answer, given the mock's base URL. */
 const bigOutputArgv = (base: string): string[] => ["--base-url", base, "components"];
 /** A large answer for that command (≈ 1 MB of JSON). */
-const bigBody = (): unknown => Object.fromEntries(Array.from({ length: 30000 }, (_, i) => [String(i + 1), [String(i + 1), `Component ${i}`]]));
+const bigBody = (): unknown => ({
+  count: 30000,
+  indices: ["component id", "component name"],
+  ...Object.fromEntries(Array.from({ length: 30000 }, (_, i) => [String(i + 1), [String(i + 1), `Component ${i}`]])),
+});
 /** argv for a network failure, and its exit code (luftqualitaet: 1 for any non-404 failure). */
 const NETWORK = { argv: ["--base-url", "http://127.0.0.1:9", "--max-retries", "0", "components"], exit: 1 };
 // --------------------------------------------------------------------------------------

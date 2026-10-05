@@ -8,6 +8,13 @@ import { run } from "../src/cli/run.js";
 import { defaultDeps } from "../src/cli/program.js";
 import type { CliDeps } from "../src/cli/io.js";
 
+/**
+ * A 2xx body with every documented envelope key (see `responseShapeProblem`): a list's
+ * `count` + `indices`, a data answer's `request` + `data`, an annual table's `headers`.
+ * Tests that only care about the request use it as "a valid answer" for any endpoint.
+ */
+export const OK_BODY = { request: {}, count: 0, indices: [], data: {}, headers: {} };
+
 export function jsonResponse(body: unknown, status = 200): HttpResponse {
   return {
     status,
@@ -92,7 +99,7 @@ export type LibOutcome =
 export async function parity(
   argv: string[],
   call: (transport: Transport) => unknown,
-  responder: (req: HttpRequest) => HttpResponse | Promise<HttpResponse> = () => jsonResponse({}),
+  responder: (req: HttpRequest) => HttpResponse | Promise<HttpResponse> = () => jsonResponse(OK_BODY),
 ): Promise<{ cli: CliOutcome; lib: LibOutcome }> {
   const mt = makeMockTransport(responder);
   const out: string[] = [];

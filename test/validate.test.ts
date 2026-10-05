@@ -13,7 +13,7 @@ import {
 } from "../src/client/validate.js";
 import * as root from "../src/index.js";
 import type { CliDeps } from "../src/cli/io.js";
-import { jsonResponse, makeMockTransport, parity } from "./helpers.js";
+import { jsonResponse, makeMockTransport, parity, OK_BODY } from "./helpers.js";
 
 const nonBlank: Problem<string> = (v) => (v.trim() === "" ? "Expected a non-empty value." : undefined);
 
@@ -38,7 +38,7 @@ test("LuftValidationError and assertValid are exported from the package root", (
 });
 
 test("a library parameter check rejects with LuftValidationError and sends nothing", async () => {
-  const mt = makeMockTransport(() => jsonResponse({}));
+  const mt = makeMockTransport(() => jsonResponse(OK_BODY));
   const client = new LuftqualitaetClient({ transport: mt.transport });
   await assert.rejects(client.components({ lang: "fr" as "de" }), LuftValidationError);
   assert.equal(mt.calls.length, 0);
@@ -52,7 +52,7 @@ function cliWith(createClient: CliDeps["createClient"]) {
 }
 
 test("run() maps a LuftValidationError raised in an action to the usage exit code 1", async () => {
-  const mt = makeMockTransport(() => jsonResponse({}));
+  const mt = makeMockTransport(() => jsonResponse(OK_BODY));
   class Rejecting extends LuftqualitaetClient {
     override async networks(): Promise<never> {
       throw new LuftValidationError("Invalid index: expected one of id, code, got \"x\".");
@@ -78,12 +78,12 @@ test("parity() runs one input through the CLI and the library on one transport",
   const { cli, lib } = await parity(
     ["--compact", "components", "--lang", "en"],
     (transport) => new LuftqualitaetClient({ transport }).components({ lang: "en" }),
-    () => jsonResponse({ count: 0 }),
+    () => jsonResponse({ count: 0, indices: [] }),
   );
   assert.equal(cli.code, 0);
-  assert.equal(cli.out, '{"count":0}');
+  assert.equal(cli.out, '{"count":0,"indices":[]}');
   assert.ok(lib.ok);
-  assert.deepEqual(lib.value, { count: 0 });
+  assert.deepEqual(lib.value, { count: 0, indices: [] });
   assert.equal(cli.requests.length, 1);
   assert.deepEqual(cli.requests, lib.requests);
 });

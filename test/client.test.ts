@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { LuftqualitaetClient } from "../src/client/client.js";
 import { LuftApiError, LuftError, LuftValidationError } from "../src/client/errors.js";
 import type { MeasuresParams } from "../src/client/types.js";
-import { makeMockTransport, jsonResponse, constantJson } from "./helpers.js";
+import { makeMockTransport, jsonResponse, constantJson, OK_BODY } from "./helpers.js";
 
 function clientWith(mt: ReturnType<typeof makeMockTransport>): LuftqualitaetClient {
   return new LuftqualitaetClient({ transport: mt.transport });
@@ -12,7 +12,7 @@ function clientWith(mt: ReturnType<typeof makeMockTransport>): LuftqualitaetClie
 const API = "/api/air-data/v3";
 
 test("components passes lang and index", async () => {
-  const mt = constantJson({ count: 0 });
+  const mt = constantJson(OK_BODY);
   await clientWith(mt).components({ lang: "de", index: "code" });
   const url = new URL(mt.last().url);
   assert.equal(url.pathname, `${API}/components/json`);
@@ -21,13 +21,13 @@ test("components passes lang and index", async () => {
 });
 
 test("components with no params sends no query", async () => {
-  const mt = constantJson({});
+  const mt = constantJson(OK_BODY);
   await clientWith(mt).components();
   assert.equal(new URL(mt.last().url).search, "");
 });
 
 test("airquality sends the full window + station", async () => {
-  const mt = constantJson({ data: {} });
+  const mt = constantJson(OK_BODY);
   await clientWith(mt).airquality({
     date_from: "2024-01-01",
     time_from: 1,
@@ -49,7 +49,7 @@ test("measures rejects a call without component or scope before any request", as
     [{ ...base, scope: 2 }, "component"],
     [base, "component"],
   ] as const) {
-    const mt = constantJson({});
+    const mt = constantJson(OK_BODY);
     await assert.rejects(
       clientWith(mt).measures(params as MeasuresParams),
       (err: unknown) =>
@@ -61,7 +61,7 @@ test("measures rejects a call without component or scope before any request", as
 });
 
 test("meta with dates but no hours sends the full-day hours 1/24 it checks against", async () => {
-  const mt = constantJson({});
+  const mt = constantJson(OK_BODY);
   await clientWith(mt).meta({ use: "measure", date_from: "2024-03-05", date_to: "2024-03-06" });
   const q = new URL(mt.last().url).searchParams;
   assert.equal(q.get("time_from"), "1");
@@ -69,7 +69,7 @@ test("meta with dates but no hours sends the full-day hours 1/24 it checks again
 });
 
 test("thresholds requires a use value", async () => {
-  const mt = constantJson([]);
+  const mt = constantJson(OK_BODY);
   await clientWith(mt).thresholds({ use: "measure", component: 3 });
   const url = new URL(mt.last().url);
   assert.equal(url.pathname, `${API}/thresholds/json`);
@@ -214,7 +214,7 @@ const endpointCases: {
 
 for (const c of endpointCases) {
   test(`${c.name} maps to the right path and query`, async () => {
-    const mt = constantJson({});
+    const mt = constantJson(OK_BODY);
     await c.call(clientWith(mt));
     const url = new URL(mt.last().url);
     assert.equal(url.pathname, c.path);
@@ -231,13 +231,13 @@ for (const c of endpointCases) {
 test("meta with no params (no use) still hits /meta/json with empty query", async () => {
   // meta() prunes undefineds; called here with a minimal object to exercise the
   // limits-style "no query" branch for the positional-lang-free endpoints.
-  const mt = constantJson({});
+  const mt = constantJson(OK_BODY);
   await clientWith(mt).stationTypes();
   assert.equal(new URL(mt.last().url).search, "");
 });
 
 test("the client rejects a file: base URL before any request reaches a custom transport", () => {
-  const mt = constantJson([]);
+  const mt = constantJson(OK_BODY);
   assert.throws(
     () => new LuftqualitaetClient({ baseUrl: "file:///etc/passwd", transport: mt.transport }),
     (err: unknown) => err instanceof LuftValidationError,
@@ -272,8 +272,43 @@ const invalidCalls: [string, (c: LuftqualitaetClient) => Promise<unknown>, RegEx
 
 for (const [name, call, message] of invalidCalls) {
   test(`the client rejects ${name} before any request`, async () => {
-    const mt = constantJson({});
+    const mt = constantJson(OK_BODY);
     await assert.rejects(() => call(clientWith(mt)), (err: unknown) => err instanceof LuftError && message.test(err.message));
     assert.equal(mt.calls.length, 0);
   });
 }
+
+// ---- P9: a 2xx body must have the documented envelope -----------------------------
+
+const p9Window = { date_from: "2024-01-01", time_from: 1, date_to: "2024-01-01", time_to: 24, station: 143 };
+/** Every method, with a body of the shape the live API answers (trimmed). */
+const shapedCalls: Array<[string, (c: LuftqualitaetClient) => Promise<unknown>, unknown]> = [
+  ["components", (c) => c.components(), { count: 1, indices: ["component id"], "1": ["1"] }],
+  ["networks", (c) => c.networks(), { indices: ["network id"], data: {}, count: 0 }],
+  ["thresholds", (c) => c.thresholds({ use: "airquality" }), { count: 0, indices: [] }],
+  ["airquality", (c) => c.airquality(p9Window), { request: {}, data: {}, indices: { data: {} }, count: 0 }],
+  ["measures", (c) => c.measures({ ...p9Window, component: 1, scope: 1 }), { request: {}, indices: {}, data: { "143": {} } }],
+  ["measuresLimits", (c) => c.measuresLimits(), { request: {}, indices: {}, data: {} }],
+  ["annualBalances (rows)", (c) => c.annualBalances({ component: 1, year: 2024 }), { request: {}, data: [["1789", "21", "8", null]], indices: [], headers: {} }],
+  ["annualBalances (no rows yet)", (c) => c.annualBalances({ component: 1, year: 2026 }), { request: {}, data: {}, indices: [], headers: {} }],
+  ["meta", (c) => c.meta({ use: "measure" }), { stations: {}, request: {} }],
+];
+
+test("P9: every method accepts its documented envelope", async () => {
+  for (const [label, fn, body] of shapedCalls) {
+    await assert.doesNotReject(fn(clientWith(constantJson(body))), label);
+  }
+});
+
+test("P9: null, {}, an array, a string or an error object answered with 200 is a LuftParseError", async () => {
+  const { LuftParseError } = await import("../src/client/errors.js");
+  for (const [label, fn] of shapedCalls) {
+    for (const body of [null, {}, [], "maintenance", { error: "boom" }, { data: null }]) {
+      await assert.rejects(
+        fn(clientWith(constantJson(body))),
+        (e: unknown) => e instanceof LuftParseError && /Unexpected response from \/api\/air-data\/v3\//.test((e as Error).message),
+        `${label} ${JSON.stringify(body)}`,
+      );
+    }
+  }
+});

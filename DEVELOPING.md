@@ -219,7 +219,13 @@ endpoint. CLI: `--max-response-bytes`.
 
 **Decoding.** A JSON body is decoded by the charset its `Content-Type` declares
 (UTF-8 when it names none) with `TextDecoder`, which also drops a leading byte order
-mark; an unknown charset label is a `LuftParseError`.
+mark; an unknown charset label is a `LuftParseError`. Every 2xx body must then have the
+envelope its endpoint documents (`responseShapeProblem`, exported, with the shapes
+`list`: `count` + `indices`; `window`/`limits`: `request` + a `data` object; `annual`:
+`request` + `indices` + `data` rows; `meta`: `request`): `null`, `{}`, an error object or
+a proxy's page is a `LuftParseError` naming the path (CLI exit `1`), never data or an
+empty result read as "nothing found". A non-JSON body's parse error names its
+`Content-Type`.
 
 **The transport contract, enforced by the engine.** `timeoutMs` and `maxResponseBytes`
 hold for every transport, not only the built-in one: the engine runs each transport call

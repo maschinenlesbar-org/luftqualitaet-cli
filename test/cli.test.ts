@@ -4,7 +4,7 @@ import { run } from "../src/cli/run.js";
 import { LuftqualitaetClient } from "../src/client/client.js";
 import type { CliDeps } from "../src/cli/io.js";
 import type { HttpRequest, HttpResponse } from "../src/client/http.js";
-import { makeMockTransport, jsonResponse, rawResponse } from "./helpers.js";
+import { makeMockTransport, jsonResponse, rawResponse, OK_BODY } from "./helpers.js";
 
 const API = "/api/air-data/v3";
 
@@ -24,7 +24,7 @@ function makeCli(responder: (req: HttpRequest) => HttpResponse) {
 }
 
 test("components --lang de --index code builds the query", async () => {
-  const cli = makeCli(() => jsonResponse({ count: 0 }));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["components", "--lang", "de", "--index", "code"], cli.deps);
   assert.equal(code, 0);
   const url = new URL(cli.mt.last().url);
@@ -33,7 +33,7 @@ test("components --lang de --index code builds the query", async () => {
 });
 
 test("components rejects an invalid lang before any request", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["components", "--lang", "fr"], cli.deps);
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
@@ -41,14 +41,14 @@ test("components rejects an invalid lang before any request", async () => {
 });
 
 test("airquality requires the window options", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["airquality", "--station", "143"], cli.deps);
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
 });
 
 test("airquality with full window builds the request", async () => {
-  const cli = makeCli(() => jsonResponse({ data: {} }));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(
     [
       "airquality",
@@ -65,7 +65,7 @@ test("airquality with full window builds the request", async () => {
 });
 
 test("thresholds rejects an invalid use", async () => {
-  const cli = makeCli(() => jsonResponse([]));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["thresholds", "--use", "bogus"], cli.deps);
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
@@ -97,35 +97,35 @@ function withWindowArg(replace: Record<string, string>): string[] {
 }
 
 test("airquality rejects time-from below 1 (no request)", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["airquality", ...withWindowArg({ "--time-from": "0" })], cli.deps);
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
 });
 
 test("airquality rejects time-to above 24 (no request)", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["airquality", ...withWindowArg({ "--time-to": "25" })], cli.deps);
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
 });
 
 test("airquality rejects station 0 (no request)", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["airquality", ...withWindowArg({ "--station": "0" })], cli.deps);
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
 });
 
 test("airquality rejects a malformed date (no request)", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["airquality", ...withWindowArg({ "--date-from": "2024-1-1" })], cli.deps);
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
 });
 
 test("annual-balances rejects a year before 2016 (no request)", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(
     ["annual-balances", "--component", "1", "--year", "2015"],
     cli.deps,
@@ -135,7 +135,7 @@ test("annual-balances rejects a year before 2016 (no request)", async () => {
 });
 
 test("annual-balances builds the request for a valid year", async () => {
-  const cli = makeCli(() => jsonResponse({ data: {} }));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(
     ["annual-balances", "--component", "1", "--year", "2023", "--lang", "de"],
     cli.deps,
@@ -147,7 +147,7 @@ test("annual-balances builds the request for a valid year", async () => {
 });
 
 test("transgressions builds the request", async () => {
-  const cli = makeCli(() => jsonResponse({ data: {} }));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["transgressions", "--component", "5", "--year", "2020"], cli.deps);
   assert.equal(code, 0);
   assert.equal(new URL(cli.mt.last().url).pathname, `${API}/transgressions/json`);
@@ -155,7 +155,7 @@ test("transgressions builds the request", async () => {
 
 test("measures requires --component and --scope (the API would pick one series)", async () => {
   for (const extra of [[], ["--component", "5"], ["--scope", "2"]]) {
-    const cli = makeCli(() => jsonResponse({}));
+    const cli = makeCli(() => jsonResponse(OK_BODY));
     const code = await run(["measures", ...fullWindow, ...extra], cli.deps);
     assert.equal(code, 1, extra.join(" "));
     assert.equal(cli.mt.calls.length, 0);
@@ -164,7 +164,7 @@ test("measures requires --component and --scope (the API would pick one series)"
 });
 
 test("measures forwards component/scope", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(
     ["measures", ...fullWindow, "--component", "5", "--scope", "2"],
     cli.deps,
@@ -177,7 +177,7 @@ test("measures forwards component/scope", async () => {
 });
 
 test("components rejects an invalid index before any request", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["components", "--index", "bogus"], cli.deps);
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
@@ -185,7 +185,7 @@ test("components rejects an invalid index before any request", async () => {
 });
 
 test("meta rejects an invalid use before any request", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["meta", "--use", "bogus"], cli.deps);
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
@@ -193,7 +193,7 @@ test("meta rejects an invalid use before any request", async () => {
 });
 
 test("meta --use airquality requires a date window (no request)", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["meta", "--use", "airquality"], cli.deps);
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
@@ -201,14 +201,14 @@ test("meta --use airquality requires a date window (no request)", async () => {
 });
 
 test("meta --use measure needs no window", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["meta", "--use", "measure"], cli.deps);
   assert.equal(code, 0);
   assert.equal(new URL(cli.mt.last().url).searchParams.get("use"), "measure");
 });
 
 test("station-types passes a positional lang", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["station-types", "--lang", "de"], cli.deps);
   assert.equal(code, 0);
   const url = new URL(cli.mt.last().url);
@@ -217,15 +217,15 @@ test("station-types passes a positional lang", async () => {
 });
 
 test("--compact prints single-line JSON", async () => {
-  const cli = makeCli(() => jsonResponse({ a: 1, b: 2 }));
+  const cli = makeCli(() => jsonResponse({ count: 1, indices: [] }));
   const code = await run(["--compact", "components"], cli.deps);
   assert.equal(code, 0);
-  assert.equal(cli.out.join(""), '{"a":1,"b":2}');
+  assert.equal(cli.out.join(""), '{"count":1,"indices":[]}');
 });
 
 test("DEL and C1 control characters in server data are escaped in the JSON output", async () => {
   const controls = String.fromCharCode(0x7f, 0x85, 0x9b) + "2J";
-  const served = { name: `Station${controls}`, code: String.fromCharCode(0x1b) + "[31m" };
+  const served = { count: 1, indices: [], name: `Station${controls}`, code: String.fromCharCode(0x1b) + "[31m" };
   for (const format of [[], ["--compact"]]) {
     const cli = makeCli(() => jsonResponse(served));
     assert.equal(await run([...format, "components"], cli.deps), 0);
@@ -238,7 +238,7 @@ test("DEL and C1 control characters in server data are escaped in the JSON outpu
 });
 
 test("no command prints help to stdout and exits 0", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run([], cli.deps);
   assert.equal(code, 0);
   assert.equal(cli.mt.calls.length, 0); // never touched the network
@@ -247,7 +247,7 @@ test("no command prints help to stdout and exits 0", async () => {
 });
 
 test("a global flag without a command still shows help on stdout, exit 0", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["--compact"], cli.deps);
   assert.equal(code, 0);
   assert.equal(cli.err.length, 0);
@@ -255,14 +255,14 @@ test("a global flag without a command still shows help on stdout, exit 0", async
 });
 
 test("an unknown command still errors on stderr with exit 1", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["boguscmd"], cli.deps);
   assert.equal(code, 1);
   assert.match(cli.err.join("\n"), /unknown command 'boguscmd'/);
 });
 
 test("meta --use airquality rejects a reversed date window before any request", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(
     ["meta", "--use", "airquality", "--date-from", "2024-12-31", "--date-to", "2024-01-01"],
     cli.deps,
@@ -275,7 +275,7 @@ test("meta --use airquality rejects a reversed date window before any request", 
 test("meta --use airquality sends the 1/24 hour defaults it validates against", async () => {
   // Upstream fills a missing hour with the *current* hour, which could reverse a
   // window the CLI accepted (e.g. --time-from 20 on one day at 10:00).
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(
     ["meta", "--use", "airquality", "--date-from", "2024-01-01", "--date-to", "2024-01-01", "--time-from", "20"],
     cli.deps,
@@ -285,7 +285,7 @@ test("meta --use airquality sends the 1/24 hour defaults it validates against", 
   assert.equal(q.get("time_from"), "20");
   assert.equal(q.get("time_to"), "24");
 
-  const none = makeCli(() => jsonResponse({}));
+  const none = makeCli(() => jsonResponse(OK_BODY));
   assert.equal(
     await run(["meta", "--use", "airquality", "--date-from", "2024-01-01", "--date-to", "2024-01-02"], none.deps),
     0,
@@ -296,7 +296,7 @@ test("meta --use airquality sends the 1/24 hour defaults it validates against", 
 });
 
 test("meta --use airquality rejects reversed hours on the same date before any request", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(
     [
       "meta", "--use", "airquality",
@@ -310,7 +310,7 @@ test("meta --use airquality rejects reversed hours on the same date before any r
 });
 
 test("meta rejects --time-from/--time-to without dates", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["meta", "--use", "measure", "--time-from", "1", "--time-to", "5"], cli.deps);
   assert.notEqual(code, 0);
   assert.equal(cli.mt.calls.length, 0);
@@ -318,7 +318,7 @@ test("meta rejects --time-from/--time-to without dates", async () => {
 });
 
 test("meta checks the window for every use, not only airquality", async () => {
-  const reversed = makeCli(() => jsonResponse({}));
+  const reversed = makeCli(() => jsonResponse(OK_BODY));
   assert.equal(
     await run(["meta", "--use", "measure", "--date-from", "2025-01-01", "--date-to", "2024-01-01"], reversed.deps),
     1,
@@ -326,12 +326,12 @@ test("meta checks the window for every use, not only airquality", async () => {
   assert.equal(reversed.mt.calls.length, 0);
   assert.match(reversed.err.join("\n"), /Invalid window: the start .* is after the end/);
 
-  const half = makeCli(() => jsonResponse({}));
+  const half = makeCli(() => jsonResponse(OK_BODY));
   assert.equal(await run(["meta", "--use", "map", "--date-to", "2024-01-01"], half.deps), 1);
   assert.equal(half.mt.calls.length, 0);
   assert.match(half.err.join("\n"), /go together/);
 
-  const ok = makeCli(() => jsonResponse({}));
+  const ok = makeCli(() => jsonResponse(OK_BODY));
   assert.equal(
     await run(
       ["meta", "--use", "measure", "--date-from", "2024-01-01", "--date-to", "2024-01-02", "--time-to", "6"],
@@ -347,7 +347,7 @@ test("meta checks the window for every use, not only airquality", async () => {
 
 test("an invalid global option value exits 1 without leaving run()", async () => {
   // The help probe parses the global options too; it must not process.exit().
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["--max-retries", "-1", "components"], cli.deps);
   assert.equal(code, 1);
   assert.equal(cli.mt.calls.length, 0);
@@ -356,12 +356,12 @@ test("an invalid global option value exits 1 without leaving run()", async () =>
 });
 
 test("--timeout accepts up to the largest timer Node supports", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   assert.equal(await run(["--timeout", "2147483647", "components"], cli.deps), 0);
   assert.equal(cli.mt.last().timeoutMs, 2_147_483_647);
 
   // Commander parse errors exit 1 in this CLI.
-  const over = makeCli(() => jsonResponse({}));
+  const over = makeCli(() => jsonResponse(OK_BODY));
   assert.equal(await run(["--timeout", "2147483648", "components"], over.deps), 1);
   assert.equal(over.mt.calls.length, 0);
   assert.match(over.err.join("\n"), /0\.\.2147483647/);
@@ -375,7 +375,7 @@ test("--max-redirects is parsed and passed through to the client", async () => {
       seen = opts.maxRedirects;
       return new LuftqualitaetClient({
         ...opts,
-        transport: makeMockTransport(() => jsonResponse({})).transport,
+        transport: makeMockTransport(() => jsonResponse(OK_BODY)).transport,
       });
     },
   };
@@ -388,7 +388,7 @@ test("--max-redirects is parsed and passed through to the client", async () => {
 
 for (const bad of ["file:///etc/passwd", "ftp://example.org", "notaurl"]) {
   test(`--base-url ${bad} is a usage error (no request)`, async () => {
-    const cli = makeCli(() => jsonResponse([]));
+    const cli = makeCli(() => jsonResponse(OK_BODY));
     const code = await run(["--base-url", bad, "networks"], cli.deps);
     assert.notEqual(code, 0);
     assert.equal(cli.mt.calls.length, 0);
@@ -397,14 +397,14 @@ for (const bad of ["file:///etc/passwd", "ftp://example.org", "notaurl"]) {
 }
 
 test("--base-url accepts an http(s) URL", async () => {
-  const cli = makeCli(() => jsonResponse([]));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run(["--base-url", "http://localhost:8080", "networks"], cli.deps);
   assert.equal(code, 0);
   assert.equal(new URL(cli.mt.last().url).origin, "http://localhost:8080");
 });
 
 test("the default base URL is the API's current host, so no 301 hop is needed", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   assert.equal(await run(["scopes"], cli.deps), 0);
   assert.equal(cli.mt.last().url, "https://luftdaten.umweltbundesamt.de/api/air-data/v3/scopes/json");
 });
@@ -415,7 +415,7 @@ for (const [base, hint] of [
   ["http://mirror.test/uba/api/air-data/v3", "try http://mirror.test/uba)"],
 ] as const) {
   test(`--base-url ${base} (with the API path) is a usage error with a hint`, async () => {
-    const cli = makeCli(() => jsonResponse({}));
+    const cli = makeCli(() => jsonResponse(OK_BODY));
     assert.equal(await run(["--base-url", base, "scopes"], cli.deps), 1);
     assert.equal(cli.mt.calls.length, 0);
     const text = cli.err.join("\n");
@@ -425,14 +425,14 @@ for (const [base, hint] of [
 }
 
 test("--base-url with a path prefix keeps it in front of the API path", async () => {
-  const cli = makeCli(() => jsonResponse({}));
+  const cli = makeCli(() => jsonResponse(OK_BODY));
   assert.equal(await run(["--base-url", "http://mirror.test/uba/", "scopes"], cli.deps), 0);
   assert.equal(cli.mt.last().url, "http://mirror.test/uba/api/air-data/v3/scopes/json");
 });
 
 test("--max-retries is bounded to 0..10", async () => {
   for (const [value, ok] of [["0", true], ["10", true], ["11", false], ["99999999999", false]] as const) {
-    const cli = makeCli(() => jsonResponse({}));
+    const cli = makeCli(() => jsonResponse(OK_BODY));
     const code = await run(["--max-retries", value, "scopes"], cli.deps);
     assert.equal(code, ok ? 0 : 1, value);
     if (!ok) {
@@ -479,7 +479,7 @@ test("a --base-url with a query, a fragment or surrounding whitespace is a usage
     [" https://luftdaten.umweltbundesamt.de", /cannot have surrounding whitespace/],
     ["https://luftdaten.umweltbundesamt.de\t", /cannot have surrounding whitespace/],
   ] as const) {
-    const cli = makeCli(() => jsonResponse({}));
+    const cli = makeCli(() => jsonResponse(OK_BODY));
     const code = await run(["--base-url", baseUrl, "components"], cli.deps);
     assert.equal(code, 1, baseUrl);
     assert.equal(cli.mt.calls.length, 0, baseUrl);
@@ -507,20 +507,20 @@ test("--user-agent: blank, flag-like, control or non-Latin-1 values are usage er
     ["a\r\nX-Evil: 1", /Value contains control characters\./],
     ["bot \u2603", /Value contains characters outside Latin-1/],
   ] as const) {
-    const cli = makeCli(() => jsonResponse({}));
+    const cli = makeCli(() => jsonResponse(OK_BODY));
     const code = await run(["--user-agent", ua, "components"], cli.deps);
     assert.equal(code, 1, JSON.stringify(ua));
     assert.equal(cli.mt.calls.length, 0, JSON.stringify(ua));
     assert.match(cli.err.join("\n"), message, JSON.stringify(ua));
   }
-  const ok = makeCli(() => jsonResponse({}));
+  const ok = makeCli(() => jsonResponse(OK_BODY));
   assert.equal(await run(["--user-agent", "my-bot/1.0\t(Grüße)", "components"], ok.deps), 0);
   assert.equal(ok.mt.last().headers?.["User-Agent"], "my-bot/1.0\t(Grüße)");
 });
 
 test("--use does not swallow the next option", async () => {
   for (const cmd of ["thresholds", "meta"]) {
-    const cli = makeCli(() => jsonResponse({}));
+    const cli = makeCli(() => jsonResponse(OK_BODY));
     const code = await run([cmd, "--use", "--component", "5"], cli.deps);
     assert.equal(code, 1, cmd);
     assert.equal(cli.mt.calls.length, 0, cmd);
@@ -530,7 +530,9 @@ test("--use does not swallow the next option", async () => {
 
 test("a deeply nested response fails pretty-printing cleanly and still prints with --compact", async () => {
   const depth = 200_000;
-  const deep = () => rawResponse("[".repeat(depth) + "]".repeat(depth), "application/json");
+  // A documented envelope (a list's count + indices) holding the deep value.
+  const deep = () =>
+    rawResponse('{"count":1,"indices":[],"1":' + "[".repeat(depth) + "]".repeat(depth) + "}", "application/json");
   const pretty = makeCli(deep);
   assert.equal(await run(["components"], pretty.deps), 1);
   assert.deepEqual(pretty.out, []);
@@ -540,6 +542,6 @@ test("a deeply nested response fails pretty-printing cleanly and still prints wi
   // should a runtime's stack still be too small, it must fail just as cleanly.
   const compact = makeCli(deep);
   const code = await run(["--compact", "components"], compact.deps);
-  if (code === 0) assert.equal(compact.out.join("").length, 2 * depth);
+  if (code === 0) assert.equal(compact.out.join("").length, 2 * depth + '{"count":1,"indices":[],"1":}'.length);
   else assert.equal(compact.err.join("\n"), "Error: The response is nested too deeply to print.");
 });

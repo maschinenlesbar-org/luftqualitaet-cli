@@ -6,7 +6,9 @@ export {
   DEFAULT_META_TIME_FROM,
   DEFAULT_META_TIME_TO,
   baseUrlApiPathProblem,
+  responseShapeProblem,
 } from "./client.js";
+export type { ResponseShape } from "./client.js";
 export {
   RequestEngine,
   DEFAULT_BASE_URL,

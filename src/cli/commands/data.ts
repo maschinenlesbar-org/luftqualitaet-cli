@@ -18,7 +18,13 @@ import {
   type MetaUse,
   type ThresholdUse,
 } from "../../client/enums.js";
-import { DEFAULT_META_TIME_FROM, DEFAULT_META_TIME_TO, annualDataNote } from "../../client/client.js";
+import {
+  DEFAULT_META_TIME_FROM,
+  DEFAULT_META_TIME_TO,
+  annualDataNote,
+  stationDataNote,
+} from "../../client/client.js";
+import type { AirDataResult } from "../../client/types.js";
 import { LuftApiError } from "../../client/errors.js";
 
 /**
@@ -50,12 +56,19 @@ function parseDate(value: string): string {
 }
 
 /**
- * Run a station query; the API answers an unknown station id with HTTP 409 (an HTML
- * page, no detail), so name the likely cause on stderr before the error.
+ * Run a station query. The API answers most unknown station ids with an empty `data` and
+ * HTTP 200, like a window without data, and ids far outside the catalogue with HTTP 409 (an
+ * HTML page, no detail): name the likely cause on stderr either way. The empty case is a
+ * note after the (printed) result, exit 0; the 409 a hint before the error.
  */
-async function withStationHint<T>(deps: CliDeps, station: number, query: () => Promise<T>): Promise<T> {
+async function withStationHint(
+  deps: CliDeps,
+  station: number,
+  query: () => Promise<AirDataResult>,
+): Promise<{ result: AirDataResult; note: string | undefined }> {
   try {
-    return await query();
+    const result = await query();
+    return { result, note: stationDataNote(result, station) };
   } catch (err) {
     if (err instanceof LuftApiError && err.status === 409) {
       deps.io.err(
@@ -83,19 +96,17 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
     program.command("airquality").description("Air-quality index data for a station/window"),
   ).action(
     action(deps, async ({ client, global, opts }) => {
-      renderJson(
-        deps,
-        global,
-        await withStationHint(deps, opts["station"] as number, () =>
-          client.airquality({
-            date_from: String(opts["dateFrom"]),
-            time_from: opts["timeFrom"] as number,
-            date_to: String(opts["dateTo"]),
-            time_to: opts["timeTo"] as number,
-            station: opts["station"] as number,
-          }),
-        ),
+      const { result, note } = await withStationHint(deps, opts["station"] as number, () =>
+        client.airquality({
+          date_from: String(opts["dateFrom"]),
+          time_from: opts["timeFrom"] as number,
+          date_to: String(opts["dateTo"]),
+          time_to: opts["timeTo"] as number,
+          station: opts["station"] as number,
+        }),
       );
+      renderJson(deps, global, result);
+      if (note !== undefined) deps.io.err(`Note: ${note}`);
     }),
   );
 
@@ -118,21 +129,19 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
       .requiredOption("--scope <id>", "scope id (averaging, see `scopes`)", parsePositiveIntArg),
   ).action(
     action(deps, async ({ client, global, opts }) => {
-      renderJson(
-        deps,
-        global,
-        await withStationHint(deps, opts["station"] as number, () =>
-          client.measures({
-            date_from: String(opts["dateFrom"]),
-            time_from: opts["timeFrom"] as number,
-            date_to: String(opts["dateTo"]),
-            time_to: opts["timeTo"] as number,
-            station: opts["station"] as number,
-            component: opts["component"] as number,
-            scope: opts["scope"] as number,
-          }),
-        ),
+      const { result, note } = await withStationHint(deps, opts["station"] as number, () =>
+        client.measures({
+          date_from: String(opts["dateFrom"]),
+          time_from: opts["timeFrom"] as number,
+          date_to: String(opts["dateTo"]),
+          time_to: opts["timeTo"] as number,
+          station: opts["station"] as number,
+          component: opts["component"] as number,
+          scope: opts["scope"] as number,
+        }),
       );
+      renderJson(deps, global, result);
+      if (note !== undefined) deps.io.err(`Note: ${note}`);
     }),
   );
 

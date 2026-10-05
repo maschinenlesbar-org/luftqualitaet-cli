@@ -232,7 +232,7 @@ do the same thing.
 | Code | Meaning |
 | --- | --- |
 | `0` | success (also `--help` / `--version`) |
-| `4` | resource not found (`404` from the API — usually a wrong `--base-url`; unknown ids give `409` or an empty `data`, see Troubleshooting) |
+| `4` | resource not found (`404` from the API — usually a wrong `--base-url`; unknown ids give an empty `data` (rarely `409`), see Troubleshooting) |
 | `1` | any other error (network failure, bad JSON, validation error) |
 | non-zero | usage / argument error (bad flag, missing required option) |
 
@@ -250,8 +250,11 @@ exits with its own code.
   (`"$(npm prefix -g)/bin"`), or run via
   `npx @maschinenlesbar.org/luftqualitaet-cli …`.
 - **Unknown ids don't give exit `4`.** The API has its own answers:
-  - an unknown **station** on `airquality`/`measures` → HTTP `409` (an HTML page, no
-    detail), exit `1`; the CLI adds a `Hint:` line. Look the id up with
+  - an unknown **station** on `airquality`/`measures` → mostly HTTP `200` with
+    `"data": {}`, exit `0` — the same answer as a window without data (UBA: invalid
+    queries return JSON without data). The CLI adds a `Note:` on stderr saying the id
+    may be wrong. Only ids far outside the catalogue (seen: 65535 and above) get HTTP
+    `409` (an HTML page, no detail), exit `1`, with a `Hint:` line. Look the id up with
     `meta --use measure`.
   - an unknown **component** or **scope**, a year or window with no data →
     HTTP `200` with `"data": {}`, exit `0`.

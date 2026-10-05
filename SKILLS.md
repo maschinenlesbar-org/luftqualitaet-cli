@@ -98,8 +98,9 @@ skills encode the non-obvious parts of this API, for example:
 - all `airquality` times are **CET all year** (the response labels them so), one hour
   behind German local time in summer, and the newest hour lags the clock — "right now"
   means the latest hour in the data, not the current local hour;
-- an unknown station id returns **HTTP 409** (CLI exit `1`), not the `4`/"not found" you'd
-  expect; an empty window returns `"data": {}` with exit `0`;
+- an unknown station id mostly returns `"data": {}` with exit `0` — the same as an empty
+  window (the CLI adds a `Note:` on stderr); only ids far outside the catalogue get
+  **HTTP 409** (exit `1`) — never the `4`/"not found" you'd expect;
 - response shapes are **inconsistent**: `components`/`scopes`/`station-types`/
   `station-settings` put rows at the top level beside `indices`, while `networks` and the
   data endpoints nest them under `.data`; `annual-balances` rows have a different set of

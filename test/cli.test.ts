@@ -561,3 +561,18 @@ test("annual-balances without rows says when the year's balance comes", async ()
   assert.equal(await run(["--compact", "annual-balances", "--component", "1", "--year", String(next)], cli.deps), 0);
   assert.match(cli.err.join("\n"), new RegExp(`^Note: No annual balance for ${next}: UBA publishes it from the final data in June ${next + 1}`));
 });
+
+test("an empty airquality/measures answer prints a note that the station id may be unknown (02#1)", async () => {
+  const empty = { request: {}, indices: {}, data: {}, count: 0 };
+  const window = ["--date-from", "2026-10-04", "--time-from", "1", "--date-to", "2026-10-04", "--time-to", "2"];
+  for (const argv of [["airquality", "--station", "2", ...window], ["measures", "--station", "2", "--component", "5", "--scope", "2", ...window]]) {
+    const cli = makeCli(() => jsonResponse(empty));
+    assert.equal(await run(["--compact", ...argv], cli.deps), 0);
+    assert.deepEqual(JSON.parse(cli.out.join("")), empty);
+    assert.match(cli.err.join("\n"), /^Note: No data for station 2 in this window\. The API answers an unknown station id the same way/);
+  }
+  // Data: no note.
+  const cli = makeCli(() => jsonResponse({ request: {}, indices: {}, data: { "2": { "2026-10-04 00:00:00": ["2026-10-04 01:00:00", 1, 0] } } }));
+  assert.equal(await run(["--compact", "airquality", "--station", "2", ...window], cli.deps), 0);
+  assert.deepEqual(cli.err, []);
+});

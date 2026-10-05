@@ -131,7 +131,9 @@ Stationsumgebung (z. B. städtisch, vorstädtisch, ländlich). CLI: `station-set
 **station.** Die numerische **Stations-ID**, die eine Messstation bezeichnet. Ein
 Pflichtparameter von `airquality` und `measures`. Stations-IDs beginnen bei 1, daher
 lehnt die CLI `0` schon lokal ab. IDs finden Sie über `meta` / `airquality-limits` /
-`measures-limits`.
+`measures-limits`. Eine ID, die die API nicht kennt, bekommt meist `"data": {}` mit HTTP
+200, wie ein Zeitfenster ohne Daten (nur IDs weit außerhalb des Katalogs bekommen HTTP 409);
+die CLI gibt dann einen `Note:` auf stderr aus.
 
 **component.** Die numerische **Komponenten-ID**, die einen Schadstoff bezeichnet. Pflicht
 bei `annual-balances` / `transgressions` / `measures`; optional bei `thresholds`.

@@ -133,7 +133,9 @@ exceedance types referenced by the transgressions data. CLI:
 **station.** The numeric **station id** identifying a monitoring station. A
 required parameter of `airquality` and `measures`. Station ids are 1-based, so
 the CLI rejects `0` locally. Discover ids via `meta` / `airquality-limits` /
-`measures-limits`.
+`measures-limits`. An id the API doesn't know mostly gets `"data": {}` with HTTP 200,
+like a window without data (only ids far outside the catalogue get HTTP 409); the CLI
+then prints a `Note:` on stderr.
 
 **component.** The numeric **component id** identifying a pollutant. Required by
 `annual-balances` / `transgressions` / `measures`; optional on `thresholds`.

@@ -45,7 +45,19 @@ const USAGE_EXIT = 1;
  * A filter value the server matches nothing for, the answer it gives, and what stderr must
  * name. The API answers an unknown station id like an empty window (`data: {}`).
  */
-const unmatched: Array<{ argv: string[]; answer: unknown; names: RegExp }> = [];
+const emptyWindow = { request: {}, indices: {}, data: {}, count: 0 };
+const unmatched: Array<{ argv: string[]; answer: unknown; names: RegExp }> = [
+  {
+    argv: ["airquality", "--station", "2", "--date-from", "2026-10-04", "--time-from", "1", "--date-to", "2026-10-04", "--time-to", "2"],
+    answer: emptyWindow,
+    names: /No data for station 2 in this window\. The API answers an unknown station id the same way/,
+  },
+  {
+    argv: ["measures", "--station", "10473", "--component", "5", "--scope", "2", "--date-from", "2026-10-04", "--time-from", "1", "--date-to", "2026-10-04", "--time-to", "2"],
+    answer: emptyWindow,
+    names: /No data for station 10473/,
+  },
+];
 /** A run whose filter matched: nothing on stderr. */
 const matchedArgv = ["measures", "--station", "172", "--component", "1", "--scope", "2", "--date-from", "2026-10-04", "--time-from", "1", "--date-to", "2026-10-04", "--time-to", "2"];
 const matchedAnswer: unknown = { request: {}, indices: {}, data: { "172": { "2026-10-04 00:00:00": [1, 2, 20, "2026-10-04 01:00:00", "0"] } } };

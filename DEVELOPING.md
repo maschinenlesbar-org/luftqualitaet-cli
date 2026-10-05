@@ -84,6 +84,12 @@ disagrees at 10–35 % of PM₁₀ stations in 2019–2025). `annualDataNote(kin
 completed year's transgressions are preliminary and `annual-balances` has the count; an
 annual balance without rows comes in June of the following year (`FINAL_DATA_MONTH`).
 
+**Unknown station ids.** The API answers most unknown station ids like a window without
+data (HTTP 200, `data: {}`); only ids far outside the catalogue get HTTP 409. The client
+can't tell the two apart without the catalogue, so `stationDataNote(result, station)`
+(exported) returns a note for an empty answer, and the CLI prints it as `Note:` on stderr
+(exit 0); a 409 gets a `Hint:` before the error.
+
 **Unknown parameters.** The API ignores a query parameter it doesn't take and answers as
 if it weren't there, so each call checks its parameter object against the keys it
 documents (`CALL_PARAMS`, `assertKnownParams`): a misspelled key (`componet`), a key of

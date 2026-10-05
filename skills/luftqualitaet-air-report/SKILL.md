@@ -26,15 +26,17 @@ concentrations — decoded into the official German air-quality wording.
 This skill drives the `luftqualitaet` command. **Before anything else, validate it is available** — run `command -v luftqualitaet` (or `luftqualitaet --version`). If it is not on your PATH, STOP and inform the user that the `luftqualitaet` CLI (`@maschinenlesbar.org/luftqualitaet-cli`) is not installed — installing it is their responsibility; never install it yourself, and do not fall back to `npx` or a local `node dist/...` build.
 
 Always `--compact`. A window with no data returns `"data": {}` (exit `0`) — that's
-"no measurements for that window", not an error.
+"no measurements for that window" **or an unknown station id**: the API answers both the
+same way, and the CLI adds a `Note:` on stderr saying so.
 
 ## Step 1 — Resolve the station id
 
 The user almost always names a place, not an id. If you don't already have the
 numeric station id, resolve it first via the **luftqualitaet-station-finder** skill
-(it reads the station list out of `meta --use measure`). Validate before querying:
-an unknown station id makes the API return **HTTP 409** (the CLI exits `1`, **not**
-the `4`/"not found" you'd expect).
+(it reads the station list out of `meta --use measure`). Validate the id before querying:
+the API answers an unknown station id like a window without data (`"data": {}`, exit
+`0`; only ids far outside the catalogue get HTTP 409, exit `1`), so an empty answer for an
+id you didn't take from the catalogue may be a wrong id, not missing data.
 
 ## Step 2 — Pick a window that has data
 
@@ -51,9 +53,10 @@ ordered start-before-end (the CLI rejects a reversed window locally, exit `1`).
   16:00 local time. The newest hour also lags the clock by an hour or two and may be
   incomplete (`[2]` = `1`). So for "right now", report the **latest hour in the data**
   with its CET label (or converted, saying so) — never call it the current local hour.
-- If a window comes back empty (`"data": {}`), widen it or step back a day rather
-  than reporting "no air quality"; `airquality-limits` shows each station's
-  available range (slow — `--timeout 90000`).
+- If a window comes back empty (`"data": {}`), first make sure the station id came from
+  the catalogue; then widen the window or step back a day rather than reporting "no air
+  quality"; `airquality-limits` shows each station's available range (slow —
+  `--timeout 90000`).
 
 ```bash
 luftqualitaet --compact airquality \

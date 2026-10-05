@@ -193,6 +193,22 @@ export function annualDataNote(
   );
 }
 
+/**
+ * What a reader of an `airquality`/`measures` answer must be told when it has no data, or
+ * undefined when it has some. The API answers an unknown station id like a window without
+ * data — HTTP 200 with `data: {}` ("Ungültige Abfragen liefern einen JSON ohne Daten
+ * zurück", UBA); only ids far outside the catalogue get HTTP 409 — so an empty answer can
+ * mean either, and the note says how to tell. The CLI prints it on stderr.
+ */
+export function stationDataNote(result: AirDataResult, station: number): string | undefined {
+  if (!hasNoRows(result["data"])) return undefined;
+  return (
+    `No data for station ${station} in this window. The API answers an unknown station id the ` +
+    `same way: check the id (meta --use measure lists the stations) and the window ` +
+    `(airquality-limits / measures-limits show each station's range).`
+  );
+}
+
 /** `component` + `year` (+ optional lang/index) of the annual endpoints. */
 function assertYearComponent(params: YearComponentParams): void {
   assertId("component", params.component);

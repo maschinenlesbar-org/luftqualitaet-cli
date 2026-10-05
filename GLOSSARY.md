@@ -187,7 +187,11 @@ endpoint returns: `airquality` | `measure`. CLI: `thresholds --use`.
 **Redirects.** The engine follows up to 5 HTTP redirects by default
 (configurable with `--max-redirects`; `0` disables following). On a
 **cross-origin** redirect it strips request headers (re-adding only the benign
-`Accept` / `User-Agent`) so nothing sensitive leaks to a different origin.
+`Accept` / `User-Agent`) so nothing sensitive leaks to a different origin. Credentials in
+`--base-url` (`https://user:pw@mirror/`) go out as an `Authorization: Basic` header, to the
+base URL's own origin (scheme, host, port) only: a same-origin redirect keeps them, relative
+or absolute, a cross-origin one drops them, and a `401`/`403` after such a drop says so (an
+http→https redirect: use an https base URL). Userinfo in a server's `Location` is never used.
 
 **Response size cap (`maxResponseBytes`).** A hard cap on response body size
 (default 100 MiB; `0` = unlimited) that defends against memory exhaustion from a

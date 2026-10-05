@@ -255,11 +255,19 @@ export class RequestEngine {
     return copy;
   }
 
-  /** Build a fully-qualified URL from a path and optional query parameters. */
+  /**
+   * Build a fully-qualified URL from a path and optional query parameters. It keeps the
+   * base URL's userinfo; `request()` sends it as an Authorization header instead.
+   */
   buildUrl(path: string, query?: QueryParams): string {
+    return this.composeUrl(this.#baseUrl, path, query);
+  }
+
+  /** `base` + path + query string. */
+  private composeUrl(base: string, path: string, query?: QueryParams): string {
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
     const qs = query ? buildQueryString(query) : "";
-    return `${this.#baseUrl}${normalizedPath}${qs ? `?${qs}` : ""}`;
+    return `${base}${normalizedPath}${qs ? `?${qs}` : ""}`;
   }
 
   /** Perform a request with Accept negotiation and transient-error retries. */
@@ -268,11 +276,24 @@ export class RequestEngine {
     path: string,
     options: { query?: QueryParams; accept: string } = { accept: "application/json" },
   ): Promise<RawResponse> {
-    let url = this.buildUrl(path, options.query);
+    // The transport never sees the base URL's userinfo: the engine sends it as an
+    // Authorization header, per hop, so a redirect to the same origin (relative or
+    // absolute) keeps it and one to another origin or scheme drops it. A transport such
+    // as fetch also refuses a URL with credentials outright.
+    const [userinfo] = credentialsIn(this.#baseUrl);
+    let url = this.composeUrl(
+      userinfo === undefined ? this.#baseUrl : this.#baseUrl.replace(`://${userinfo}@`, "://"),
+      path,
+      options.query,
+    );
     const headers: Record<string, string> = {
       Accept: options.accept,
       "User-Agent": this.userAgent,
     };
+    const authorization = basicAuthorization(this.#baseUrl);
+    if (authorization !== undefined) headers["Authorization"] = authorization;
+    /** Why a redirect dropped the base URL's credentials, for a 401/403 message. */
+    let dropped: string | undefined;
 
     let attempt = 0;
     let redirects = 0;
@@ -285,6 +306,7 @@ export class RequestEngine {
           url,
           headers,
           timeoutMs: this.timeoutMs,
+          redirect: "manual",
           ...(this.maxResponseBytes > 0 ? { maxResponseBytes: this.maxResponseBytes } : {}),
         });
       } catch (cause) {
@@ -298,6 +320,18 @@ export class RequestEngine {
         throw new LuftNetworkError(
           `${method} ${redactUrl(url)} failed: ${sanitizeServerText(this.scrub(reason))}`,
           { cause: this.scrubCause(cause) },
+        );
+      }
+
+      // A transport must not follow redirects itself (`redirect: "manual"`): one that did
+      // (fetch's default) may have carried the Authorization header to another host, and
+      // the answer is not the one asked for. Reject it when it says so (`url`).
+      const finalUrl = (response as { url?: unknown }).url;
+      if (typeof finalUrl === "string" && finalUrl !== "" && originOf(finalUrl) !== originOf(url)) {
+        throw new LuftNetworkError(
+          `${method} ${redactUrl(url)} failed: the transport followed a redirect to another origin ` +
+            `(${sanitizeServerText(redactUrl(this.scrub(finalUrl)))}); a transport must not follow redirects ` +
+            `(HttpRequest.redirect is "manual").`,
         );
       }
 
@@ -332,11 +366,22 @@ export class RequestEngine {
               `Invalid redirect Location ${JSON.stringify(sanitizeServerText(redactUrl(this.scrub(location))))} from ${redactUrl(url)}`,
             );
           }
-          // Cross-origin redirect: strip request headers so any sensitive
-          // header (e.g. an Authorization/token added later) is never leaked to
-          // a different origin. Today only Accept/User-Agent are sent, so we
-          // re-add those benign defaults to keep negotiation working.
-          if (target.origin !== new URL(url).origin) {
+          // Userinfo in a Location is not used: credentials come from the base URL only,
+          // as the Authorization header, never from a server.
+          target.username = "";
+          target.password = "";
+          // Cross-origin redirect (scheme, host or port differ): strip every request
+          // header but the benign Accept/User-Agent, so the base URL's Authorization is
+          // never sent to an origin it wasn't issued for. The same origin keeps it,
+          // whether the Location is relative or absolute.
+          const from = new URL(url);
+          if (target.origin !== from.origin) {
+            if (headers["Authorization"] !== undefined && dropped === undefined) {
+              dropped =
+                from.protocol === "http:" && target.protocol === "https:" && from.hostname === target.hostname
+                  ? "the server redirected http→https, which dropped the base URL's credentials; use an https base URL"
+                  : `the redirect to ${target.origin} dropped the base URL's credentials (they are sent to their own origin only)`;
+            }
             for (const key of Object.keys(headers)) delete headers[key];
             headers["Accept"] = options.accept;
             headers["User-Agent"] = this.userAgent;
@@ -349,7 +394,7 @@ export class RequestEngine {
 
       const contentType = String(response.headers["content-type"] ?? "");
       if (status < 200 || status >= 300) {
-        throw this.toApiError(method, url, status, response.body);
+        throw this.toApiError(method, url, status, response.body, status === 401 || status === 403 ? dropped : undefined);
       }
 
       return { data: response.body, contentType, status };
@@ -367,7 +412,7 @@ export class RequestEngine {
     }
   }
 
-  private toApiError(method: string, url: string, status: number, body: Buffer): LuftApiError {
+  private toApiError(method: string, url: string, status: number, body: Buffer, hint?: string): LuftApiError {
     const text = this.scrub(body.toString("utf8"));
     let detail: string | undefined;
     try {
@@ -380,6 +425,27 @@ export class RequestEngine {
     // `detail` came from the response body; strip control characters so a hostile
     // endpoint cannot inject terminal escape sequences via the stderr error message.
     if (detail !== undefined) detail = sanitizeServerText(detail);
+    if (hint !== undefined) detail = detail === undefined ? hint : `${detail}; ${hint}`;
     return new LuftApiError({ status, url, method, body: text, detail });
+  }
+}
+
+/**
+ * The `Authorization` header for a URL's userinfo (`Basic base64(user:password)`, both
+ * percent-decoded, as Node's own http client builds it), or undefined without userinfo.
+ */
+function basicAuthorization(url: string): string | undefined {
+  const parsed = new URL(url);
+  if (parsed.username === "" && parsed.password === "") return undefined;
+  const pair = `${decodeURIComponent(parsed.username)}:${decodeURIComponent(parsed.password)}`;
+  return `Basic ${Buffer.from(pair, "utf8").toString("base64")}`;
+}
+
+/** The origin (scheme, host, port) of a URL, or the value itself if it doesn't parse. */
+function originOf(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return url;
   }
 }

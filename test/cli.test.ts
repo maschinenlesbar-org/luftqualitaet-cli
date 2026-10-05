@@ -493,9 +493,10 @@ test("credentials in --base-url are redacted from error messages", async () => {
   assert.equal(code, 4);
   const text = cli.err.join("\n");
   assert.doesNotMatch(text, /secret|user:/);
-  assert.match(text, /HTTP 404 for GET http:\/\/\*\*\*@127\.0\.0\.1:18122\/s\/404\/api\/air-data\/v3\/components\/json/);
-  // The request itself keeps the userinfo (Node sends it as Basic auth).
-  assert.match(cli.mt.last().url, /^http:\/\/user:secret@/);
+  assert.match(text, /HTTP 404 for GET http:\/\/127\.0\.0\.1:18122\/s\/404\/api\/air-data\/v3\/components\/json/);
+  // The userinfo travels as the Authorization header, never in the URL the transport sees.
+  assert.match(cli.mt.last().url, /^http:\/\/127\.0\.0\.1:18122\//);
+  assert.equal(cli.mt.last().headers?.["Authorization"], `Basic ${Buffer.from("user:secret").toString("base64")}`);
 });
 
 test("--user-agent: blank, flag-like, control or non-Latin-1 values are usage errors", async () => {

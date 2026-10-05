@@ -187,7 +187,11 @@ liefert: `airquality` | `measure`. CLI: `thresholds --use`.
 (einstellbar mit `--max-redirects`; `0` schaltet das Folgen ab). Bei einer
 **Cross-Origin**-Weiterleitung entfernt sie die Request-Header (und setzt nur die
 unbedenklichen `Accept` / `User-Agent` wieder), damit nichts Sensibles an einen anderen
-Origin gelangt.
+Origin gelangt. Zugangsdaten in `--base-url` (`https://user:pw@mirror/`) gehen als
+`Authorization: Basic`-Header nur an den Origin der Basis-URL (Schema, Host, Port): Eine
+Weiterleitung auf denselben Origin behält sie, relativ oder absolut, eine auf einen anderen
+Origin lässt sie weg, und ein `401`/`403` danach sagt das (bei http→https: eine https-Basis-URL
+verwenden). Zugangsdaten im `Location` eines Servers werden nie verwendet.
 
 **Obergrenze der Antwortgröße (`maxResponseBytes`).** Eine feste Obergrenze für die Größe
 des Antwort-Bodys (Standard 100 MiB; `0` = unbegrenzt), die vor Speichererschöpfung durch

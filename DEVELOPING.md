@@ -195,6 +195,17 @@ surfaces at once.
 **cross-origin** redirect it strips request headers (re-adding only the benign
 `Accept` / `User-Agent`) so nothing leaks to a different origin.
 
+The one credential the client can send is the userinfo of a base URL you set
+(`https://user:pw@mirror/`, for a proxy or mirror behind a login). The engine never puts it
+into the URL a transport sees: it sends it as an `Authorization: Basic` header per hop. A
+redirect to the same origin (scheme, host and port), with a relative or an absolute
+`Location`, keeps it; one that crosses an origin boundary drops it, and a `401`/`403` from
+the target then says so ("the server redirected http→https, which dropped the base URL's
+credentials; use an https base URL"). Userinfo in a `Location` is never used. Transports
+are told `redirect: "manual"` (`HttpRequest.redirect`): the engine follows redirects
+itself, and a response whose `HttpResponse.url` lies on another origin (a fetch transport
+that followed one) is rejected as a `LuftNetworkError`.
+
 **maxResponseBytes.** A hard cap on response body size (default 100 MiB; `0` =
 unlimited) that defends against memory exhaustion from a hostile or buggy
 endpoint. CLI: `--max-response-bytes`.
@@ -214,8 +225,9 @@ omitted `baseUrl` selects the default. The client constructor adds the API-path 
 [`shared.ts`](src/cli/shared.ts)) calls the same two rules, so a bad value is a usage
 error at parse time, before any client is built. And the default transport
 ([`http.ts`](src/client/http.ts)) gates the scheme on **every redirect hop**, as a
-`LuftNetworkError`. Userinfo (`http://user:secret@mirror/`) is allowed — Node sends it
-as Basic auth — but `redactUrl` (exported from [`errors.ts`](src/client/errors.ts))
+`LuftNetworkError`. Userinfo (`http://user:secret@mirror/`) is allowed — the engine sends
+it as Basic auth (see **Redirects**) and request URLs in messages and `LuftApiError.url`
+carry none — and `redactUrl` (exported from [`errors.ts`](src/client/errors.ts))
 shows it as `***@` in every error message and in `LuftApiError.url`; the base-URL
 reasons never echo the URL, and a rejected parameter value is quoted with its userinfo
 cut out. The CLI also redacts on output: `run.ts` (`withRedactedOutput`) takes the exact

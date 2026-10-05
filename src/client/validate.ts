@@ -174,6 +174,45 @@ export function assertParams<T>(name: string, value: T): T {
   return value;
 }
 
+/** Options of a call that takes a parameter object. */
+export interface FilterOptions {
+  /**
+   * Send parameters the call doesn't know (one the API added after this client was
+   * written), as long as each is a string, a finite number or a boolean. Default `false`:
+   * an unknown key is rejected, because the API ignores it and answers as if it weren't
+   * there — the unfiltered result, or another series than the one meant.
+   */
+  allowUnknownFilters?: boolean;
+}
+
+/**
+ * Check that a parameter object holds only the keys its call documents (`known`): any other
+ * own key — misspelled (`stationId`), from another call (`component` on `airquality`), or
+ * `__proto__`/`constructor` from parsed JSON — is a LuftValidationError before any request,
+ * unless `options.allowUnknownFilters`. `undefined` values count as omitted. The values of
+ * known keys are checked by the call's own rules.
+ */
+export function assertKnownParams(
+  call: string,
+  params: object,
+  known: readonly string[],
+  options: FilterOptions = {},
+): void {
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || known.includes(key)) continue;
+    const name = JSON.stringify(key.length > 100 ? `${key.slice(0, 100)}…` : key);
+    if (options?.allowUnknownFilters !== true) {
+      throw new LuftValidationError(
+        `Invalid parameter ${name}: ${call} takes only ${known.join(", ")}; the API would ignore it. ` +
+          "Pass { allowUnknownFilters: true } to send it anyway.",
+      );
+    }
+    const scalar =
+      typeof value === "string" || typeof value === "boolean" || (typeof value === "number" && Number.isFinite(value));
+    if (!scalar) throw new LuftValidationError(`Invalid parameter ${name}: expected a string, a finite number or a boolean.`);
+  }
+}
+
 /** Check an optional value with `check` when it is set. */
 export function optional<T>(value: T | undefined, check: (v: unknown) => T): T | undefined {
   return value === undefined ? undefined : check(value);

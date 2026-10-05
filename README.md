@@ -227,6 +227,9 @@ do the same thing.
 | `1` | any other error (network failure, bad JSON, validation error) |
 | non-zero | usage / argument error (bad flag, missing required option) |
 
+Every option takes one value: giving one twice (`--station 143 --station 172`) is a
+usage error, never "the last one wins".
+
 A reader that stops early (`luftqualitaet measures-limits | head -c 100`) is ordinary use:
 the CLI exits `0` quietly. If stderr's reader is gone (`2>&1 | true`), a failed run still
 exits with its own code.

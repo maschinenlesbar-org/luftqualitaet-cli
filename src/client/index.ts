@@ -5,6 +5,7 @@ export {
   API_PATH,
   DEFAULT_META_TIME_FROM,
   DEFAULT_META_TIME_TO,
+  CALL_PARAMS,
   baseUrlApiPathProblem,
   responseShapeProblem,
 } from "./client.js";
@@ -43,6 +44,7 @@ export {
   assertDate,
   assertHour,
   assertId,
+  assertKnownParams,
   assertParams,
   assertWindow,
   assertValid,
@@ -52,7 +54,7 @@ export {
   headerValueProblem,
   nonBlankProblem,
 } from "./validate.js";
-export type { Problem } from "./validate.js";
+export type { FilterOptions, Problem } from "./validate.js";
 
 export * from "./enums.js";
 export * from "./types.js";

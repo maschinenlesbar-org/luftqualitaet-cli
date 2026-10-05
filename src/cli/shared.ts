@@ -141,6 +141,28 @@ export function parseIndexArg(value: string): string {
   return value;
 }
 
+/**
+ * Make giving a single-value option twice a usage error, on `command` and every
+ * subcommand. Commander keeps the last value silently: `--station 143 --station 172`
+ * fetched station 172 alone, and `--year 2024 --year 2025` one year, with nothing telling
+ * the user a value was dropped. Flags without a value are left alone. Call it once on a
+ * freshly built program: the check counts per Option object.
+ */
+export function forbidRepeatedOptions(command: Command): void {
+  for (const option of command.options) {
+    if ((!option.required && !option.optional) || option.variadic) continue;
+    const parse = option.parseArg;
+    let given = false;
+    const guarded = (value: string, previous: unknown): unknown => {
+      if (given) throw new InvalidArgumentError(`${option.long ?? option.short} may be given only once.`);
+      given = true;
+      return parse === undefined ? value : parse(value, previous);
+    };
+    option.parseArg = guarded as typeof option.parseArg;
+  }
+  for (const child of command.commands) forbidRepeatedOptions(child);
+}
+
 export interface GlobalOptions {
   baseUrl?: string;
   timeout?: number;

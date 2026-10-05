@@ -312,3 +312,14 @@ test("P9: null, {}, an array, a string or an error object answered with 200 is a
     }
   }
 });
+
+test("P10: { allowUnknownFilters: true } sends an unknown scalar parameter, never an object", async () => {
+  const mt = constantJson(OK_BODY);
+  await clientWith(mt).components({ lang: "de", future_param: "x" } as {}, { allowUnknownFilters: true });
+  assert.equal(new URL(mt.last().url).searchParams.get("future_param"), "x");
+  await assert.rejects(
+    clientWith(constantJson(OK_BODY)).components({ future_param: { a: 1 } } as {}, { allowUnknownFilters: true }),
+    LuftValidationError,
+  );
+  await assert.rejects(clientWith(mt).components({ future_param: "x" } as {}), /components takes only lang, index/);
+});

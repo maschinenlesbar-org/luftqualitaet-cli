@@ -20,6 +20,7 @@ import { LangValues, MetaUseValues, ThresholdUseValues, type Lang } from "./enum
 import {
   assertId,
   assertListParams,
+  assertKnownParams,
   assertParams,
   assertValid,
   assertOneOf,
@@ -27,8 +28,25 @@ import {
   assertWindowParams,
   assertYear,
   optional,
+  type FilterOptions,
   type Problem,
 } from "./validate.js";
+
+const WINDOW_KEYS = ["date_from", "time_from", "date_to", "time_to", "station"] as const;
+const LIST_KEYS = ["lang", "index"] as const;
+
+/** The parameters each call takes (the API ignores any other; see `assertKnownParams`). */
+export const CALL_PARAMS = {
+  airquality: WINDOW_KEYS,
+  measures: [...WINDOW_KEYS, "component", "scope"],
+  annualBalances: ["component", "year", ...LIST_KEYS],
+  transgressions: ["component", "year", ...LIST_KEYS],
+  components: LIST_KEYS,
+  networks: LIST_KEYS,
+  scopes: LIST_KEYS,
+  thresholds: ["use", "lang", "component", "scope"],
+  meta: ["use", "lang", "date_from", "date_to", "time_from", "time_to"],
+} as const satisfies Record<string, readonly string[]>;
 
 /**
  * The window hours `meta()` sends when dates are given without hours: the full day.
@@ -142,8 +160,9 @@ export class LuftqualitaetClient {
   // --- Air-quality index & raw measures -------------------------------------
 
   /** Air-quality index data for a station over a time window. */
-  async airquality(params: WindowParams): Promise<AirDataResult> {
+  async airquality(params: WindowParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
+    assertKnownParams("airquality", params, CALL_PARAMS.airquality, options);
     assertWindowParams(params);
     return this.engine.getJson(`${API}/airquality/json`, prune({ ...params }), shaped("window"));
   }
@@ -158,8 +177,9 @@ export class LuftqualitaetClient {
    * Both are required: without them the API would pick a series itself (see
    * `MeasuresParams`).
    */
-  async measures(params: MeasuresParams): Promise<AirDataResult> {
+  async measures(params: MeasuresParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
+    assertKnownParams("measures", params, CALL_PARAMS.measures, options);
     assertWindowParams(params);
     assertId("component", params.component);
     assertId("scope", params.scope);
@@ -174,35 +194,40 @@ export class LuftqualitaetClient {
   // --- Aggregations ---------------------------------------------------------
 
   /** Annual tabulations for a component and year (>= 2016). */
-  async annualBalances(params: YearComponentParams): Promise<AirDataResult> {
+  async annualBalances(params: YearComponentParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
+    assertKnownParams("annualBalances", params, CALL_PARAMS.annualBalances, options);
     assertYearComponent(params);
     return this.engine.getJson(`${API}/annualbalances/json`, prune({ ...params }), shaped("annual"));
   }
 
   /** Exceedance (Überschreitungen) data for a component and year. */
-  async transgressions(params: YearComponentParams): Promise<AirDataResult> {
+  async transgressions(params: YearComponentParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
+    assertKnownParams("transgressions", params, CALL_PARAMS.transgressions, options);
     assertYearComponent(params);
     return this.engine.getJson(`${API}/transgressions/json`, prune({ ...params }), shaped("annual"));
   }
 
   // --- Reference lists ------------------------------------------------------
 
-  async components(params: ListParams = {}): Promise<AirDataResult> {
+  async components(params: ListParams = {}, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
+    assertKnownParams("components", params, CALL_PARAMS.components, options);
     assertListParams(params);
     return this.engine.getJson(`${API}/components/json`, prune({ ...params }), shaped("list"));
   }
 
-  async networks(params: ListParams = {}): Promise<AirDataResult> {
+  async networks(params: ListParams = {}, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
+    assertKnownParams("networks", params, CALL_PARAMS.networks, options);
     assertListParams(params);
     return this.engine.getJson(`${API}/networks/json`, prune({ ...params }), shaped("list"));
   }
 
-  async scopes(params: ListParams = {}): Promise<AirDataResult> {
+  async scopes(params: ListParams = {}, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
+    assertKnownParams("scopes", params, CALL_PARAMS.scopes, options);
     assertListParams(params);
     return this.engine.getJson(`${API}/scopes/json`, prune({ ...params }), shaped("list"));
   }
@@ -223,8 +248,9 @@ export class LuftqualitaetClient {
   }
 
   /** Thresholds for a use (airquality | measure), optional component/scope. */
-  async thresholds(params: ThresholdParams): Promise<AirDataResult> {
+  async thresholds(params: ThresholdParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
+    assertKnownParams("thresholds", params, CALL_PARAMS.thresholds, options);
     assertOneOf("use", params.use, ThresholdUseValues);
     optional(params.lang, (v) => assertOneOf("lang", v, LangValues));
     optional(params.component, (v) => assertId("component", v));
@@ -237,8 +263,9 @@ export class LuftqualitaetClient {
    * `use: "airquality"` needs `date_from` and `date_to`; omitted hours are sent as
    * `DEFAULT_META_TIME_FROM`/`DEFAULT_META_TIME_TO`.
    */
-  async meta(params: MetaParams): Promise<AirDataResult> {
+  async meta(params: MetaParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
+    assertKnownParams("meta", params, CALL_PARAMS.meta, options);
     assertOneOf("use", params.use, MetaUseValues);
     optional(params.lang, (v) => assertOneOf("lang", v, LangValues));
     // use=airquality needs a date window: the API requires one for that bundle.

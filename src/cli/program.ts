@@ -10,7 +10,7 @@ import { defaultIO } from "./io.js";
 import { API_PATH, LuftqualitaetClient } from "../client/client.js";
 import { DEFAULT_BASE_URL, MAX_REDIRECTS, MAX_RETRIES } from "../client/engine.js";
 import { MAX_TIMEOUT_MS } from "../client/http.js";
-import { parseBaseUrl, parseBoundedInt, parseHeaderValue, parseIntArg } from "./shared.js";
+import { forbidRepeatedOptions, parseBaseUrl, parseBoundedInt, parseHeaderValue, parseIntArg } from "./shared.js";
 import { registerReferenceCommands } from "./commands/reference.js";
 import { registerDataCommands } from "./commands/data.js";
 
@@ -80,6 +80,7 @@ export function buildProgram(deps: CliDeps = defaultDeps): Command {
 
   registerReferenceCommands(program, deps);
   registerDataCommands(program, deps);
+  forbidRepeatedOptions(program);
 
   return program;
 }

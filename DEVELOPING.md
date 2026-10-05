@@ -75,6 +75,15 @@ function. Every method checks that its parameter object is an object first
 never a raw `TypeError`. Server text in an error message is cut at 500 characters
 (`MAX_MESSAGE_TEXT`, `cutForMessage`); `LuftApiError.body` keeps the whole body.
 
+**Unknown parameters.** The API ignores a query parameter it doesn't take and answers as
+if it weren't there, so each call checks its parameter object against the keys it
+documents (`CALL_PARAMS`, `assertKnownParams`): a misspelled key (`componet`), a key of
+another call (`lang` on `measures`) or `__proto__`/`constructor` from parsed JSON is a
+`LuftValidationError` before any request. A parameter the API adds later can still be
+sent with `{ allowUnknownFilters: true }` as the call's second argument (strings, finite
+numbers and booleans only). In the CLI, every option takes one value; giving one twice is
+a usage error (`forbidRepeatedOptions` in `shared.ts`).
+
 `userAgent` is checked there too, with the same rule as the CLI's `--user-agent`
 (`headerValueProblem`, also exported as `assertHeaderValue(name, value)`): a blank value,
 a control character other than tab (CR/LF included), DEL or a character above U+00FF

@@ -51,8 +51,12 @@ ordered start-before-end (the CLI rejects a reversed window locally, exit `1`).
   hours you send are read the same way. During summer time (CEST, late March to late
   October) German clocks are one hour ahead: an hour ending `15:00` CET ends at
   16:00 local time. The newest hour also lags the clock by an hour or two and may be
-  incomplete (`[2]` = `1`). So for "right now", report the **latest hour in the data**
-  with its CET label (or converted, saying so) — never call it the current local hour.
+  incomplete (`[2]` = `1`). So for "right now", report the **newest complete hour**
+  (the largest key whose `[2]` is `0`) with its CET label (or converted, saying so), and
+  mention a newer incomplete one if there is one — never call it the current local hour.
+  Take the newest hour by its key, not by position: the API sometimes lists the newest
+  hours out of order (`… 10:00, 13:00, 11:00, 12:00`); the CLI puts them back in time
+  order, but sort the keys yourself if you read the JSON from elsewhere.
 - If a window comes back empty (`"data": {}`), first make sure the station id came from
   the catalogue; then widen the window or step back a day rather than reporting "no air
   quality"; `airquality-limits` shows each station's available range (slow —
@@ -80,7 +84,13 @@ The layout is **positional** (the self-describing `indices` block confirms it):
 ```
 
 The object key is the hour's **start** time and `[0]` its end time, both in CET (see
-Step 2). Each pollutant sub-array is `[component-id, measured value, that pollutant's
+Step 2); the CLI returns the hours in time order. The newest complete hour:
+
+```bash
+luftqualitaet --compact airquality --station 143 \
+  --date-from 2026-10-06 --time-from 1 --date-to 2026-10-06 --time-to 24 \
+  | jq -c '.data["143"] | to_entries | map(select(.value[2] == 0)) | max_by(.key)'
+``` Each pollutant sub-array is `[component-id, measured value, that pollutant's
 index (0..4), y-value]`. The **overall index `[1]` is the worst of the per-pollutant
 indices** — so the pollutant whose sub-array index equals `[1]` is the **driving
 pollutant** for that hour. Map component ids with

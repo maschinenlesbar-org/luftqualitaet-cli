@@ -209,6 +209,25 @@ export function stationDataNote(result: AirDataResult, station: number): string 
   );
 }
 
+/**
+ * `result` with each station's hours (keyed `"YYYY-MM-DD HH:MM:SS"`, the hour's start in
+ * CET) in time order. The API sometimes lists the newest hours out of order — today's
+ * answer for a station read `… 10:00, 13:00, 11:00, 12:00` — so "the last entry" was not
+ * the newest hour. Only the key order changes; the values are the API's.
+ */
+export function inTimeOrder(result: AirDataResult): AirDataResult {
+  const data = result["data"];
+  if (!isRecord(data)) return result;
+  for (const [station, hours] of Object.entries(data)) {
+    if (!isRecord(hours)) continue;
+    const keys = Object.keys(hours);
+    const sorted = [...keys].sort();
+    if (keys.every((key, i) => key === sorted[i])) continue;
+    (data as Record<string, unknown>)[station] = Object.fromEntries(sorted.map((key) => [key, hours[key]]));
+  }
+  return result;
+}
+
 /** `component` + `year` (+ optional lang/index) of the annual endpoints. */
 function assertYearComponent(params: YearComponentParams): void {
   assertId("component", params.component);
@@ -235,12 +254,16 @@ export class LuftqualitaetClient {
 
   // --- Air-quality index & raw measures -------------------------------------
 
-  /** Air-quality index data for a station over a time window. */
+  /**
+   * Air-quality index data for a station over a time window: `data.<station>.<hour start>`
+   * → `[end, index, incomplete, [component, value, index, y]…]`, the hours in time order
+   * ({@link inTimeOrder}).
+   */
   async airquality(params: WindowParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("airquality", params, CALL_PARAMS.airquality, options);
     assertWindowParams(params);
-    return this.engine.getJson(`${API}/airquality/json`, prune({ ...params }), shaped("window"));
+    return inTimeOrder(await this.engine.getJson(`${API}/airquality/json`, prune({ ...params }), shaped("window")));
   }
 
   /** The available date range per station for air-quality data. */
@@ -259,7 +282,7 @@ export class LuftqualitaetClient {
     assertWindowParams(params);
     assertId("component", params.component);
     assertId("scope", params.scope);
-    return this.engine.getJson(`${API}/measures/json`, prune({ ...params }), shaped("window"));
+    return inTimeOrder(await this.engine.getJson(`${API}/measures/json`, prune({ ...params }), shaped("window")));
   }
 
   /** The available date range per scope/component/station for measurements. */

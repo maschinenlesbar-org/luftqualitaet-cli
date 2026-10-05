@@ -341,3 +341,21 @@ test("annualDataNote: a completed year's transgressions are preliminary; annual 
   assert.match(annualDataNote("annualBalances", 2026, { data: {} }, oct2026) ?? "", /No annual balance for 2026: UBA publishes it from the final data in June 2027/);
   assert.match(annualDataNote("annualBalances", 2025, { data: {} }, new Date(2026, 2, 1)) ?? "", /not .*yet|yet:/);
 });
+
+test("airquality and measures return each station's hours in time order (02#2)", async () => {
+  // Today's answer for station 172 listed 13:00 between 10:00 and 11:00.
+  const hours = {
+    "2026-10-05 10:00:00": ["2026-10-05 11:00:00", 1, 0],
+    "2026-10-05 13:00:00": ["2026-10-05 14:00:00", 1, 0],
+    "2026-10-05 11:00:00": ["2026-10-05 12:00:00", 1, 1],
+    "2026-10-05 12:00:00": ["2026-10-05 13:00:00", 1, 1],
+  };
+  const body = { request: {}, indices: {}, data: { "172": hours }, count: 1 };
+  const w = { date_from: "2026-10-05", time_from: 1, date_to: "2026-10-05", time_to: 24, station: 172 };
+  for (const fn of [(c: LuftqualitaetClient) => c.airquality(w), (c: LuftqualitaetClient) => c.measures({ ...w, component: 5, scope: 2 })]) {
+    const result = (await fn(clientWith(constantJson(body)))) as { data: Record<string, Record<string, unknown>> };
+    const keys = Object.keys(result.data["172"]!);
+    assert.deepEqual(keys, ["2026-10-05 10:00:00", "2026-10-05 11:00:00", "2026-10-05 12:00:00", "2026-10-05 13:00:00"]);
+    assert.deepEqual(result.data["172"]!["2026-10-05 13:00:00"], hours["2026-10-05 13:00:00"]);
+  }
+});

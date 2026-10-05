@@ -84,6 +84,11 @@ disagrees at 10–35 % of PM₁₀ stations in 2019–2025). `annualDataNote(kin
 completed year's transgressions are preliminary and `annual-balances` has the count; an
 annual balance without rows comes in June of the following year (`FINAL_DATA_MONTH`).
 
+**Hour order.** `airquality()` and `measures()` return each station's hours in time
+order (`inTimeOrder`, exported): the API sometimes lists the newest hours out of order
+(`… 10:00, 13:00, 11:00, 12:00`), so the last entry wasn't the newest hour. Only the key
+order changes.
+
 **Unknown station ids.** The API answers most unknown station ids like a window without
 data (HTTP 200, `data: {}`); only ids far outside the catalogue get HTTP 409. The client
 can't tell the two apart without the catalogue, so `stationDataNote(result, station)`

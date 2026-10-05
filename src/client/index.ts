@@ -9,6 +9,7 @@ export {
   FINAL_DATA_MONTH,
   annualDataNote,
   stationDataNote,
+  inTimeOrder,
   baseUrlApiPathProblem,
   responseShapeProblem,
 } from "./client.js";

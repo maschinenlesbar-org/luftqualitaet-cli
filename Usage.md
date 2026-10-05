@@ -60,6 +60,10 @@ luftqualitaet airquality \
 All four window flags (`--date-from`, `--time-from`, `--date-to`, `--time-to`) plus
 `--station` are required.
 
+> The hours under `.data.<station>` are keyed by their start time (CET) and come back in
+> time order: the API sometimes lists the newest hours out of order, and the client sorts
+> them. The newest hour may be incomplete (`[2]` = `1` in `airquality`).
+
 ### 4. Discover which time windows a station actually has data for
 
 Before requesting a window, check the available date range per station for

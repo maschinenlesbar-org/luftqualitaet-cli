@@ -86,7 +86,9 @@ Flags for reference commands:
 
 ### Data commands — measurements and aggregations
 
-**`airquality`** — air-quality index for a station over a time window.
+**`airquality`** — air-quality index for a station over a time window. The hours come
+back in time order (the API sometimes lists the newest ones out of order; the client
+sorts them), and the newest hour may be incomplete.
 
 | Flag | Required | Meaning |
 | --- | --- | --- |

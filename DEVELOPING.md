@@ -224,6 +224,12 @@ everything it prints — commander's usage errors, which echo rejected values, a
 library's messages for `--lang`/`--use`/`--index` — so a password with spaces, quotes,
 `#`, `?` or `/` is caught as well as an ordinary one. `redactUrl` falls back to the same
 text-based cut (`redactCredentials`, exported) for a value that doesn't parse as a URL.
+The engine keeps the base URL in a real `#private` field, so `console.log(client)`,
+`util.inspect` and `JSON.stringify` never show it, and it scrubs the base URL's userinfo
+(raw and percent-decoded) from error bodies and details, a redirect `Location` it can't
+parse, a custom transport's error text and the `cause` chain. Whatever a custom transport
+throws reaches the caller as a `LuftNetworkError` (`GET <url> failed: <reason>`, the
+original as `cause`).
 
 ## Testing
 

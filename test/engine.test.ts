@@ -175,6 +175,25 @@ test("an unparsable redirect Location surfaces as a typed LuftNetworkError", asy
   );
 });
 
+test("an unparsable redirect Location keeps the base URL's password out of the error and its cause", async () => {
+  // Finding luftqualitaet-cli 01#2: Node's "Invalid URL" TypeError carried the request URL as `base`.
+  const mt = makeMockTransport(() => ({
+    status: 301,
+    headers: { location: "http://bob:hunter2@x:99999" },
+    body: Buffer.from(""),
+  }));
+  const e = new RequestEngine({ baseUrl: "http://alice:s3cret@127.0.0.1:20420", transport: mt.transport });
+  const err = await e.getJson("/start").then(
+    () => assert.fail("should reject"),
+    (error: unknown) => error,
+  );
+  assert.ok(err instanceof LuftNetworkError);
+  const { inspect } = await import("node:util");
+  const text = inspect(err, { depth: 10, showHidden: true });
+  assert.ok(!text.includes("s3cret"), text);
+  assert.ok(!text.includes("hunter2"), text);
+});
+
 test("the User-Agent and Accept headers are sent", async () => {
   const mt = makeMockTransport(() => jsonResponse({}));
   const e = new RequestEngine({ transport: mt.transport, userAgent: "ua/1" });

@@ -349,3 +349,20 @@ test("a thrown ECONNRESET reaches the caller as a LuftNetworkError once retries 
   await assert.rejects(() => e.getJson("/x"), LuftNetworkError);
   assert.equal(n, 2, "one retry");
 });
+
+test("a JSON body is decoded by its declared charset, BOM dropped; an unknown charset is a LuftParseError", async () => {
+  const text = "Müller µg/m³";
+  for (const [charset, body] of [
+    ["iso-8859-1", Buffer.from(JSON.stringify({ name: text }), "latin1")],
+    ["utf-8", Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(JSON.stringify({ name: text }))])],
+  ] as const) {
+    const engine = new RequestEngine({
+      transport: async () => ({ status: 200, headers: { "content-type": `application/json; charset=${charset}` }, body }),
+    });
+    assert.deepEqual(await engine.getJson("/x"), { name: text }, charset);
+  }
+  const engine = new RequestEngine({
+    transport: async () => ({ status: 200, headers: { "content-type": "application/json; charset=x-klingon" }, body: Buffer.from("{}") }),
+  });
+  await assert.rejects(engine.getJson("/x"), (e: unknown) => e instanceof LuftParseError && /Unsupported response charset "x-klingon"/.test((e as Error).message));
+});

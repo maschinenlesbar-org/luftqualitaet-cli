@@ -217,6 +217,10 @@ that followed one) is rejected as a `LuftNetworkError`.
 unlimited) that defends against memory exhaustion from a hostile or buggy
 endpoint. CLI: `--max-response-bytes`.
 
+**Decoding.** A JSON body is decoded by the charset its `Content-Type` declares
+(UTF-8 when it names none) with `TextDecoder`, which also drops a leading byte order
+mark; an unknown charset label is a `LuftParseError`.
+
 **The transport contract, enforced by the engine.** `timeoutMs` and `maxResponseBytes`
 hold for every transport, not only the built-in one: the engine runs each transport call
 under the overall deadline (it passes an `AbortSignal` in `HttpRequest.signal`, which the

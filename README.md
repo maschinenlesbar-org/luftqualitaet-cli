@@ -244,6 +244,11 @@ do the same thing.
   available.
 - **Exit `1` / network error** — connectivity, DNS, or a timeout. Try again, or
   raise the limit with `--timeout 60000`.
+- **`429` / `503`** — the CLI retries automatically (up to `--max-retries`, default `2`),
+  honouring the server's `Retry-After` up to 30 s; the message ends `(after N retries)`
+  when they ran out, so wait a moment and retry. When the server asks for a longer wait
+  the CLI does not retry at all and says so (`the server asked to retry after 3600 s,
+  longer than the 30 s the client waits; not retried`): wait that long before trying again.
 - **Empty `.data`** — the query matched nothing or the window has no data; use the
   `-limits` commands to find a window that has data for that station/component.
 - **Reversed window error** — `--date-from`/`--time-from` must come before
@@ -269,7 +274,7 @@ These apply to every command and may be given before *or* after it:
 | `--base-url <url>` | API host (default `https://luftdaten.umweltbundesamt.de`); the CLI adds `/api/air-data/v3` itself. Credentials in it (`https://user:pw@mirror.example`) are sent as HTTP Basic auth and shown as `***` in everything the CLI prints, usage errors included |
 | `--timeout <ms>` | Per-request timeout (default `30000`; at most `2147483647`) |
 | `--user-agent <ua>` | `User-Agent` header value (non-blank; no control characters or characters above U+00FF) |
-| `--max-retries <n>` | Retries for transient `429`/`503` responses and reset connections (`0..10`, default `2`); a `429`/`503` waits the server's `Retry-After`, up to 30 s — a longer one fails at once |
+| `--max-retries <n>` | Retries for transient `429`/`503` responses and reset connections (`0..10`, default `2`). Each retry backs off linearly (200 ms, 400 ms, …), or waits the server's `Retry-After` when that is longer (up to 30 s; a longer one is not retried, and the error says so). Timeouts and refused connections are not retried |
 | `--max-redirects <n>` | HTTP redirects to follow (`0..20`; `0` = none; default `5`) |
 | `--max-response-bytes <n>` | Cap response body size in bytes (`0` = unlimited; default 100 MiB) |
 

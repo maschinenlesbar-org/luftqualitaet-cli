@@ -67,14 +67,15 @@ export interface EngineOptions {
   /**
    * Number of automatic retries for transient (429/503) responses and for a GET whose
    * connection was reset (see {@link isTransientNetworkError}), 0..`MAX_RETRIES` (10).
-   * A 429/503 waits the response's `Retry-After` (up to `MAX_RETRY_AFTER_MS`; a longer
-   * one is not retried), or else `retryDelayMs * attempt`; a reset waits
-   * `retryDelayMs * attempt`.
+   * Each waits `retryDelayMs * attempt`, or a 429/503's `Retry-After` when that is
+   * longer (up to `MAX_RETRY_AFTER_MS`; a longer one is not retried, and the LuftApiError
+   * says so).
    */
   maxRetries?: number;
   /**
-   * Base backoff between retries in milliseconds (grows linearly); used without a
-   * Retry-After. At most `MAX_RETRY_AFTER_MS`.
+   * Base backoff between retries in milliseconds (grows linearly), an integer
+   * 0..`MAX_RETRY_AFTER_MS` (30 000). Defaults to 200. It is also the floor under a
+   * `Retry-After`: the header can lengthen a wait, never shorten it.
    */
   retryDelayMs?: number;
   /** Number of HTTP redirects (301/302/303/307/308) to follow, 0..`MAX_REDIRECTS` (20). Defaults to 5. */
@@ -115,8 +116,8 @@ function intOption(name: string, value: number | undefined, fallback: number, ma
 /**
  * Longest `Retry-After` the engine waits out before retrying a 429/503. When the
  * server asks for longer, the engine does not retry at all and surfaces the error at
- * once: retrying early would only land inside the window the server asked us to wait
- * out, and a hostile value must not stall the CLI.
+ * once, naming the requested wait: retrying early would only land inside the window
+ * the server asked us to wait out, and a hostile value must not stall the CLI.
  */
 export const MAX_RETRY_AFTER_MS = 30_000;
 
@@ -480,15 +481,18 @@ export class RequestEngine {
         throw new LuftNetworkError(`${method} ${redactUrl(url)} failed: ${sizeLimitMessage(this.maxResponseBytes)}`);
       }
       const retryable = status === 429 || status === 503;
-      if (retryable && attempt < this.maxRetries) {
-        // Honour Retry-After; without a usable one, back off linearly. A Retry-After
-        // beyond MAX_RETRY_AFTER_MS is not retried: the error below surfaces at once.
-        const retryAfter = parseRetryAfter(responseHeaders["retry-after"]);
-        if (retryAfter === undefined || retryAfter <= MAX_RETRY_AFTER_MS) {
-          attempt += 1;
-          await this.sleep(retryAfter ?? this.retryDelayMs * attempt);
-          continue;
-        }
+      // A Retry-After beyond MAX_RETRY_AFTER_MS is not retried: the error below surfaces at
+      // once and names the wait the server asked for.
+      const retryAfter = retryable ? parseRetryAfter(responseHeaders["retry-after"]) : undefined;
+      const tooLong = retryAfter !== undefined && retryAfter > MAX_RETRY_AFTER_MS;
+      if (retryable && !tooLong && attempt < this.maxRetries) {
+        attempt += 1;
+        // Back off linearly from retryDelayMs. A Retry-After can ask for longer, never for
+        // less: `Retry-After: 0` or a date in the past turned the retries into a zero-delay
+        // burst against a server that had just asked for less load.
+        const backoff = this.retryDelayMs * attempt;
+        await this.sleep(retryAfter === undefined ? backoff : Math.max(retryAfter, backoff));
+        continue;
       }
 
       // Follow redirects, resolving the Location relative to the current URL.
@@ -544,7 +548,10 @@ export class RequestEngine {
 
       const contentType = String(headerValue(responseHeaders["content-type"]) ?? "");
       if (status < 200 || status >= 300) {
-        throw this.toApiError(method, url, status, body, status === 401 || status === 403 ? dropped : undefined);
+        throw this.toApiError(method, url, status, body, status === 401 || status === 403 ? dropped : undefined, {
+          retries: attempt,
+          ...(tooLong ? { retryAfterMs: retryAfter } : {}),
+        });
       }
 
       return { data: body, contentType, status };
@@ -562,7 +569,14 @@ export class RequestEngine {
     }
   }
 
-  private toApiError(method: string, url: string, status: number, body: Buffer, hint?: string): LuftApiError {
+  private toApiError(
+    method: string,
+    url: string,
+    status: number,
+    body: Buffer,
+    hint: string | undefined,
+    retry: { retries: number; retryAfterMs?: number },
+  ): LuftApiError {
     const text = this.scrub(body.toString("utf8"));
     let detail: string | undefined;
     try {
@@ -576,7 +590,15 @@ export class RequestEngine {
     // endpoint cannot inject terminal escape sequences via the stderr error message.
     if (detail !== undefined) detail = sanitizeServerText(detail);
     if (hint !== undefined) detail = detail === undefined ? hint : `${detail}; ${hint}`;
-    return new LuftApiError({ status, url, method, body: text, detail });
+    return new LuftApiError({
+      status,
+      url,
+      method,
+      body: text,
+      detail,
+      retries: retry.retries,
+      ...(retry.retryAfterMs === undefined ? {} : { retryAfterMs: retry.retryAfterMs, maxRetryAfterMs: MAX_RETRY_AFTER_MS }),
+    });
   }
 }
 

@@ -58,7 +58,7 @@ try {
 new LuftqualitaetClient({
   baseUrl: "https://luftdaten.umweltbundesamt.de", // the host; the client adds API_PATH (/api/air-data/v3)
   timeoutMs: 15_000,
-  maxRetries: 3,              // 429 / 503 are retried (Retry-After, else linear backoff)
+  maxRetries: 3,              // 429 / 503 and resets are retried (linear backoff, or a longer Retry-After)
   maxResponseBytes: 50 << 20, // abort responses larger than 50 MiB (0 = unlimited)
   userAgent: "my-app/1.0",
   transport: customTransport, // inject your own HTTP transport
@@ -185,10 +185,14 @@ as `true`/`false`, and encodes spaces as `%20` (not `+`).
 
 **Retry / backoff.** Transient `429` (rate limit) and `503` responses are
 retried automatically, up to `--max-retries` (`0..MAX_RETRIES` = `0..10`, default `2`).
-Each retry waits the response's `Retry-After` (`parseRetryAfter`: delay-seconds or an
-IMF-fixdate; anything else is ignored), or else `retryDelayMs * attempt`. A
-`Retry-After` above `MAX_RETRY_AFTER_MS` (30 s) is not retried: the `LuftApiError`
-surfaces at once. A GET whose connection was reset (`ECONNRESET`, `EPIPE`,
+Each retry waits `retryDelayMs * attempt` (linear backoff, `retryDelayMs` `0..30000`,
+default 200), or the response's `Retry-After` when that is longer (`parseRetryAfter`:
+delay-seconds or an IMF-fixdate; anything else is ignored) — the header can lengthen a
+wait, never shorten it, so `Retry-After: 0` or a past date is no burst. A `Retry-After`
+above `MAX_RETRY_AFTER_MS` (30 s) is not retried: the `LuftApiError` surfaces at once,
+says so ("the server asked to retry after 3600 s, longer than the 30 s the client waits;
+not retried") and carries `retryAfterMs`; after spent retries the message ends
+"(after N retries)" and `retries` holds the count. A GET whose connection was reset (`ECONNRESET`, `EPIPE`,
 `ECONNABORTED`, undici's `UND_ERR_SOCKET`, anywhere in the error's `cause` chain;
 `isTransientNetworkError`) is retried the same number of times, after
 `retryDelayMs * attempt`; a refused connection, a DNS failure or a timeout is not.

@@ -178,10 +178,11 @@ liefert: `airquality` | `measure`. CLI: `thresholds --use`.
 ## Such- und API-Konzepte
 
 **Retry / Backoff.** Die API begrenzt die Anfragerate und kann vorübergehend mit **429** /
-**503** antworten; die Engine wiederholt solche Anfragen automatisch und wartet dabei das
-`Retry-After` der Antwort ab (Sekunden oder ein HTTP-Datum), sonst linear steigend (200 ms,
-400 ms, …). Ein `Retry-After` über 30 s wird nicht abgewartet: Der Fehler erscheint sofort
-(`--max-retries`, `0..10`, Standard `2`). Eine Verbindung, die der Server mitten in der
+**503** antworten; die Engine wiederholt solche Anfragen automatisch, linear steigend
+(200 ms, 400 ms, …) oder nach dem `Retry-After` der Antwort (Sekunden oder ein HTTP-Datum),
+wenn das länger ist — ein `Retry-After` von `0` oder ein vergangenes Datum verkürzt die
+Wartezeit nie. Ein `Retry-After` über 30 s wird nicht abgewartet: Der Fehler erscheint
+sofort und nennt die verlangte Wartezeit (`--max-retries`, `0..10`, Standard `2`). Eine Verbindung, die der Server mitten in der
 Anfrage abbricht, wird ebenso wiederholt (linear steigend); eine abgelehnte Verbindung, ein
 DNS-Fehler oder eine Zeitüberschreitung nicht.
 

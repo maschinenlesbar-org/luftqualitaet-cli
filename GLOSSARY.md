@@ -179,10 +179,11 @@ endpoint returns: `airquality` | `measure`. CLI: `thresholds --use`.
 ## Search & API concepts
 
 **Retry / backoff.** The API rate-limits and can return transient **429** /
-**503** responses; the engine retries those automatically, waiting the response's
-`Retry-After` (seconds or an HTTP date) or else backing off linearly (200 ms, 400 ms,
-…). A `Retry-After` above 30 s is not retried: the error surfaces at once
-(`--max-retries`, `0..10`, default `2`). A connection the server resets mid-request is
+**503** responses; the engine retries those automatically, backing off linearly (200 ms,
+400 ms, …) or waiting the response's `Retry-After` (seconds or an HTTP date) when that is
+longer — a `Retry-After` of `0` or a past date never makes it retry sooner. A
+`Retry-After` above 30 s is not retried: the error surfaces at once and names the wait
+the server asked for (`--max-retries`, `0..10`, default `2`). A connection the server resets mid-request is
 retried the same way (linear backoff); a refused connection, a DNS failure or a timeout
 is not.
 

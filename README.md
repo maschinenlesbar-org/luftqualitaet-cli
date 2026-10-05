@@ -28,7 +28,7 @@ exceedances, and get the full picture — as clean JSON you can pipe straight in
 npm i -g @maschinenlesbar.org/luftqualitaet-cli
 ```
 
-This installs the **`luftqualitaet`** command. Requires **Node.js 20+**.
+This installs the **`luftqualitaet`** command. Requires **Node.js 22.12+**.
 
 Check it works:
 
@@ -237,7 +237,8 @@ exits with its own code.
 ## Troubleshooting
 
 - **`command not found: luftqualitaet`** — the global npm bin directory isn't on
-  your `PATH`. Run `npm bin -g` to find it and add it, or run via
+  your `PATH`. Run `npm prefix -g` to find the prefix and add its `bin` directory
+  (`"$(npm prefix -g)/bin"`), or run via
   `npx @maschinenlesbar.org/luftqualitaet-cli …`.
 - **Unknown ids don't give exit `4`.** The API has its own answers:
   - an unknown **station** on `airquality`/`measures` → HTTP `409` (an HTML page, no

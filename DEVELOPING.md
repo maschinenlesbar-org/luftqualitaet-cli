@@ -67,8 +67,13 @@ new LuftqualitaetClient({
 
 The numeric options must be integers in range — `timeoutMs` 0..2^31−1, `maxRetries`
 0..`MAX_RETRIES` (10), `retryDelayMs` 0..30 000, `maxRedirects` 0..`MAX_REDIRECTS` (20),
-`maxResponseBytes` 0..2^53−1 — or the constructor throws a `LuftError` naming the
-option (`Invalid option timeoutMs: expected an integer from 0 to 2147483647, got NaN.`).
+`maxResponseBytes` 0..2^53−1 — or the constructor throws a `LuftValidationError` naming
+the option (`Invalid option timeoutMs: expected an integer from 0 to 2147483647, got NaN.`);
+so does an options value that isn't an object, and a `transport` or `sleep` that isn't a
+function. Every method checks that its parameter object is an object first
+(`assertParams`), so a wrong-typed call (`airquality(null)`) is a `LuftValidationError`,
+never a raw `TypeError`. Server text in an error message is cut at 500 characters
+(`MAX_MESSAGE_TEXT`, `cutForMessage`); `LuftApiError.body` keeps the whole body.
 
 `userAgent` is checked there too, with the same rule as the CLI's `--user-agent`
 (`headerValueProblem`, also exported as `assertHeaderValue(name, value)`): a blank value,

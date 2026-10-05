@@ -20,6 +20,7 @@ import { LangValues, MetaUseValues, ThresholdUseValues, type Lang } from "./enum
 import {
   assertId,
   assertListParams,
+  assertParams,
   assertValid,
   assertOneOf,
   assertWindow,
@@ -142,6 +143,7 @@ export class LuftqualitaetClient {
 
   /** Air-quality index data for a station over a time window. */
   async airquality(params: WindowParams): Promise<AirDataResult> {
+    assertParams("params", params);
     assertWindowParams(params);
     return this.engine.getJson(`${API}/airquality/json`, prune({ ...params }), shaped("window"));
   }
@@ -157,6 +159,7 @@ export class LuftqualitaetClient {
    * `MeasuresParams`).
    */
   async measures(params: MeasuresParams): Promise<AirDataResult> {
+    assertParams("params", params);
     assertWindowParams(params);
     assertId("component", params.component);
     assertId("scope", params.scope);
@@ -172,12 +175,14 @@ export class LuftqualitaetClient {
 
   /** Annual tabulations for a component and year (>= 2016). */
   async annualBalances(params: YearComponentParams): Promise<AirDataResult> {
+    assertParams("params", params);
     assertYearComponent(params);
     return this.engine.getJson(`${API}/annualbalances/json`, prune({ ...params }), shaped("annual"));
   }
 
   /** Exceedance (Überschreitungen) data for a component and year. */
   async transgressions(params: YearComponentParams): Promise<AirDataResult> {
+    assertParams("params", params);
     assertYearComponent(params);
     return this.engine.getJson(`${API}/transgressions/json`, prune({ ...params }), shaped("annual"));
   }
@@ -185,16 +190,19 @@ export class LuftqualitaetClient {
   // --- Reference lists ------------------------------------------------------
 
   async components(params: ListParams = {}): Promise<AirDataResult> {
+    assertParams("params", params);
     assertListParams(params);
     return this.engine.getJson(`${API}/components/json`, prune({ ...params }), shaped("list"));
   }
 
   async networks(params: ListParams = {}): Promise<AirDataResult> {
+    assertParams("params", params);
     assertListParams(params);
     return this.engine.getJson(`${API}/networks/json`, prune({ ...params }), shaped("list"));
   }
 
   async scopes(params: ListParams = {}): Promise<AirDataResult> {
+    assertParams("params", params);
     assertListParams(params);
     return this.engine.getJson(`${API}/scopes/json`, prune({ ...params }), shaped("list"));
   }
@@ -216,6 +224,7 @@ export class LuftqualitaetClient {
 
   /** Thresholds for a use (airquality | measure), optional component/scope. */
   async thresholds(params: ThresholdParams): Promise<AirDataResult> {
+    assertParams("params", params);
     assertOneOf("use", params.use, ThresholdUseValues);
     optional(params.lang, (v) => assertOneOf("lang", v, LangValues));
     optional(params.component, (v) => assertId("component", v));
@@ -229,6 +238,7 @@ export class LuftqualitaetClient {
    * `DEFAULT_META_TIME_FROM`/`DEFAULT_META_TIME_TO`.
    */
   async meta(params: MetaParams): Promise<AirDataResult> {
+    assertParams("params", params);
     assertOneOf("use", params.use, MetaUseValues);
     optional(params.lang, (v) => assertOneOf("lang", v, LangValues));
     // use=airquality needs a date window: the API requires one for that bundle.

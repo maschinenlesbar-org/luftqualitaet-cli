@@ -366,3 +366,12 @@ test("a JSON body is decoded by its declared charset, BOM dropped; an unknown ch
   });
   await assert.rejects(engine.getJson("/x"), (e: unknown) => e instanceof LuftParseError && /Unsupported response charset "x-klingon"/.test((e as Error).message));
 });
+
+test("server text in an error message is cut at 500 characters; the body is kept whole", async () => {
+  const detail = "x".repeat(200_000);
+  const mt = makeMockTransport(() => jsonResponse({ detail }, 500));
+  const e = new RequestEngine({ baseUrl: "https://a.test", transport: mt.transport, maxRetries: 0 });
+  await assert.rejects(e.getJson("/x"), (err: unknown) =>
+    err instanceof LuftApiError && err.message.length < 700 && err.message.endsWith("…") && err.body.length > 200_000,
+  );
+});

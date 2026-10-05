@@ -162,6 +162,18 @@ export function assertOneOf<T extends string>(name: string, value: unknown, allo
   return invalid(name, `one of ${allowed.join(", ")}`, value);
 }
 
+/**
+ * A parameter object: a plain object, not null, an array or a primitive. Checked first, so a
+ * wrong-typed argument (`airquality(null)`) is a LuftValidationError rather than a raw
+ * TypeError from reading its fields.
+ */
+export function assertParams<T>(name: string, value: T): T {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new LuftValidationError(`Invalid ${name}: expected an object of parameters, got ${describe(value)}.`);
+  }
+  return value;
+}
+
 /** Check an optional value with `check` when it is set. */
 export function optional<T>(value: T | undefined, check: (v: unknown) => T): T | undefined {
   return value === undefined ? undefined : check(value);

@@ -17,6 +17,7 @@ import {
   LuftError,
   LuftNetworkError,
   LuftParseError,
+  LuftValidationError,
   credentialsIn,
   redactCredentials,
   redactUrl,
@@ -40,7 +41,8 @@ export interface RawResponse {
 /**
  * Options for {@link RequestEngine} and the client. The numeric options must be
  * integers within their documented range; anything else (negative, fractional,
- * NaN, Infinity, too large) makes the constructor throw a LuftError.
+ * NaN, Infinity, too large, not a number) makes the constructor throw a
+ * LuftValidationError, as does a `transport` or `sleep` that is not a function.
  */
 export interface EngineOptions {
   /**
@@ -101,13 +103,14 @@ export const MAX_REDIRECTS = 20;
 
 /**
  * Read a numeric engine option: `undefined` gives the default; anything but an
- * integer in [0, max] throws. Without this a negative or NaN `timeoutMs` silently
- * disabled the timeout, and `maxRedirects: Infinity` followed a loop forever.
+ * integer in [0, max] throws a LuftValidationError. Without this a negative or NaN
+ * `timeoutMs` silently disabled the timeout, and `maxRedirects: Infinity` followed a
+ * loop forever.
  */
 function intOption(name: string, value: number | undefined, fallback: number, max: number): number {
   if (value === undefined) return fallback;
   if (!Number.isSafeInteger(value) || value < 0 || value > max) {
-    throw new LuftError(
+    throw new LuftValidationError(
       `Invalid option ${name}: expected an integer from 0 to ${max}, got ${String(value)}.`,
     );
   }
@@ -267,6 +270,18 @@ export function isTransientNetworkError(err: unknown): boolean {
   return err instanceof LuftNetworkError && hasTransientCode(err.cause);
 }
 
+/**
+ * Longest server text (in characters) an error message shows; `LuftApiError.body` keeps
+ * the whole body. A proxy's 200 kB error page would otherwise flood the terminal.
+ */
+export const MAX_MESSAGE_TEXT = 500;
+
+/** `text` cut to {@link MAX_MESSAGE_TEXT} characters, marked with "…" when cut. */
+export function cutForMessage(text: string): string {
+  const chars = [...text];
+  return chars.length <= MAX_MESSAGE_TEXT ? text : `${chars.slice(0, MAX_MESSAGE_TEXT).join("")}…`;
+}
+
 const realSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -287,6 +302,14 @@ export class RequestEngine {
   private readonly sleep: (ms: number) => Promise<void>;
 
   constructor(options: EngineOptions = {}) {
+    if (typeof options !== "object" || options === null || Array.isArray(options)) {
+      throw new LuftValidationError("Invalid options: expected an object of engine options.");
+    }
+    for (const name of ["transport", "sleep"] as const) {
+      if (options[name] !== undefined && typeof options[name] !== "function") {
+        throw new LuftValidationError(`Invalid option ${name}: expected a function.`);
+      }
+    }
     // The raw value is checked before the trailing-slash strip, so "https://h/ "
     // cannot slip past it; only an omitted baseUrl selects the default. Checked
     // here, not only in the default transport: a library consumer that injects a
@@ -602,7 +625,7 @@ export class RequestEngine {
     }
     // `detail` came from the response body; strip control characters so a hostile
     // endpoint cannot inject terminal escape sequences via the stderr error message.
-    if (detail !== undefined) detail = sanitizeServerText(detail);
+    if (detail !== undefined) detail = cutForMessage(sanitizeServerText(detail));
     if (hint !== undefined) detail = detail === undefined ? hint : `${detail}; ${hint}`;
     return new LuftApiError({
       status,

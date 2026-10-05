@@ -10,7 +10,7 @@
 // function and turn the reason into a usage error, so a rule is written once and
 // the CLI and the library cannot drift apart.
 
-import { LuftValidationError } from "./errors.js";
+import { LuftValidationError, redactUrl } from "./errors.js";
 import { IndexValues, LangValues } from "./enums.js";
 import type { WindowParams } from "./types.js";
 
@@ -97,8 +97,13 @@ export const baseUrlProblem: Problem<unknown> = (value) => {
   return baseUrlWhitespaceProblem(value);
 };
 
+/**
+ * The rejected value as the message shows it: a string quoted, with any URL userinfo
+ * cut out (`redactUrl`), so a credential URL typed into the wrong option or parameter
+ * (`--lang https://u:pw@h`) never reaches the message.
+ */
 function describe(value: unknown): string {
-  return typeof value === "string" ? JSON.stringify(value) : String(value);
+  return typeof value === "string" ? JSON.stringify(redactUrl(value)) : String(value);
 }
 
 function invalid(name: string, expected: string, value: unknown): never {

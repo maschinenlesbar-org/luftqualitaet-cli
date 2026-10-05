@@ -29,6 +29,8 @@ export {
   LuftParseError,
   LuftValidationError,
   redactUrl,
+  credentialsIn,
+  redactCredentials,
 } from "./errors.js";
 
 export {

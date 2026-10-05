@@ -217,7 +217,13 @@ error at parse time, before any client is built. And the default transport
 `LuftNetworkError`. Userinfo (`http://user:secret@mirror/`) is allowed — Node sends it
 as Basic auth — but `redactUrl` (exported from [`errors.ts`](src/client/errors.ts))
 shows it as `***@` in every error message and in `LuftApiError.url`; the base-URL
-reasons never echo the URL.
+reasons never echo the URL, and a rejected parameter value is quoted with its userinfo
+cut out. The CLI also redacts on output: `run.ts` (`withRedactedOutput`) takes the exact
+userinfo of every argument (`credentialsIn`, exported) and replaces it with `***` in
+everything it prints — commander's usage errors, which echo rejected values, and the
+library's messages for `--lang`/`--use`/`--index` — so a password with spaces, quotes,
+`#`, `?` or `/` is caught as well as an ordinary one. `redactUrl` falls back to the same
+text-based cut (`redactCredentials`, exported) for a value that doesn't parse as a URL.
 
 ## Testing
 

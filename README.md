@@ -227,6 +227,10 @@ do the same thing.
 | `1` | any other error (network failure, bad JSON, validation error) |
 | non-zero | usage / argument error (bad flag, missing required option) |
 
+A reader that stops early (`luftqualitaet measures-limits | head -c 100`) is ordinary use:
+the CLI exits `0` quietly. If stderr's reader is gone (`2>&1 | true`), a failed run still
+exits with its own code.
+
 ## Troubleshooting
 
 - **`command not found: luftqualitaet`** — the global npm bin directory isn't on

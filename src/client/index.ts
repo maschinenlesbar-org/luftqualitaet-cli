@@ -22,6 +22,7 @@ export {
   MAX_RETRY_AFTER_MS,
   MAX_MESSAGE_TEXT,
   assertHeaderValue,
+  cleartextProblem,
   cutForMessage,
   isTransientNetworkError,
   parseRetryAfter,

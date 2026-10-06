@@ -326,7 +326,11 @@ npm test          # builds, then runs `node --test` over dist/test
   (P19 skipped: no environment variable here), P5 the transport contract (timeout, size cap, body
   types, header shapes, resets), P6 the retry floor, P7 pipes and exit codes (spawns the built
   bin), P8/P9/P13 charset, 2xx envelopes and error classes, P10 unknown parameters, repeated
-  options and the empty-answer note.
+  options and the empty-answer note. The follow-up round of 2026-10-06 added P20 (a remote
+  plain `http:` base URL gets one `warning:` line on stderr from the library's
+  `cleartextProblem`, printed by `action()` in `shared.ts` before the client is built; no
+  base-URL variable and no secret but the URL's own credentials here, so those two cases are
+  skipped).
 
 ## Continuous integration
 

@@ -4,7 +4,7 @@ Echte Beispiele für die Claude-Code-Skills des Plugins `luftqualitaet`, eines p
 Anfrage, die `luftqualitaet`-Befehle, die der Skill ausgeführt hat, und Claudes Antwort.
 
 Jedes Beispiel lief am 6. Oktober 2026 zwischen 01:29 und 01:31 Uhr MESZ mit `luftqualitaet` 0.3.0
-gegen die Live-API.
+gegen die Live-API, sofern sein Abschnitt keinen neuen Lauf nennt.
 Die Daten ändern sich, Ihre Ergebnisse werden also abweichen; mit den gezeigten IDs und
 Schlüsseln können Sie die Anfragen selbst ausprobieren. Lange Listen sind gekürzt.
 
@@ -20,31 +20,26 @@ Skills: [luftqualitaet-air-report](#luftqualitaet-air-report) · [luftqualitaet-
 luftqualitaet --compact --timeout 60000 meta --use measure --lang en     # „Leipzig-Mitte" -> Station 1613
 luftqualitaet --compact components --lang en
 luftqualitaet --compact airquality --station 1613 --date-from 2026-10-06 --time-from 1 --date-to 2026-10-06 --time-to 24
-luftqualitaet --compact airquality --station 1613 --date-from 2026-10-05 --time-from 1 --date-to 2026-10-05 --time-to 24
-luftqualitaet --compact thresholds --use airquality --component 3
 luftqualitaet --compact thresholds --use airquality --component 5
-luftqualitaet --compact thresholds --use airquality --component 9
+luftqualitaet --compact thresholds --use airquality --component 3
 ```
 
-Die Anfrage lief um 01:29 MESZ (00:29 MEZ), für heute gab es also noch keine Stunden: Das erste
-Zeitfenster kam mit `"data": {}` zurück, dazu der Hinweis der CLI, dass eine unbekannte
-Stations-ID genauso aussieht. Die ID stammte aus dem Katalog, also ging der Skill wie
-vorgesehen einen Tag zurück. Seine Daten reichten bis zur Stunde, die um 20:00 MEZ endet. Der
-Skill hat die O₃-, NO₂- und PM₂,₅-Bänder abgerufen, um zu erklären, warum eine Stunde als
-Stufe 1 zählt (PM₂,₅ nach Scope 6).
+Neu ausgeführt am 6. Oktober 2026 um 14:39 Uhr MESZ (13:39 MEZ) mit `luftqualitaet` 0.4.0. Das
+Zeitfenster für heute hatte Daten – die Stunden, die um 01:00 bis 12:00 MEZ enden –, ein zweites
+Fenster war also nicht nötig. Jede Stunde enthielt nur O₃ und NO₂ und ist als unvollständig
+markiert. Der Skill hat die NO₂- und O₃-Bänder abgerufen, um zu erklären, warum eine Stunde als
+Stufe 1 zählt.
 
 ```
-Luftqualität – Leipzig-Mitte (Station 1613, traffic), 05.10.2026, Stunden bis 01:00–20:00 MEZ
-  Für heute liegen noch keine Daten vor (00:29 MEZ), daher gestern.
-  Gesamt: den ganzen Tag SEHR GUT oder GUT – höchstens Stufe 1.
-  Bestimmender Schadstoff: NO₂ im Morgenverkehr, 23–24 µg/m³ in den Stunden bis 07:00–09:00
-    und 21 µg/m³ in denen bis 11:00–12:00 (Band 21–40 = Stufe 1);
-    O₃ 70 µg/m³ in der Stunde bis 14:00 (Band 61–120 = Stufe 1);
-    PM₂,₅ 12 µg/m³ am Abend (Band 11–20 = Stufe 1).
-  9 h gut, 8 h sehr gut, 0 h mäßig oder schlechter.
-  Keine Stunde ist vollständig. Bis 14:00 wurden nur O₃/NO₂ gemeldet, ab 18:00 nur
-  PM₁₀/PM₂,₅, und die Stunden bis 15:00–17:00 fehlen. Neueste Stunde: bis 20:00 MEZ
-  (21:00 Ortszeit), Stufe 1, PM₁₀ 19 µg/m³, PM₂,₅ 12 µg/m³.
+Luftqualität – Leipzig-Mitte (Station 1613, traffic), 06.10.2026, Stunden bis 01:00–12:00 MEZ
+  Gesamt: nachts SEHR GUT, ab dem Morgen GUT – höchstens Stufe 1.
+  Bestimmender Schadstoff: NO₂ im Morgenverkehr, 30–40 µg/m³ in den Stunden bis 06:00–10:00
+    (Band 21–40 = Stufe 1), bis 12:00 auf 21 µg/m³ gesunken;
+    O₃ 71 µg/m³ in der Stunde bis 12:00 (Band 61–120 = Stufe 1).
+  5 h sehr gut (bis 01:00–05:00), 7 h gut (bis 06:00–12:00), 0 h mäßig oder schlechter.
+  Keine Stunde ist vollständig: Gemeldet wurden nur O₃ und NO₂, kein Feinstaub, die
+  PM-Stufen sind also unbekannt. Neueste Stunde: bis 12:00 MEZ (13:00 Ortszeit), Stufe 1,
+  O₃ 71 µg/m³, NO₂ 21 µg/m³ – unvollständig.
 ```
 
 ## luftqualitaet-annual-report

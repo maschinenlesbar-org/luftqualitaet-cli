@@ -4,7 +4,7 @@ Real examples for the Claude Code skills of the `luftqualitaet` plugin, one per 
 the `luftqualitaet` commands the skill ran, and the answer Claude gave.
 
 Every example ran against the live API on 6 October 2026, between 01:29 and 01:31 CEST, with
-`luftqualitaet` 0.3.0.
+`luftqualitaet` 0.3.0, unless its section says it was re-run.
 The data changes, so your results will differ; the ids and keys shown work for trying the
 requests yourself. Long lists are shortened.
 
@@ -20,30 +20,25 @@ Skills: [luftqualitaet-air-report](#luftqualitaet-air-report) · [luftqualitaet-
 luftqualitaet --compact --timeout 60000 meta --use measure --lang en     # "Leipzig-Mitte" -> station 1613
 luftqualitaet --compact components --lang en
 luftqualitaet --compact airquality --station 1613 --date-from 2026-10-06 --time-from 1 --date-to 2026-10-06 --time-to 24
-luftqualitaet --compact airquality --station 1613 --date-from 2026-10-05 --time-from 1 --date-to 2026-10-05 --time-to 24
-luftqualitaet --compact thresholds --use airquality --component 3
 luftqualitaet --compact thresholds --use airquality --component 5
-luftqualitaet --compact thresholds --use airquality --component 9
+luftqualitaet --compact thresholds --use airquality --component 3
 ```
 
-The request ran at 01:29 CEST (00:29 CET), so today had no hours yet: the first window came
-back `"data": {}` with the CLI's note that an unknown station id looks the same. The id came
-from the catalogue, so the skill stepped back a day, as it says. Its data went up to the hour
-ending 20:00 CET. The skill fetched the O₃, NO₂ and PM₂,₅ bands to explain why an hour counted
-as level 1 (PM₂,₅ on scope 6).
+Re-run on 6 October 2026 at 14:39 CEST (13:39 CET) with `luftqualitaet` 0.4.0. Today's window
+had data — the hours ending 01:00 to 12:00 CET — so no second window was needed. Every hour
+carried only O₃ and NO₂ and is flagged incomplete. The skill fetched the NO₂ and O₃ bands to
+explain why an hour counted as level 1.
 
 ```
-Air quality — Leipzig-Mitte (station 1613, traffic), 5 Oct 2026, hours ending 01:00–20:00 CET
-  Today has no data yet (00:29 CET), so this is yesterday.
-  Overall: VERY GOOD or GOOD all day — level 1 at most.
-  Driving pollutant: NO₂ in the morning rush, 23–24 µg/m³ in the hours ending 07:00–09:00
-    and 21 µg/m³ in those ending 11:00–12:00 (21–40 band = level 1);
-    O₃ 70 µg/m³ in the hour ending 14:00 (61–120 band = level 1);
-    PM₂,₅ 12 µg/m³ in the evening (11–20 band = level 1).
-  9 h good, 8 h very good, 0 h moderate or worse.
-  No hour is complete. Until 14:00 only O₃/NO₂ were reported, from 18:00 only PM₁₀/PM₂,₅,
-  and the hours ending 15:00–17:00 are missing. Newest hour: ending 20:00 CET
-  (21:00 local time), level 1, PM₁₀ 19 µg/m³, PM₂,₅ 12 µg/m³.
+Air quality — Leipzig-Mitte (station 1613, traffic), 6 Oct 2026, hours ending 01:00–12:00 CET
+  Overall: VERY GOOD overnight, GOOD from the morning on — level 1 at most.
+  Driving pollutant: NO₂ in the morning rush, 30–40 µg/m³ in the hours ending 06:00–10:00
+    (21–40 band = level 1), easing to 21 µg/m³ by 12:00;
+    O₃ 71 µg/m³ in the hour ending 12:00 (61–120 band = level 1).
+  5 h very good (ending 01:00–05:00), 7 h good (ending 06:00–12:00), 0 h moderate or worse.
+  No hour is complete: only O₃ and NO₂ were reported, no particulate matter, so the PM
+  levels are unknown. Newest hour: ending 12:00 CET (13:00 local time), level 1,
+  O₃ 71 µg/m³, NO₂ 21 µg/m³ — incomplete.
 ```
 
 ## luftqualitaet-annual-report

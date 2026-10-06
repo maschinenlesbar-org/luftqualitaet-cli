@@ -20,7 +20,7 @@ exceedances, and get the full picture — as clean JSON you can pipe straight in
 - **Validates locally** — bad dates, reversed windows, out-of-range hours and years are caught before any request is sent.
 
 > Want to use this as a TypeScript library or understand how it's built?
-> See **[DEVELOPING.md](DEVELOPING.md)**.
+> See **[DEVELOPING.md](https://github.com/maschinenlesbar-org/luftqualitaet-cli/blob/main/DEVELOPING.md)**.
 
 ## Install
 
@@ -163,7 +163,7 @@ adds a hint to the error.
 
 ## Common tasks
 
-A few recipes to get going — see **[Usage.md](Usage.md)** for the full,
+A few recipes to get going — see **[Usage.md](https://github.com/maschinenlesbar-org/luftqualitaet-cli/blob/main/Usage.md)** for the full,
 use-case-driven set.
 
 ```bash
@@ -306,10 +306,10 @@ These apply to every command and may be given before *or* after it:
 
 ## Learn more
 
-- **[SKILLS.md](SKILLS.md)** — Claude Code Agent Skills that drive this CLI for you.
-- **[Usage.md](Usage.md)** — full use-case-driven cookbook.
-- **[GLOSSARY.md](GLOSSARY.md)** — every command, flag and domain term explained.
-- **[DEVELOPING.md](DEVELOPING.md)** — TypeScript library usage, architecture, testing, CI.
+- **[SKILLS.md](https://github.com/maschinenlesbar-org/luftqualitaet-cli/blob/main/SKILLS.md)** — Claude Code Agent Skills that drive this CLI for you.
+- **[Usage.md](https://github.com/maschinenlesbar-org/luftqualitaet-cli/blob/main/Usage.md)** — full use-case-driven cookbook.
+- **[GLOSSARY.md](https://github.com/maschinenlesbar-org/luftqualitaet-cli/blob/main/GLOSSARY.md)** — every command, flag and domain term explained.
+- **[DEVELOPING.md](https://github.com/maschinenlesbar-org/luftqualitaet-cli/blob/main/DEVELOPING.md)** — TypeScript library usage, architecture, testing, CI.
 
 ## Data license
 

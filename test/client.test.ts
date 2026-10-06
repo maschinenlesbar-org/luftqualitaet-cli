@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { LuftqualitaetClient } from "../src/client/client.js";
 import { LuftApiError, LuftError, LuftValidationError } from "../src/client/errors.js";
 import type { MeasuresParams } from "../src/client/types.js";
-import { makeMockTransport, jsonResponse, constantJson, OK_BODY } from "./helpers.js";
+import { makeMockTransport, jsonResponse, constantJson, OK_BODY, WINDOW_BODY, withCatalogue } from "./helpers.js";
 
 function clientWith(mt: ReturnType<typeof makeMockTransport>): LuftqualitaetClient {
   return new LuftqualitaetClient({ transport: mt.transport });
@@ -27,7 +27,7 @@ test("components with no params sends no query", async () => {
 });
 
 test("airquality sends the full window + station", async () => {
-  const mt = constantJson(OK_BODY);
+  const mt = constantJson(WINDOW_BODY);
   await clientWith(mt).airquality({
     date_from: "2024-01-01",
     time_from: 1,
@@ -214,7 +214,8 @@ const endpointCases: {
 
 for (const c of endpointCases) {
   test(`${c.name} maps to the right path and query`, async () => {
-    const mt = constantJson(OK_BODY);
+    // A data answer with rows needs no station-catalogue lookup, so the last request is the call's.
+    const mt = constantJson(/\/(airquality|measures)\/json$/.test(c.path) ? WINDOW_BODY : OK_BODY);
     await c.call(clientWith(mt));
     const url = new URL(mt.last().url);
     assert.equal(url.pathname, c.path);
@@ -286,7 +287,7 @@ const shapedCalls: Array<[string, (c: LuftqualitaetClient) => Promise<unknown>, 
   ["components", (c) => c.components(), { count: 1, indices: ["component id"], "1": ["1"] }],
   ["networks", (c) => c.networks(), { indices: ["network id"], data: {}, count: 0 }],
   ["thresholds", (c) => c.thresholds({ use: "airquality" }), { count: 0, indices: [] }],
-  ["airquality", (c) => c.airquality(p9Window), { request: {}, data: {}, indices: { data: {} }, count: 0 }],
+  ["airquality", (c) => c.airquality(p9Window), { request: {}, data: { "143": {} }, indices: { data: {} }, count: 0 }],
   ["measures", (c) => c.measures({ ...p9Window, component: 1, scope: 1 }), { request: {}, indices: {}, data: { "143": {} } }],
   ["measuresLimits", (c) => c.measuresLimits(), { request: {}, indices: {}, data: {} }],
   ["annualBalances (rows)", (c) => c.annualBalances({ component: 1, year: 2024 }), { request: {}, data: [["1789", "21", "8", null]], indices: [], headers: {} }],
@@ -357,5 +358,35 @@ test("airquality and measures return each station's hours in time order (02#2)",
     const keys = Object.keys(result.data["172"]!);
     assert.deepEqual(keys, ["2026-10-05 10:00:00", "2026-10-05 11:00:00", "2026-10-05 12:00:00", "2026-10-05 13:00:00"]);
     assert.deepEqual(result.data["172"]!["2026-10-05 13:00:00"], hours["2026-10-05 13:00:00"]);
+  }
+});
+
+test("an answer without data is checked against the station catalogue: unknown → LuftNotFoundError, listed → the empty answer (02#1)", async () => {
+  const { LuftNotFoundError } = await import("../src/client/errors.js");
+  const empty = { request: {}, indices: {}, data: {} };
+  const window = { date_from: "2026-10-04", time_from: 1, date_to: "2026-10-04", time_to: 2 };
+  for (const call of [
+    (c: LuftqualitaetClient, station: number) => c.airquality({ ...window, station }),
+    (c: LuftqualitaetClient, station: number) => c.measures({ ...window, station, component: 5, scope: 2 }),
+  ]) {
+    const unknown = makeMockTransport(withCatalogue([143], () => jsonResponse(empty)));
+    await assert.rejects(call(clientWith(unknown), 2), (e: unknown) => e instanceof LuftNotFoundError && e.station === 2 && e instanceof LuftError);
+    assert.equal(unknown.calls.length, 2);
+    assert.equal(new URL(unknown.last().url).searchParams.get("use"), "measure");
+
+    const listed = makeMockTransport(withCatalogue([143], () => jsonResponse(empty)));
+    assert.deepEqual(await call(clientWith(listed), 143), empty);
+    assert.equal(listed.calls.length, 2);
+
+    // With data there is no lookup.
+    const data = constantJson(WINDOW_BODY);
+    await call(clientWith(data), 2);
+    assert.equal(data.calls.length, 1);
+
+    // A failing lookup fails the call: no guess either way.
+    const failing = makeMockTransport((req) =>
+      new URL(req.url).pathname.endsWith("/meta/json") ? jsonResponse({ message: "down" }, 500) : jsonResponse(empty),
+    );
+    await assert.rejects(call(clientWith(failing), 143), LuftApiError);
   }
 });

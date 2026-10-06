@@ -133,7 +133,9 @@ Pflichtparameter von `airquality` und `measures`. Stations-IDs beginnen bei 1, d
 lehnt die CLI `0` schon lokal ab. IDs finden Sie über `meta` / `airquality-limits` /
 `measures-limits`. Eine ID, die die API nicht kennt, bekommt meist `"data": {}` mit HTTP
 200, wie ein Zeitfenster ohne Daten (nur IDs weit außerhalb des Katalogs bekommen HTTP 409);
-die CLI gibt dann einen `Note:` auf stderr aus.
+die CLI schlägt die ID dann im Stationskatalog (`meta --use measure`) nach und endet mit Exit 4
+(nicht gefunden), wenn sie dort fehlt, oder gibt die leere Antwort mit einem `Note:` auf stderr
+aus, wenn es die Station gibt.
 
 **component.** Die numerische **Komponenten-ID**, die einen Schadstoff bezeichnet. Pflicht
 bei `annual-balances` / `transgressions` / `measures`; optional bei `thresholds`.

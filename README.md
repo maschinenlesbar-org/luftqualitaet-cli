@@ -234,7 +234,7 @@ do the same thing.
 | Code | Meaning |
 | --- | --- |
 | `0` | success (also `--help` / `--version`) |
-| `4` | resource not found (`404` from the API — usually a wrong `--base-url`; unknown ids give an empty `data` (rarely `409`), see Troubleshooting) |
+| `4` | not found: a `404` from the API (usually a wrong `--base-url`), or a station id the station catalogue doesn't list (`airquality`/`measures`, see Troubleshooting) |
 | `1` | any other error (network failure, bad JSON, validation error) |
 | non-zero | usage / argument error (bad flag, missing required option) |
 
@@ -251,17 +251,20 @@ exits with its own code.
   your `PATH`. Run `npm prefix -g` to find the prefix and add its `bin` directory
   (`"$(npm prefix -g)/bin"`), or run via
   `npx @maschinenlesbar.org/luftqualitaet-cli …`.
-- **Unknown ids don't give exit `4`.** The API has its own answers:
+- **Unknown ids.** The API has its own answers:
   - an unknown **station** on `airquality`/`measures` → mostly HTTP `200` with
-    `"data": {}`, exit `0` — the same answer as a window without data (UBA: invalid
-    queries return JSON without data). The CLI adds a `Note:` on stderr saying the id
-    may be wrong. Only ids far outside the catalogue (seen: 65535 and above) get HTTP
-    `409` (an HTML page, no detail), exit `1`, with a `Hint:` line. Look the id up with
-    `meta --use measure`.
+    `"data": {}` — the same answer as a window without data (UBA: invalid queries return
+    JSON without data). So when an answer comes back empty, the CLI (the library, in fact)
+    looks the id up in the station catalogue (`meta --use measure`, one more request of
+    about 0.5 MB, only then): an id it doesn't list exits `4` with
+    `Error: Station <id> not found: …`; a listed one prints the empty answer, exit `0`, with
+    a `Note:` on stderr that the window has no data. Ids far outside the catalogue (seen:
+    65535 and above) get HTTP `409` (an HTML page, no detail) instead, exit `1`, with a
+    `Hint:` line.
   - an unknown **component** or **scope**, a year or window with no data →
     HTTP `200` with `"data": {}`, exit `0`.
 
-  Exit `4` means a real `404` — in practice a wrong `--base-url`. Use
+  Otherwise exit `4` means a real `404` — in practice a wrong `--base-url`. Use
   `airquality-limits` or `measures-limits` to discover what data is actually
   available.
 - **Exit `1` / network error** — connectivity, DNS, or a timeout. Try again, or

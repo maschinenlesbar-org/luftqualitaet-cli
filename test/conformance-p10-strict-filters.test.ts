@@ -43,14 +43,17 @@ const repeatedFlags: string[][] = [
 const USAGE_EXIT = 1;
 /**
  * A filter value the server matches nothing for, the answer it gives, and what stderr must
- * name. The API answers an unknown station id like an empty window (`data: {}`).
+ * name: a listed station without data in the window. The API answers an unknown station id
+ * like an empty window (`data: {}`), so the client then looks the id up in the station
+ * catalogue (`meta?use=measure`); the one answer here serves as both, its `stations`
+ * listing the stations used. (An unlisted id fails as not found, exit 4: cli.test.ts.)
  */
-const emptyWindow = { request: {}, indices: {}, data: {}, count: 0 };
+const emptyWindow = { request: {}, indices: {}, data: {}, count: 0, stations: { "2": ["2"], "10473": ["10473"] } };
 const unmatched: Array<{ argv: string[]; answer: unknown; names: RegExp }> = [
   {
     argv: ["airquality", "--station", "2", "--date-from", "2026-10-04", "--time-from", "1", "--date-to", "2026-10-04", "--time-to", "2"],
     answer: emptyWindow,
-    names: /No data for station 2 in this window\. The API answers an unknown station id the same way/,
+    names: /No data for station 2 in this window \(the station is in the catalogue\)/,
   },
   {
     argv: ["measures", "--station", "10473", "--component", "5", "--scope", "2", "--date-from", "2026-10-04", "--time-from", "1", "--date-to", "2026-10-04", "--time-to", "2"],

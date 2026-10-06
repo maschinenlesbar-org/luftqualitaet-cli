@@ -5,10 +5,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { LuftqualitaetClient } from "../src/client/client.js";
-import { LuftNetworkError, LuftValidationError } from "../src/client/errors.js";
+import { LuftNetworkError, LuftNotFoundError, LuftValidationError } from "../src/client/errors.js";
 import type { Transport } from "../src/client/http.js";
 import type { MeasuresParams, MetaParams } from "../src/client/types.js";
-import { parity, requestShapes } from "./helpers.js";
+import { jsonResponse, parity, requestShapes, withCatalogue } from "./helpers.js";
 
 const meta = (params: MetaParams) => (transport: Transport) => new LuftqualitaetClient({ transport }).meta(params);
 
@@ -106,12 +106,27 @@ test("measures: a missing component or scope is rejected by both, with no reques
 });
 
 test("measures: with component and scope both sides send the same request", async () => {
+  // An answer without data: both sides then look station 143 up in the catalogue too.
   const { cli, lib } = await parity(
     ["--compact", "measures", ...measuresWindow, "--component", "1", "--scope", "2"],
     (transport) => new LuftqualitaetClient({ transport }).measures({ ...measuresParams, component: 1, scope: 2 }),
+    withCatalogue([143], () => jsonResponse({ request: {}, indices: {}, data: {} })),
   );
   assert.equal(cli.code, 0);
   assert.ok(lib.ok);
+  assert.equal(cli.requests.length, 2);
+  assert.deepEqual(lib.requests.map((r) => r.url), cli.requests.map((r) => r.url));
+});
+
+test("an unknown station: both sides reject after the same two requests (CLI exit 4)", async () => {
+  const { cli, lib } = await parity(
+    ["--compact", "measures", ...measuresWindow, "--component", "1", "--scope", "2"],
+    (transport) => new LuftqualitaetClient({ transport }).measures({ ...measuresParams, component: 1, scope: 2 }),
+    withCatalogue([172], () => jsonResponse({ request: {}, indices: {}, data: {} })),
+  );
+  assert.equal(cli.code, 4);
+  assert.ok(!lib.ok && lib.error instanceof LuftNotFoundError && lib.error.station === 143);
+  assert.equal(cli.requests.length, 2);
   assert.deepEqual(lib.requests.map((r) => r.url), cli.requests.map((r) => r.url));
 });
 

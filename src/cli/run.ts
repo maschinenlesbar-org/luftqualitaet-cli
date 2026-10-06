@@ -8,6 +8,7 @@ import type { CliDeps } from "./io.js";
 import {
   LuftApiError,
   LuftError,
+  LuftNotFoundError,
   LuftValidationError,
   credentialsIn,
   redactCredentials,
@@ -110,6 +111,11 @@ export async function run(argv: string[], deps: CliDeps = defaultDeps): Promise<
       // Map a few notable statuses to distinct exit codes for scripting.
       if (err.status === 404) return 4;
       return 1;
+    }
+    if (err instanceof LuftNotFoundError) {
+      // An unknown station id: the API answered 200 without data, the catalogue lacks it.
+      deps.io.err(`Error: ${err.message}`);
+      return 4;
     }
     if (err instanceof LuftValidationError) {
       // An input the library refused before any request: the same usage-error

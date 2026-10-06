@@ -4,7 +4,7 @@ import { run } from "../src/cli/run.js";
 import { LuftqualitaetClient } from "../src/client/client.js";
 import type { CliDeps } from "../src/cli/io.js";
 import type { HttpRequest, HttpResponse } from "../src/client/http.js";
-import { makeMockTransport, jsonResponse, rawResponse, OK_BODY } from "./helpers.js";
+import { makeMockTransport, jsonResponse, rawResponse, OK_BODY, WINDOW_BODY, withCatalogue } from "./helpers.js";
 
 const API = "/api/air-data/v3";
 
@@ -48,7 +48,7 @@ test("airquality requires the window options", async () => {
 });
 
 test("airquality with full window builds the request", async () => {
-  const cli = makeCli(() => jsonResponse(OK_BODY));
+  const cli = makeCli(() => jsonResponse(WINDOW_BODY));
   const code = await run(
     [
       "airquality",
@@ -164,7 +164,7 @@ test("measures requires --component and --scope (the API would pick one series)"
 });
 
 test("measures forwards component/scope", async () => {
-  const cli = makeCli(() => jsonResponse(OK_BODY));
+  const cli = makeCli(() => jsonResponse(WINDOW_BODY));
   const code = await run(
     ["measures", ...fullWindow, "--component", "5", "--scope", "2"],
     cli.deps,
@@ -562,17 +562,40 @@ test("annual-balances without rows says when the year's balance comes", async ()
   assert.match(cli.err.join("\n"), new RegExp(`^Note: No annual balance for ${next}: UBA publishes it from the final data in June ${next + 1}`));
 });
 
-test("an empty airquality/measures answer prints a note that the station id may be unknown (02#1)", async () => {
+test("an empty answer for a station the catalogue lacks exits 4 naming it; a listed one exits 0 with a note (02#1)", async () => {
   const empty = { request: {}, indices: {}, data: {}, count: 0 };
   const window = ["--date-from", "2026-10-04", "--time-from", "1", "--date-to", "2026-10-04", "--time-to", "2"];
-  for (const argv of [["airquality", "--station", "2", ...window], ["measures", "--station", "2", "--component", "5", "--scope", "2", ...window]]) {
-    const cli = makeCli(() => jsonResponse(empty));
-    assert.equal(await run(["--compact", ...argv], cli.deps), 0);
-    assert.deepEqual(JSON.parse(cli.out.join("")), empty);
-    assert.match(cli.err.join("\n"), /^Note: No data for station 2 in this window\. The API answers an unknown station id the same way/);
+  const commands = (station: string) => [
+    ["airquality", "--station", station, ...window],
+    ["measures", "--station", station, "--component", "5", "--scope", "2", ...window],
+  ];
+  for (const argv of commands("2")) {
+    // Unknown: one more request, to the station catalogue; exit 4, nothing on stdout.
+    const cli = makeCli(withCatalogue([143, 172], () => jsonResponse(empty)));
+    assert.equal(await run(["--compact", ...argv], cli.deps), 4, argv.join(" "));
+    assert.deepEqual(cli.out, []);
+    assert.deepEqual(cli.err, [
+      "Error: Station 2 not found: the API answered with no data, and the station catalogue (meta --use measure) has no station with this id.",
+    ]);
+    assert.deepEqual(cli.mt.calls.map((r) => new URL(r.url).pathname.split("/").slice(-2).join("/")), [`${argv[0]}/json`, "meta/json"]);
+    assert.equal(new URL(cli.mt.last().url).searchParams.get("use"), "measure");
   }
-  // Data: no note.
+  for (const argv of commands("172")) {
+    // Listed: the empty answer stands, with the note.
+    const cli = makeCli(withCatalogue([143, 172], () => jsonResponse(empty)));
+    assert.equal(await run(["--compact", ...argv], cli.deps), 0, argv.join(" "));
+    assert.deepEqual(JSON.parse(cli.out.join("")), empty);
+    assert.deepEqual(cli.err, [
+      "Note: No data for station 172 in this window (the station is in the catalogue). Check the window: airquality-limits / measures-limits show each station's range.",
+    ]);
+  }
+  // Data: no lookup, no note.
   const cli = makeCli(() => jsonResponse({ request: {}, indices: {}, data: { "2": { "2026-10-04 00:00:00": ["2026-10-04 01:00:00", 1, 0] } } }));
   assert.equal(await run(["--compact", "airquality", "--station", "2", ...window], cli.deps), 0);
   assert.deepEqual(cli.err, []);
+  assert.equal(cli.mt.calls.length, 1);
+  // A catalogue without a stations object is a parse error (exit 1), never "unknown".
+  const odd = makeCli((req) => jsonResponse(new URL(req.url).pathname.endsWith("/meta/json") ? { request: {} } : empty));
+  assert.equal(await run(["--compact", "airquality", "--station", "2", ...window], odd.deps), 1);
+  assert.match(odd.err.join("\n"), /Unexpected station catalogue from \/meta\/json \(use=measure\): expected a stations object/);
 });

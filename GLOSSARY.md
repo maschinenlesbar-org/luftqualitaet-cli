@@ -134,8 +134,9 @@ exceedance types referenced by the transgressions data. CLI:
 required parameter of `airquality` and `measures`. Station ids are 1-based, so
 the CLI rejects `0` locally. Discover ids via `meta` / `airquality-limits` /
 `measures-limits`. An id the API doesn't know mostly gets `"data": {}` with HTTP 200,
-like a window without data (only ids far outside the catalogue get HTTP 409); the CLI
-then prints a `Note:` on stderr.
+like a window without data (only ids far outside the catalogue get HTTP 409); the CLI then
+looks the id up in the station catalogue (`meta --use measure`) and exits 4 (not found)
+when it isn't there, or prints the empty answer with a `Note:` on stderr when it is.
 
 **component.** The numeric **component id** identifying a pollutant. Required by
 `annual-balances` / `transgressions` / `measures`; optional on `thresholds`.

@@ -146,3 +146,23 @@ export class LuftNetworkError extends LuftError {}
 
 /** The response body could not be parsed as the expected JSON shape. */
 export class LuftParseError extends LuftError {}
+
+/**
+ * A station id the API answered with no data and the station catalogue
+ * (`meta?use=measure`) does not list: there is no such station. The API itself answers an
+ * unknown id with HTTP 200 and `data: {}`, like a window without data, so `airquality()`
+ * and `measures()` look the id up — one extra request, only for an empty answer. The CLI
+ * exits 4 (not found).
+ */
+export class LuftNotFoundError extends LuftError {
+  /** The station id that is not in the catalogue. */
+  readonly station: number;
+
+  constructor(station: number) {
+    super(
+      `Station ${station} not found: the API answered with no data, and the station catalogue ` +
+        "(meta --use measure) has no station with this id.",
+    );
+    this.station = station;
+  }
+}

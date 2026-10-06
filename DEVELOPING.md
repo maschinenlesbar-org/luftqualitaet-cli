@@ -90,10 +90,16 @@ order (`inTimeOrder`, exported): the API sometimes lists the newest hours out of
 order changes.
 
 **Unknown station ids.** The API answers most unknown station ids like a window without
-data (HTTP 200, `data: {}`); only ids far outside the catalogue get HTTP 409. The client
-can't tell the two apart without the catalogue, so `stationDataNote(result, station)`
-(exported) returns a note for an empty answer, and the CLI prints it as `Note:` on stderr
-(exit 0); a 409 gets a `Hint:` before the error.
+data (HTTP 200, `data: {}`); only ids far outside the catalogue get HTTP 409. So when
+`airquality()` or `measures()` gets an answer without data, it looks the station up in the
+catalogue — `meta?use=measure`, whose `stations` object is keyed by id (525 stations, ids
+7..10472 on 2026-10-06), one request, only then — and rejects an id it doesn't list with
+`LuftNotFoundError` (exported, `.station`; the CLI exits 4). A listed station returns the
+empty answer, and `stationDataNote(result, station)` (exported) says the window has no
+data; the CLI prints it as `Note:` on stderr (exit 0). A catalogue without a `stations`
+object is a `LuftParseError`, and a failing lookup fails the call: no guess either way.
+`catalogueHasStation(catalogue, station)` is the check itself. A 409 still gets a `Hint:`
+before the error (exit 1).
 
 **Unknown parameters.** The API ignores a query parameter it doesn't take and answers as
 if it weren't there, so each call checks its parameter object against the keys it

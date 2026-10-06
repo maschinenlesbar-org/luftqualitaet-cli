@@ -25,18 +25,18 @@ concentrations — decoded into the official German air-quality wording.
 
 This skill drives the `luftqualitaet` command. **Before anything else, validate it is available** — run `command -v luftqualitaet` (or `luftqualitaet --version`). If it is not on your PATH, STOP and inform the user that the `luftqualitaet` CLI (`@maschinenlesbar.org/luftqualitaet-cli`) is not installed — installing it is their responsibility; never install it yourself, and do not fall back to `npx` or a local `node dist/...` build.
 
-Always `--compact`. A window with no data returns `"data": {}` (exit `0`) — that's
-"no measurements for that window" **or an unknown station id**: the API answers both the
-same way, and the CLI adds a `Note:` on stderr saying so.
+Always `--compact`. A window with no data returns `"data": {}` (exit `0`, with a `Note:`
+on stderr) — "no measurements for that window" at a station that exists. An **unknown
+station id** exits `4` (`Error: Station <id> not found`): the CLI checks an empty answer
+against the station catalogue.
 
 ## Step 1 — Resolve the station id
 
 The user almost always names a place, not an id. If you don't already have the
 numeric station id, resolve it first via the **luftqualitaet-station-finder** skill
-(it reads the station list out of `meta --use measure`). Validate the id before querying:
-the API answers an unknown station id like a window without data (`"data": {}`, exit
-`0`; only ids far outside the catalogue get HTTP 409, exit `1`), so an empty answer for an
-id you didn't take from the catalogue may be a wrong id, not missing data.
+(it reads the station list out of `meta --use measure`). An id that isn't in that catalogue
+fails with exit `4` (`Error: Station <id> not found`) — resolve the place again rather than
+retrying; ids far outside the catalogue get HTTP 409 (exit `1`, with a `Hint:`) instead.
 
 ## Step 2 — Pick a window that has data
 
@@ -57,8 +57,8 @@ ordered start-before-end (the CLI rejects a reversed window locally, exit `1`).
   Take the newest hour by its key, not by position: the API sometimes lists the newest
   hours out of order (`… 10:00, 13:00, 11:00, 12:00`); the CLI puts them back in time
   order, but sort the keys yourself if you read the JSON from elsewhere.
-- If a window comes back empty (`"data": {}`), first make sure the station id came from
-  the catalogue; then widen the window or step back a day rather than reporting "no air
+- If a window comes back empty (`"data": {}`, exit `0`), the station exists (an unknown
+  id exits `4`); widen the window or step back a day rather than reporting "no air
   quality"; `airquality-limits` shows each station's available range (slow —
   `--timeout 90000`).
 

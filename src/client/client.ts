@@ -5,7 +5,7 @@
 //   client.airquality({ date_from: "2024-01-01", time_from: 1, date_to: "2024-01-01", time_to: 24, station: 143 })
 
 import { RequestEngine, type EngineOptions } from "./engine.js";
-import { LuftValidationError } from "./errors.js";
+import { LuftNotFoundError, LuftParseError, LuftValidationError } from "./errors.js";
 import type { QueryParams } from "./query.js";
 import type {
   AirDataResult,
@@ -197,16 +197,31 @@ export function annualDataNote(
  * What a reader of an `airquality`/`measures` answer must be told when it has no data, or
  * undefined when it has some. The API answers an unknown station id like a window without
  * data — HTTP 200 with `data: {}` ("Ungültige Abfragen liefern einen JSON ohne Daten
- * zurück", UBA); only ids far outside the catalogue get HTTP 409 — so an empty answer can
- * mean either, and the note says how to tell. The CLI prints it on stderr.
+ * zurück", UBA) — but `airquality()` and `measures()` look such an id up in the station
+ * catalogue and reject it with a LuftNotFoundError, so an empty answer they return is a
+ * known station without data in the window. The CLI prints the note on stderr.
  */
 export function stationDataNote(result: AirDataResult, station: number): string | undefined {
   if (!hasNoRows(result["data"])) return undefined;
   return (
-    `No data for station ${station} in this window. The API answers an unknown station id the ` +
-    `same way: check the id (meta --use measure lists the stations) and the window ` +
-    `(airquality-limits / measures-limits show each station's range).`
+    `No data for station ${station} in this window (the station is in the catalogue). ` +
+    `Check the window: airquality-limits / measures-limits show each station's range.`
   );
+}
+
+/**
+ * Whether the station catalogue (a `meta?use=measure` answer) lists `station`. Its
+ * `stations` object is keyed by the station id; an answer without one is a
+ * LuftParseError, never read as "unknown".
+ */
+export function catalogueHasStation(catalogue: AirDataResult, station: number): boolean {
+  const stations = catalogue["stations"];
+  if (!isRecord(stations)) {
+    throw new LuftParseError(
+      "Unexpected station catalogue from /meta/json (use=measure): expected a stations object.",
+    );
+  }
+  return Object.hasOwn(stations, String(station));
 }
 
 /**
@@ -257,13 +272,16 @@ export class LuftqualitaetClient {
   /**
    * Air-quality index data for a station over a time window: `data.<station>.<hour start>`
    * → `[end, index, incomplete, [component, value, index, y]…]`, the hours in time order
-   * ({@link inTimeOrder}).
+   * ({@link inTimeOrder}). An answer without data makes one more request, to the station
+   * catalogue: a station it doesn't list rejects with a LuftNotFoundError.
    */
   async airquality(params: WindowParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("airquality", params, CALL_PARAMS.airquality, options);
     assertWindowParams(params);
-    return inTimeOrder(await this.engine.getJson(`${API}/airquality/json`, prune({ ...params }), shaped("window")));
+    const result = inTimeOrder(await this.engine.getJson(`${API}/airquality/json`, prune({ ...params }), shaped("window")));
+    await this.assertStationKnown(params.station, result);
+    return result;
   }
 
   /** The available date range per station for air-quality data. */
@@ -274,7 +292,8 @@ export class LuftqualitaetClient {
   /**
    * Raw measurement data for a station over a window — one component/scope series.
    * Both are required: without them the API would pick a series itself (see
-   * `MeasuresParams`).
+   * `MeasuresParams`). An answer without data is checked against the station catalogue
+   * like `airquality()`'s.
    */
   async measures(params: MeasuresParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
@@ -282,7 +301,20 @@ export class LuftqualitaetClient {
     assertWindowParams(params);
     assertId("component", params.component);
     assertId("scope", params.scope);
-    return inTimeOrder(await this.engine.getJson(`${API}/measures/json`, prune({ ...params }), shaped("window")));
+    const result = inTimeOrder(await this.engine.getJson(`${API}/measures/json`, prune({ ...params }), shaped("window")));
+    await this.assertStationKnown(params.station, result);
+    return result;
+  }
+
+  /**
+   * After an answer without data, look `station` up in the station catalogue
+   * (`meta?use=measure`, one request, only then): an id it doesn't list is a
+   * LuftNotFoundError; a listed one returns, and the empty answer stands. A failing lookup
+   * fails the call — there is no guess either way.
+   */
+  private async assertStationKnown(station: number, result: AirDataResult): Promise<void> {
+    if (!hasNoRows(result["data"])) return;
+    if (!catalogueHasStation(await this.meta({ use: "measure" }), station)) throw new LuftNotFoundError(station);
   }
 
   /** The available date range per scope/component/station for measurements. */

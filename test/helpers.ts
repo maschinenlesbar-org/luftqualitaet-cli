@@ -15,6 +15,26 @@ import type { CliDeps } from "../src/cli/io.js";
  */
 export const OK_BODY = { request: {}, count: 0, indices: [], data: {}, headers: {} };
 
+/**
+ * An `airquality`/`measures` answer with data (one station, no hours): a valid window that
+ * needs no station-catalogue lookup, for tests that only care about the request. (An
+ * answer without data makes the client look the station up in `meta?use=measure`.)
+ */
+export const WINDOW_BODY = { request: {}, indices: {}, data: { "143": {} } };
+
+/** A `meta?use=measure` answer whose station catalogue lists `ids`. */
+export function catalogueBody(ids: number[]): { request: object; stations: Record<string, unknown[]> } {
+  return { request: {}, stations: Object.fromEntries(ids.map((id) => [String(id), [String(id), `DE${id}`, `Station ${id}`]])) };
+}
+
+/** `responder` for every request except the station catalogue, which lists `ids`. */
+export function withCatalogue(
+  ids: number[],
+  responder: (req: HttpRequest) => HttpResponse,
+): (req: HttpRequest) => HttpResponse {
+  return (req) => (new URL(req.url).pathname.endsWith("/meta/json") ? jsonResponse(catalogueBody(ids)) : responder(req));
+}
+
 export function jsonResponse(body: unknown, status = 200): HttpResponse {
   return {
     status,

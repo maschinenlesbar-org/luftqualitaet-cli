@@ -66,6 +66,14 @@ export function redactCredentials(text: string, credentials: readonly string[]):
   return out;
 }
 
+/**
+ * `text` with every lone surrogate (half of a character) replaced by U+FFFD, like
+ * `String.prototype.toWellFormed` (ES2024, so not in this package's `lib`).
+ */
+export function toWellFormed(text: string): string {
+  return text.replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, "\ufffd");
+}
+
 /** Base class for every error originating from this client. */
 export class LuftError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {

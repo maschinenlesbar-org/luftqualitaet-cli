@@ -8,6 +8,7 @@ import {
   LuftParseError,
   LuftValidationError,
   redactUrl,
+  toWellFormed,
 } from "../src/client/errors.js";
 import { makeMockTransport, jsonResponse, rawResponse, OK_BODY } from "./helpers.js";
 
@@ -374,6 +375,20 @@ test("server text in an error message is cut at 500 characters; the body is kept
   await assert.rejects(e.getJson("/x"), (err: unknown) =>
     err instanceof LuftApiError && err.message.length < 700 && err.message.endsWith("…") && err.body.length > 200_000,
   );
+});
+
+test("toWellFormed replaces half a character and keeps whole ones", () => {
+  assert.equal(toWellFormed("a\ud83d b\ude00 \u{1f600}"), "a\ufffd b\ufffd \u{1f600}");
+});
+
+test("a server detail cut at 500 characters keeps the message well-formed", async () => {
+  // "a" first, so the 500th UTF-16 unit is the high half of an emoji (the cut counts code points).
+  const mt = makeMockTransport(() => jsonResponse({ detail: "a" + "\u{1f600}".repeat(600) }, 500));
+  const e = new RequestEngine({ baseUrl: "https://a.test", transport: mt.transport, maxRetries: 0 });
+  const err = await e.getJson("/x").catch((caught: unknown) => caught);
+  assert.ok(err instanceof LuftApiError);
+  assert.equal(toWellFormed(err.message), err.message);
+  assert.match(err.message, /…$/);
 });
 
 test("cleartextProblem: exact wording, host with port, loopback range, never the secret", () => {

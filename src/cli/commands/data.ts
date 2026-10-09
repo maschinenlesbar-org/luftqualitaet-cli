@@ -25,7 +25,7 @@ import {
   stationDataNote,
 } from "../../client/client.js";
 import type { AirDataResult } from "../../client/types.js";
-import { LuftApiError } from "../../client/errors.js";
+import { LuftApiError, cutForMessage } from "../../client/errors.js";
 
 /**
  * From this year on `transgressions` works for every component; before it, the API
@@ -50,7 +50,7 @@ function parseDate(value: string): string {
     date.getUTCMonth() !== month - 1 ||
     date.getUTCDate() !== day
   ) {
-    throw new InvalidArgumentError(`Expected a valid calendar date, got "${value}".`);
+    throw new InvalidArgumentError(`Expected a valid calendar date, got ${JSON.stringify(cutForMessage(value))}.`);
   }
   return value;
 }

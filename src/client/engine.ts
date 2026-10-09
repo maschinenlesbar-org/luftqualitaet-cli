@@ -18,7 +18,9 @@ import {
   LuftNetworkError,
   LuftParseError,
   LuftValidationError,
+  MAX_MESSAGE_TEXT,
   credentialsIn,
+  cutForMessage,
   redactCredentials,
   redactUrl,
 } from "./errors.js";
@@ -301,17 +303,9 @@ export function isTransientNetworkError(err: unknown): boolean {
   return err instanceof LuftNetworkError && hasTransientCode(err.cause);
 }
 
-/**
- * Longest server text (in characters) an error message shows; `LuftApiError.body` keeps
- * the whole body. A proxy's 200 kB error page would otherwise flood the terminal.
- */
-export const MAX_MESSAGE_TEXT = 500;
-
-/** `text` cut to {@link MAX_MESSAGE_TEXT} characters, marked with "…" when cut. */
-export function cutForMessage(text: string): string {
-  const chars = [...text];
-  return chars.length <= MAX_MESSAGE_TEXT ? text : `${chars.slice(0, MAX_MESSAGE_TEXT).join("")}…`;
-}
+// The message-text cut lives with the error types (validate.ts quotes values too); it is
+// exported from here as before.
+export { MAX_MESSAGE_TEXT, cutForMessage };
 
 const realSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -500,7 +494,7 @@ export class RequestEngine {
         if (cause instanceof LuftNetworkError && this.scrub(cause.message) === cause.message) throw cause;
         const reason = cause instanceof Error ? cause.message : String(cause);
         throw new LuftNetworkError(
-          `${method} ${redactUrl(url)} failed: ${sanitizeServerText(this.scrub(reason))}`,
+          `${method} ${redactUrl(url)} failed: ${cutForMessage(sanitizeServerText(this.scrub(reason)))}`,
           { cause: this.scrubCause(cause) },
         );
       }
@@ -521,7 +515,7 @@ export class RequestEngine {
       if (typeof finalUrl === "string" && finalUrl !== "" && originOf(finalUrl) !== originOf(url)) {
         throw new LuftNetworkError(
           `${method} ${redactUrl(url)} failed: the transport followed a redirect to another origin ` +
-            `(${sanitizeServerText(redactUrl(this.scrub(finalUrl)))}); a transport must not follow redirects ` +
+            `(${cutForMessage(sanitizeServerText(redactUrl(this.scrub(finalUrl))))}); a transport must not follow redirects ` +
             `(HttpRequest.redirect is "manual").`,
         );
       }
@@ -565,14 +559,14 @@ export class RequestEngine {
             // included, as its `base` property. The Location is the server's text, shown
             // without its own or the base URL's userinfo.
             throw new LuftNetworkError(
-              `Invalid redirect Location ${JSON.stringify(sanitizeServerText(redactUrl(this.scrub(location))))} from ${redactUrl(url)}`,
+              `Invalid redirect Location ${JSON.stringify(cutForMessage(sanitizeServerText(redactUrl(this.scrub(location)))))} from ${redactUrl(url)}`,
             );
           }
           // Only http(s) is followed, checked here and not only by the built-in transport:
           // a custom transport must never be handed a file:, data: or javascript: URL.
           if (target.protocol !== "http:" && target.protocol !== "https:") {
             throw new LuftNetworkError(
-              `Refusing to follow redirect to unsupported protocol "${target.protocol}" from ${method} ${redactUrl(url)}`,
+              `Refusing to follow redirect to unsupported protocol "${cutForMessage(sanitizeServerText(target.protocol))}" from ${method} ${redactUrl(url)}`,
             );
           }
           // Userinfo in a Location is not used: credentials come from the base URL only,
@@ -627,7 +621,7 @@ export class RequestEngine {
       value = JSON.parse(text);
     } catch (cause) {
       // A maintenance or proxy page answered with 200: say what it was.
-      const type = res.contentType === "" ? "" : ` (Content-Type ${JSON.stringify(sanitizeServerText(res.contentType))})`;
+      const type = res.contentType === "" ? "" : ` (Content-Type ${JSON.stringify(cutForMessage(sanitizeServerText(res.contentType)))})`;
       throw new LuftParseError(`Failed to parse JSON response from ${path}${type}`, { cause });
     }
     const problem = shape?.(value);
@@ -703,7 +697,7 @@ export function decodeBody(body: Buffer, contentType: string, path: string): str
   try {
     decoder = new TextDecoder(charset);
   } catch {
-    throw new LuftParseError(`Unsupported response charset "${sanitizeServerText(charset)}" from ${path}.`);
+    throw new LuftParseError(`Unsupported response charset "${cutForMessage(sanitizeServerText(charset))}" from ${path}.`);
   }
   return decoder.decode(body);
 }

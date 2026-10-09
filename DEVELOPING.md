@@ -74,7 +74,10 @@ function. Every method checks that its parameter object is an object first
 (`assertParams`), so a wrong-typed call (`airquality(null)`) is a `LuftValidationError`,
 never a raw `TypeError`. Server text in an error message is cut at 500 characters
 (`MAX_MESSAGE_TEXT`, `cutForMessage`, which counts code points, so a cut never splits a
-character); `LuftApiError.body` keeps the whole body.
+character), and so is every other value an own message quotes from a server answer or the
+user's input (a redirect target, a Content-Type or charset, a transport's error text, a
+rejected parameter value, after its userinfo is cut out), so `err.message` stays bounded
+for a library caller; `LuftApiError.body` keeps the whole body.
 
 **Annual balances vs transgressions.** Both answer "how often was the limit exceeded",
 but from different data (UBA's Schnittstellenbeschreibung Luftdaten-API): `annualBalances`
@@ -394,7 +397,8 @@ every other C0 control but TAB, DEL and C1 as `\u00XX`, and U+2028, U+2029 and t
 controls as `\uXXXX`, so no text that reaches a record, by whatever path, can split it,
 forge another one or steer the terminal. Before that a lone surrogate (half a
 character, which jq rejects, stopping the whole stream) becomes U+FFFD (`toWellFormed`,
-exported from `errors.ts`). The library's error messages keep a server's line
+exported from `errors.ts`), and a message longer than `MAX_RECORD_MESSAGE` (4000
+characters, exported) is cut at a code point and ends in `… (N more characters)`. The library's error messages keep a server's line
 breaks (`sanitizeServerText` strips only the other controls); the record escapes them. The areas are `cli` (usage errors, commander's messages, unexpected errors),
 `api` (the API's answers: HTTP errors, an unknown station, and the notes and hints about
 an answer — `annualDataNote`, `stationDataNote`, the 409/500 hints) and `http` (the

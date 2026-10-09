@@ -146,3 +146,18 @@ test("baseUrlProblem: parse, scheme, query/fragment and whitespace, never echoin
   assert.equal(baseUrlProblem("https://h "), "A base URL cannot have surrounding whitespace.");
   assert.equal(root.validateBaseUrl("https://h.example/p//"), "https://h.example/p");
 });
+
+test("a rejected value is quoted at most MAX_MESSAGE_TEXT characters long, its userinfo cut out first (L3)", async () => {
+  const mt = makeMockTransport(() => jsonResponse(OK_BODY));
+  const client = new LuftqualitaetClient({ transport: mt.transport });
+  const long = "x".repeat(5000);
+  await assert.rejects(
+    client.components({ lang: long as never }),
+    (err: unknown) => err instanceof LuftValidationError && err.message.length < 700 && /got "x+…"/.test(err.message),
+  );
+  await assert.rejects(
+    client.components({ lang: `https://alice:${long}@h` as never }),
+    (err: unknown) => err instanceof LuftValidationError && !err.message.includes("alice") && err.message.length < 700,
+  );
+  assert.equal(mt.calls.length, 0);
+});

@@ -391,6 +391,15 @@ test("a server detail cut at 500 characters keeps the message well-formed", asyn
   assert.match(err.message, /…$/);
 });
 
+test("a redirect target and a Content-Type are quoted at most 500 characters long (L3)", async () => {
+  const long = "x".repeat(5000);
+  // A Location that is no valid URL is not followed; the error names it.
+  const redirect = new RequestEngine({ baseUrl: "https://a.test", transport: async () => ({ status: 302, headers: { location: `http://[${long}` }, body: Buffer.alloc(0) }) });
+  await assert.rejects(redirect.getJson("/x"), (err: Error) => err.message.length < 700 && /Location "http:\/\/\[x+…"/.test(err.message));
+  const type = new RequestEngine({ baseUrl: "https://a.test", transport: async () => ({ status: 200, headers: { "content-type": `text/${long}` }, body: Buffer.from("<html>") }) });
+  await assert.rejects(type.getJson("/x"), (err: Error) => err instanceof LuftParseError && err.message.length < 700 && /Content-Type "text\/x+…"/.test(err.message));
+});
+
 test("cleartextProblem: exact wording, host with port, loopback range, never the secret", () => {
   assert.equal(cleartextProblem("http://mirror.example:8080/api"), "requests to mirror.example:8080 are sent unencrypted (http:, not https:)");
   assert.equal(

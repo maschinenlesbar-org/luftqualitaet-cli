@@ -67,6 +67,40 @@ export function redactCredentials(text: string, credentials: readonly string[]):
 }
 
 /**
+ * `text` cut to at most `max` UTF-16 units, never inside a surrogate pair: when the cut
+ * would land after a high surrogate it is made one unit earlier, so a message that holds
+ * the cut text is well-formed (a lone `\ud83d` makes jq reject a whole JSON stream).
+ * Text no longer than `max` is returned as it is; the caller marks a cut.
+ */
+export function cutText(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const end = max > 0 && isHighSurrogate(text.charCodeAt(max - 1)) ? max - 1 : max;
+  return text.slice(0, end);
+}
+
+function isHighSurrogate(c: number): boolean {
+  return c >= 0xd800 && c <= 0xdbff;
+}
+
+/**
+ * Longest server or user text (in characters) an error message quotes: an error detail, a
+ * transport's error text, a redirect target, a Content-Type, a rejected value.
+ * `LuftApiError.body` keeps the whole body. A proxy's 200 kB error page or a huge typed
+ * value would otherwise flood the terminal, and a library caller's `err.message` stays
+ * bounded too.
+ */
+export const MAX_MESSAGE_TEXT = 500;
+
+/**
+ * `text` cut to {@link MAX_MESSAGE_TEXT} characters (code points, so a cut never splits
+ * one), marked with "…" when cut.
+ */
+export function cutForMessage(text: string): string {
+  const chars = [...text];
+  return chars.length <= MAX_MESSAGE_TEXT ? text : `${chars.slice(0, MAX_MESSAGE_TEXT).join("")}…`;
+}
+
+/**
  * `text` with every lone surrogate (half of a character) replaced by U+FFFD, like
  * `String.prototype.toWellFormed` (ES2024, so not in this package's `lib`).
  */

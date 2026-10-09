@@ -10,7 +10,7 @@
 // function and turn the reason into a usage error, so a rule is written once and
 // the CLI and the library cannot drift apart.
 
-import { LuftValidationError, redactUrl } from "./errors.js";
+import { LuftValidationError, cutForMessage, redactUrl } from "./errors.js";
 import { IndexValues, LangValues } from "./enums.js";
 import type { WindowParams } from "./types.js";
 
@@ -93,7 +93,7 @@ export const baseUrlProblem: Problem<unknown> = (value) => {
     return "Expected an absolute http(s) URL.";
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    return `Unsupported scheme "${url.protocol}". Expected an http(s) URL.`;
+    return `Unsupported scheme "${cutForMessage(url.protocol)}". Expected an http(s) URL.`;
   }
   if (/[?#]/.test(value)) return "A base URL cannot have a query (?) or fragment (#).";
   // The userinfo is percent-decoded for the Authorization header; a "%" that isn't an
@@ -111,10 +111,11 @@ export const baseUrlProblem: Problem<unknown> = (value) => {
 /**
  * The rejected value as the message shows it: a string quoted, with any URL userinfo
  * cut out (`redactUrl`), so a credential URL typed into the wrong option or parameter
- * (`--lang https://u:pw@h`) never reaches the message.
+ * (`--lang https://u:pw@h`) never reaches the message, then cut at `MAX_MESSAGE_TEXT`
+ * (`cutForMessage`; after the redaction, so a cut can't leave part of a password).
  */
 function describe(value: unknown): string {
-  return typeof value === "string" ? JSON.stringify(redactUrl(value)) : String(value);
+  return typeof value === "string" ? JSON.stringify(cutForMessage(redactUrl(value))) : cutForMessage(String(value));
 }
 
 function invalid(name: string, expected: string, value: unknown): never {

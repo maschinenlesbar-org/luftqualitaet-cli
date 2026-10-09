@@ -341,8 +341,8 @@ npm test          # builds, then runs `node --test` over dist/test
 - **`parity.test.ts`** — CLI ↔ library parity: one input through `run()` and through the library call on one recording mock transport (`parity()` in `test/helpers.ts`), asserting the same outcome.
 - **`log.test.ts`** — the record helpers of `src/cli/log.ts` on their own
   (`escapeForRecord`, `formatLogRecord`, `installWarningLog`); the CLI-level checks are
-  P23's. `io.test.ts` tests `handleOutputErrors` with fake streams (a closed pipe, a stdout
-  write error as a record).
+  P23's. `io.test.ts` tests `handleOutputErrors` and `stderrAfterStdout` with fake streams
+  (a closed pipe, a stdout write error as a record, a record held behind stdout's backlog).
 - **`cli.test.ts`** — end-to-end command parsing, domain validation (hour `1..24`, year `>= 2016`, positive ids, date format, conditional `meta` window) and exit codes — mocked client.
 - **`conformance-p*.test.ts`** — the checks shared across the `*-cli` repos (fix plan
   `.reviews/2026-10-05-exploratory/fix-plan.md` in the workspace), one file per pattern, the same
@@ -423,7 +423,9 @@ shim's last-resort `Unexpected error: …` an ERROR of `luftqualitaet.cli`, both
 format argv asks for and redacted like the run's log (`processLogger`), and so are Node's
 own process warnings (`NODE_TLS_REJECT_UNAUTHORIZED=0`), WARN records of
 `luftqualitaet.cli`: the shim installs `installWarningLog`, which removes Node's default
-`warning` listener and logs `(node) <name>: <message>`. Code logs through `logOf(deps)` and never writes
+`warning` listener and logs `(node) <name>: <message>`. In `defaultDeps` a record waits for
+stdout (`stderrAfterStdout`): it is held while stdout has a backlog and written, in order,
+once it is gone, so with `2>&1 |` and a slow reader it never lands inside the data. Code logs through `logOf(deps)` and never writes
 diagnostics with `io.err` directly. `run()` builds the logger from argv before commander
 parses it (`logFormatFromArgv`, used only for the records of a parse error: it takes the
 first `--log-format`, the one `forbidRepeatedOptions` keeps, and skips the value of the

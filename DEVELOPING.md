@@ -414,7 +414,11 @@ breaks (`sanitizeServerText` strips only the other controls); the record escapes
 an answer — `annualDataNote`, `stationDataNote`, the 409/500 hints) and `http` (the
 connection, the cleartext warning). Code logs through `logOf(deps)` and never writes
 diagnostics with `io.err` directly. `run()` builds the logger from argv before commander
-parses it, so commander's own usage errors are records too: its `error: …` an ERROR of
+parses it (`logFormatFromArgv`, used only for the records of a parse error: it takes the
+first `--log-format`, the one `forbidRepeatedOptions` keeps, and skips the value of the
+program's own value options, as commander does; a `preAction` hook then sets the format
+commander parsed, so `--user-agent --log-format=jsonl` logs text), so commander's own usage
+errors are records too: its `error: …` an ERROR of
 `cli` (a `(Did you mean …?)` line joined to it), the help it shows after one an INFO
 record per line, and `help` for an unknown command an ERROR "missing command:
 `luftqualitaet <subcommand>`" before that help, so every failed run has an ERROR record

@@ -641,3 +641,28 @@ test("the help after a usage error is one INFO record per line; a suggestion is 
   assert.equal(await run(["airqualty"], typo.deps), 1);
   assert.equal(untimed(typo.err[0] ?? ""), "ERROR [luftqualitaet.cli] unknown command 'airqualty' (Did you mean airquality?)");
 });
+
+test("a parse error is logged in the format commander would have parsed (L6)", async () => {
+  const isJsonl = (line: string): boolean => line.startsWith("{");
+  const cases: [string[], boolean][] = [
+    // forbidRepeatedOptions keeps the first --log-format and rejects the second.
+    [["--log-format", "jsonl", "--log-format", "text", "components"], true],
+    [["--log-format", "text", "--log-format", "jsonl", "components"], false],
+    // --log-format is --user-agent's value (refused: it looks like an option).
+    [["--user-agent", "--log-format", "jsonl", "components"], false],
+    // commander takes the program's --log-format out first; --lang is left without its value.
+    [["components", "--lang", "--log-format", "jsonl"], true],
+  ];
+  for (const [argv, jsonl] of cases) {
+    const cli = makeCli(() => jsonResponse(OK_BODY));
+    assert.equal(await run(argv, cli.deps), 1, argv.join(" "));
+    assert.ok(cli.err.length > 0 && cli.err.every((line) => isJsonl(line) === jsonl), `${argv.join(" ")}:\n${cli.err.join("\n")}`);
+  }
+});
+
+test("the log format is the one commander parsed, not what an option's value looks like (L6)", async () => {
+  // commander takes "--" as the User-Agent (refused) and the scan must not stop there either.
+  const cli = makeCli(() => jsonResponse(OK_BODY, 500));
+  assert.notEqual(await run(["--user-agent", "--", "--log-format", "jsonl", "components"], cli.deps), 0);
+  assert.ok(cli.err.length > 0 && cli.err.every((line) => line.startsWith("{")), cli.err.join("\n"));
+});

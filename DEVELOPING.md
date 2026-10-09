@@ -441,4 +441,10 @@ record per line, and `help` for an unknown command an ERROR "missing command:
 escaped: the frame is never touched, and a secret is kept out of the log in either format. `CliDeps.now` makes the
 timestamps testable. stdout carries data only. Conformance test P23 checks all of this,
 and its body is shared across the *-cli repos (here with the `USAGE_EXIT` switch: a
-usage error exits 1).
+usage error exits 1). Since the fix plan of the 2026-10-09 sweep it also checks that a
+record is one line with nothing raw, well-formed and bounded, a secret is replaced in the
+message only, commander's help is one record per line, every failure has an ERROR, the
+format is commander's, a malformed answer is `api`, credentials a server echoes are
+replaced and an `a:b@c` value is no credential. Its adapter sets `HELP_AFTER_ERROR = true`,
+`BASE_URL_USERINFO = true` (the base URL's userinfo is sent as Basic auth) and
+`OUTPUT_OPTION = undefined` (no `-o`).

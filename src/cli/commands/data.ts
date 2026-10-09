@@ -56,10 +56,24 @@ function parseDate(value: string): string {
 }
 
 /**
+ * True when `err` is the station query's own answer (`/airquality/json`, `/measures/json`),
+ * not the station catalogue lookup (`/meta/json`) the library makes after an empty answer.
+ */
+function isStationQueryError(err: LuftApiError): boolean {
+  try {
+    return /\/(airquality|measures)\/json$/.test(new URL(err.url).pathname);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Run a station query. The API answers most unknown station ids with an empty `data` and
  * HTTP 200, like a window without data, and ids far outside the catalogue with HTTP 409 (an
  * HTML page, no detail): name the likely cause on stderr either way. The empty case is a
- * note after the (printed) result, exit 0; the 409 a hint before the error.
+ * note after the (printed) result, exit 0; the 409 a hint before the error — only for the
+ * station query's own 409: one from the catalogue lookup says nothing about the station,
+ * and its ERROR names `/meta/json`.
  */
 async function withStationHint(
   deps: CliDeps,
@@ -70,7 +84,7 @@ async function withStationHint(
     const result = await query();
     return { result, note: stationDataNote(result, station) };
   } catch (err) {
-    if (err instanceof LuftApiError && err.status === 409) {
+    if (err instanceof LuftApiError && err.status === 409 && isStationQueryError(err)) {
       logOf(deps).info(
         "api",
         `The API answers an unknown station id with HTTP 409. Check that station ` +

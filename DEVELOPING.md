@@ -102,8 +102,9 @@ catalogue — `meta?use=measure`, whose `stations` object is keyed by id (525 st
 empty answer, and `stationDataNote(result, station)` (exported) says the window has no
 data; the CLI logs it as an `INFO` record of `luftqualitaet.api` on stderr (exit 0). A catalogue without a `stations`
 object is a `LuftParseError`, and a failing lookup fails the call: no guess either way.
-`catalogueHasStation(catalogue, station)` is the check itself. A 409 still gets a hint (an `INFO`
-record) before the error (exit 1).
+`catalogueHasStation(catalogue, station)` is the check itself. A 409 to the station query
+still gets a hint (an `INFO` record) before the error (exit 1); a 409 to the catalogue
+lookup gets none, since it says nothing about the station (its ERROR names `/meta/json`).
 
 **Unknown parameters.** The API ignores a query parameter it doesn't take and answers as
 if it weren't there, so each call checks its parameter object against the keys it

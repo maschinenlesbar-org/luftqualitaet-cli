@@ -689,3 +689,19 @@ test("a malformed answer, the station catalogue's included, is an ERROR record o
   assert.equal(await run(["airquality", ...window], catalogue.deps), 1);
   assert.match(untimed(catalogue.err[0] ?? ""), /^ERROR \[luftqualitaet\.api\] Unexpected station catalogue/, catalogue.err.join("\n"));
 });
+
+test("a 409 from the station catalogue lookup gets no unknown-station hint, only its own ERROR (01-1)", async () => {
+  for (const command of ["airquality", "measures"]) {
+    const cli = makeCli((req) =>
+      new URL(req.url).pathname.endsWith("/meta/json")
+        ? rawResponse("<html>conflict</html>", "text/html", 409)
+        : jsonResponse({ request: {}, indices: {}, data: {} }),
+    );
+    const extra = command === "measures" ? ["--component", "1", "--scope", "2"] : [];
+    const window = ["--date-from", "2026-10-01", "--time-from", "1", "--date-to", "2026-10-01", "--time-to", "24", "--station", "7"];
+    assert.equal(await run([command, ...window, ...extra], cli.deps), 1);
+    const records = cli.err.map(untimed);
+    assert.equal(records.length, 1, records.join("\n"));
+    assert.match(records[0] ?? "", /^ERROR \[luftqualitaet\.api\] HTTP 409 for GET .*\/meta\/json\?use=measure/);
+  }
+});

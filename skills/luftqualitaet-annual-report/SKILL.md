@@ -35,7 +35,7 @@ yearly count disagrees with `annual-balances` at 10–35 % of PM₁₀ stations 
 2019–2025, in both directions, and the stations' own daily means agree with
 `annual-balances` (Halle/Paracelsusstr., PM₁₀ 2024: `transgressions` 17 days,
 `annual-balances` 8, its daily means above 50 µg/m³: 8; checked live 2026-10-06). The CLI
-prints a `Note:` on stderr when you ask `transgressions` for a completed year, and when
+logs a note on stderr (an `INFO [luftqualitaet.api]` record) when you ask `transgressions` for a completed year, and when
 `annual-balances` has no rows yet — relay it. Always name the source (and "preliminary"
 for `transgressions`) in the answer.
 
@@ -48,7 +48,7 @@ This skill also filters JSON with `jq`. **Validate it too** — run `command -v 
 Always `--compact`. `--year` must be **≥ 2016** (the API has nothing earlier; the
 CLI rejects lower years locally, exit `1`). **`transgressions` is complete only from
 2019:** for 2016–2018 some components (NO₂, PM₁₀) fail with HTTP `500` (exit `1`, with
-a `Hint:` line) — tell the user that year has no exceedance data upstream, and offer
+an `INFO` hint before the error) — tell the user that year has no exceedance data upstream, and offer
 `annual-balances` for it (its PM₁₀/NO₂ columns include the exceedance counts).
 
 ## Step 1 — Resolve the component id

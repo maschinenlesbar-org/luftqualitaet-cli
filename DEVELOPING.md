@@ -80,7 +80,7 @@ but from different data (UBA's Schnittstellenbeschreibung Luftdaten-API): `annua
 from the final data, published in June of the following year; `transgressions` is the
 running year's table from preliminary data and is not updated for a completed year (it
 disagrees at 10–35 % of PM₁₀ stations in 2019–2025). `annualDataNote(kind, year, result)`
-(exported) returns what to tell the reader — the CLI prints it as `Note:` on stderr: a
+(exported) returns what to tell the reader — the CLI logs it as an `INFO` record of `luftqualitaet.api` on stderr: a
 completed year's transgressions are preliminary and `annual-balances` has the count; an
 annual balance without rows comes in June of the following year (`FINAL_DATA_MONTH`).
 
@@ -96,10 +96,10 @@ catalogue — `meta?use=measure`, whose `stations` object is keyed by id (525 st
 7..10472 on 2026-10-06), one request, only then — and rejects an id it doesn't list with
 `LuftNotFoundError` (exported, `.station`; the CLI exits 4). A listed station returns the
 empty answer, and `stationDataNote(result, station)` (exported) says the window has no
-data; the CLI prints it as `Note:` on stderr (exit 0). A catalogue without a `stations`
+data; the CLI logs it as an `INFO` record of `luftqualitaet.api` on stderr (exit 0). A catalogue without a `stations`
 object is a `LuftParseError`, and a failing lookup fails the call: no guess either way.
-`catalogueHasStation(catalogue, station)` is the check itself. A 409 still gets a `Hint:`
-before the error (exit 1).
+`catalogueHasStation(catalogue, station)` is the check itself. A 409 still gets a hint (an `INFO`
+record) before the error (exit 1).
 
 **Unknown parameters.** The API ignores a query parameter it doesn't take and answers as
 if it weren't there, so each call checks its parameter object against the keys it
@@ -128,7 +128,7 @@ that returns the reason a value is invalid (or `undefined`), and `assertValid` t
 `LuftValidationError` with `Invalid <name>: <reason>`. The CLI uses the same rules and
 keeps no copies: its commands pass the parsed options to the client, which checks the
 window order, the `meta` window pairing and the `lang`/`index`/`use` value sets, and
-`run()` prints the library's message and maps a `LuftValidationError` to the
+`run()` logs the library's message as an `ERROR` record of `luftqualitaet.cli` and maps a `LuftValidationError` to the
 usage-error exit code `1`. A half `meta` window reads `Invalid meta window: date_from
 and date_to go together; give both, or neither.`
 
@@ -165,7 +165,8 @@ src/
     validate.ts  # the parameter rules (Problem, assertValid, assertDate, ...)
     client.ts    # LuftqualitaetClient — the air-data surface over the engine
   cli/
-    io.ts        # injectable I/O seam (stdout/stderr)
+    io.ts        # injectable I/O seam (stdout/stderr), the logger and the clock
+    log.ts       # the stderr log: records with ts, level, topic; --log-format text|jsonl
     shared.ts    # option parsers, global-option resolver, JSON renderer
     commands/    # reference lists + data endpoints
     program.ts   # assembles the commander program from injectable deps
@@ -333,7 +334,7 @@ npm test          # builds, then runs `node --test` over dist/test
   types, header shapes, resets), P6 the retry floor, P7 pipes and exit codes (spawns the built
   bin), P8/P9/P13 charset, 2xx envelopes and error classes, P10 unknown parameters, repeated
   options and the empty-answer note. The follow-up round of 2026-10-06 added P20 (a remote
-  plain `http:` base URL gets one `warning:` line on stderr from the library's
+  plain `http:` base URL gets one `WARN` record of `luftqualitaet.http` on stderr from the library's
   `cleartextProblem`, printed by `action()` in `shared.ts` before the client is built; no
   base-URL variable and no secret but the URL's own credentials here, so those two cases are
   skipped) and P21 (every relative link in `README.md` points to a file `package.json` `files`
@@ -377,3 +378,21 @@ npm run serve                        # http://127.0.0.1:4000/luftqualitaet-cli/
 Dual-licensed under **[AGPL-3.0-or-later](LICENSE)** or a commercial license — see
 **[LICENSING.md](LICENSING.md)**. This project does **not** accept external code
 contributions; see **[CONTRIBUTING.md](CONTRIBUTING.md)**.
+
+## The log on stderr
+
+Every diagnostic line on stderr is a log record (`src/cli/log.ts`): a timestamp, a level
+(`ERROR`, `WARN`, `INFO`) and a topic, `luftqualitaet.<area>`. `--log-format text` (the
+default) writes it log4j style, `<ISO 8601 UTC> <LEVEL padded to 5> [<topic>] <message>`;
+`--log-format jsonl` writes one JSON object per line with exactly `ts`, `level`, `topic`
+and `msg`. The areas are `cli` (usage errors, commander's messages, unexpected errors),
+`api` (the API's answers: HTTP errors, an unknown station, and the notes and hints about
+an answer — `annualDataNote`, `stationDataNote`, the 409/500 hints) and `http` (the
+connection, the cleartext warning). Code logs through `logOf(deps)` and never writes
+diagnostics with `io.err` directly. `run()` builds the logger from argv before commander
+parses it, so commander's own usage errors are records too, and on top of the redacted
+`io.err`, so a secret is kept out of the log in either format. `CliDeps.now` makes the
+timestamps testable. stdout carries data only. Conformance test P23 checks all of this,
+and its body is shared across the *-cli repos (here with the `USAGE_EXIT` switch: a
+usage error exits 1). The bin shim's `Output error: …` (stdout failing, `handleOutputErrors`)
+stays a plain line: it is written straight to `process.stderr` outside `run()`.

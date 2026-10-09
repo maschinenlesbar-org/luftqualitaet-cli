@@ -90,7 +90,7 @@ Jahres wird nicht auf die endgültigen Daten gebracht, daher weicht ihre Jahress
 (Halle/Paracelsusstr., PM₁₀ 2024: hier 17 Tage, in der Jahresbilanz und in den
 Tagesmittelwerten der Station 8). Für das laufende Jahr und die Monatswerte verwenden; für
 ein abgeschlossenes Jahr nach `annual-balances` ordnen. CLI: `transgressions` (mit einem
-`Note:` auf stderr für ein abgeschlossenes Jahr).
+Hinweis, einem `INFO`-Eintrag, auf stderr für ein abgeschlossenes Jahr).
 
 **thresholds (`/thresholds/json`).** Die Grenz- und Schwellenwerte für eine bestimmte
 Verwendung `use` (`airquality` oder `measure`), optional je Komponente und Messumfang. CLI:
@@ -134,7 +134,7 @@ lehnt die CLI `0` schon lokal ab. IDs finden Sie über `meta` / `airquality-limi
 `measures-limits`. Eine ID, die die API nicht kennt, bekommt meist `"data": {}` mit HTTP
 200, wie ein Zeitfenster ohne Daten (nur IDs weit außerhalb des Katalogs bekommen HTTP 409);
 die CLI schlägt die ID dann im Stationskatalog (`meta --use measure`) nach und endet mit Exit 4
-(nicht gefunden), wenn sie dort fehlt, oder gibt die leere Antwort mit einem `Note:` auf stderr
+(nicht gefunden), wenn sie dort fehlt, oder gibt die leere Antwort mit einem Hinweis (einem `INFO`-Eintrag) auf stderr
 aus, wenn es die Station gibt.
 
 **component.** Die numerische **Komponenten-ID**, die einen Schadstoff bezeichnet. Pflicht

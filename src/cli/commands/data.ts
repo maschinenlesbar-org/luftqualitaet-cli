@@ -1,5 +1,5 @@
 import { InvalidArgumentError, type Command } from "commander";
-import type { CliDeps } from "../io.js";
+import { logOf, type CliDeps } from "../io.js";
 import {
   action,
   parseHour,
@@ -71,8 +71,9 @@ async function withStationHint(
     return { result, note: stationDataNote(result, station) };
   } catch (err) {
     if (err instanceof LuftApiError && err.status === 409) {
-      deps.io.err(
-        `Hint: the API answers an unknown station id with HTTP 409. Check that station ` +
+      logOf(deps).info(
+        "api",
+        `The API answers an unknown station id with HTTP 409. Check that station ` +
           `${station} exists (meta --use measure lists them) and has data in this window ` +
           `(airquality-limits / measures-limits).`,
       );
@@ -106,7 +107,7 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
         }),
       );
       renderJson(deps, global, result);
-      if (note !== undefined) deps.io.err(`Note: ${note}`);
+      if (note !== undefined) logOf(deps).info("api", note);
     }),
   );
 
@@ -141,7 +142,7 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
         }),
       );
       renderJson(deps, global, result);
-      if (note !== undefined) deps.io.err(`Note: ${note}`);
+      if (note !== undefined) logOf(deps).info("api", note);
     }),
   );
 
@@ -200,8 +201,9 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
               err instanceof LuftApiError &&
               err.status === 500
             ) {
-              deps.io.err(
-                `Hint: the API has no transgressions for some components before ` +
+              logOf(deps).info(
+                "api",
+                `The API has no transgressions for some components before ` +
                   `${TRANSGRESSIONS_COMPLETE_FROM} and answers with HTTP 500; try --year ` +
                   `${TRANSGRESSIONS_COMPLETE_FROM} or later, or annual-balances for ${year}.`,
               );
@@ -211,7 +213,7 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
           renderJson(deps, global, result);
           // Which of the two annual figures to trust, and why a year may have none yet.
           const note = annualDataNote(method, year, result);
-          if (note !== undefined) deps.io.err(`Note: ${note}`);
+          if (note !== undefined) logOf(deps).info("api", note);
         }),
       );
   }

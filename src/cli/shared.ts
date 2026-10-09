@@ -3,7 +3,7 @@
 
 import type { Command } from "commander";
 import { InvalidArgumentError } from "commander";
-import type { CliDeps } from "./io.js";
+import { logOf, type CliDeps } from "./io.js";
 import { LuftError } from "../client/errors.js";
 import { baseUrlApiPathProblem } from "../client/client.js";
 import { DEFAULT_BASE_URL, cleartextProblem, type EngineOptions } from "../client/engine.js";
@@ -247,7 +247,7 @@ export interface ActionContext {
  * options + this command's options) and the command's positional arguments.
  *
  * Before the client is built (so before the first request) it writes one
- * `warning: <sentence>` line to stderr when the base URL is plain `http:` to a host
+ * WARN record of `luftqualitaet.http` to stderr when the base URL is plain `http:` to a host
  * other than loopback (cleartextProblem). Help, version and usage errors never reach
  * an action, so they never warn.
  *
@@ -263,7 +263,7 @@ export function action(
     const positionals = args.slice(0, Math.max(0, args.length - 2)) as string[];
     const global = command.optsWithGlobals() as GlobalOptions;
     const cleartext = cleartextProblem(global.baseUrl ?? DEFAULT_BASE_URL);
-    if (cleartext !== undefined) deps.io.err(`warning: ${cleartext}`);
+    if (cleartext !== undefined) logOf(deps).warn("http", cleartext);
     const client = deps.createClient(toEngineOptions(global));
     await fn({ client, global, opts: command.opts() }, positionals);
   };

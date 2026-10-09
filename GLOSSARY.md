@@ -90,7 +90,7 @@ completed year's table is not brought up to the final data, so its yearly count 
 from `annual-balances` at 10–35 % of PM₁₀ stations in 2019–2025, in both directions
 (Halle/Paracelsusstr., PM₁₀ 2024: 17 days here, 8 in the annual balance and in the
 station's daily means). Use it for the running year and its monthly breakdown; for a
-completed year rank on `annual-balances`. CLI: `transgressions` (with a `Note:` on stderr
+completed year rank on `annual-balances`. CLI: `transgressions` (with a note, an `INFO` record, on stderr
 for a completed year).
 
 **thresholds (`/thresholds/json`).** The limit/threshold values for a given
@@ -136,7 +136,7 @@ the CLI rejects `0` locally. Discover ids via `meta` / `airquality-limits` /
 `measures-limits`. An id the API doesn't know mostly gets `"data": {}` with HTTP 200,
 like a window without data (only ids far outside the catalogue get HTTP 409); the CLI then
 looks the id up in the station catalogue (`meta --use measure`) and exits 4 (not found)
-when it isn't there, or prints the empty answer with a `Note:` on stderr when it is.
+when it isn't there, or prints the empty answer with a note (an `INFO` record) on stderr when it is.
 
 **component.** The numeric **component id** identifying a pollutant. Required by
 `annual-balances` / `transgressions` / `measures`; optional on `thresholds`.

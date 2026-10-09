@@ -129,7 +129,7 @@ How often has PM₁₀ exceeded its limit **this year** so far, month by month?
 `transgressions` is UBA's exceedance table for the running year, from preliminary data.
 For a completed year it is not updated to the final data — its counts can differ from the
 annual balance (and from the stations' own daily means), so use `annual-balances` there;
-the CLI prints a `Note:` on stderr saying so.
+the CLI logs a note (an `INFO` record) on stderr saying so.
 
 ```bash
 luftqualitaet transgressions --component 1 --year 2026 --lang en
@@ -184,13 +184,14 @@ These flags apply to every command and go before the subcommand:
 | Flag | Purpose |
 | --- | --- |
 | `-V, --version` | Print the CLI version. |
-| `--base-url <url>` | Override the API host (default `https://luftdaten.umweltbundesamt.de`); the CLI adds `/api/air-data/v3` itself. A plain `http:` URL to a non-loopback host (not `localhost`, `127.0.0.0/8`, `::1`) gets one `warning: … sent unencrypted (http:, not https:)` line on stderr naming the host (and the URL's credentials, never printed); stdout and the exit code are unchanged. |
+| `--base-url <url>` | Override the API host (default `https://luftdaten.umweltbundesamt.de`); the CLI adds `/api/air-data/v3` itself. A plain `http:` URL to a non-loopback host (not `localhost`, `127.0.0.0/8`, `::1`) gets one `WARN` record of `luftqualitaet.http` on stderr, `… sent unencrypted (http:, not https:)`, naming the host (and the URL's credentials, never printed); stdout and the exit code are unchanged. |
 | `--timeout <ms>` | Per-request timeout in milliseconds. |
 | `--user-agent <ua>` | Set the `User-Agent` header. |
 | `--max-retries <n>` | Retries for transient `429`/`503` responses and reset connections (`0..10`, default `2`). Each retry backs off linearly (200 ms, 400 ms, …), or waits the server's `Retry-After` when that is longer (up to 30 s; a longer one is not retried, and the error says so). |
 | `--max-redirects <n>` | HTTP redirects to follow (`0..20`; `0` = none; default `5`). |
 | `--max-response-bytes <n>` | Cap response body size in bytes (`0` = unlimited; default 100 MiB). |
 | `--compact` | Print JSON on a single line instead of pretty-printed. |
+| `--log-format <format>` | How errors, warnings and notes are written to stderr: `text` (default; log4j style, `2026-10-09T14:03:12.481Z WARN  [luftqualitaet.http] …`) or `jsonl` (one JSON object per line: `ts`, `level`, `topic`, `msg`). stdout is not affected. |
 | `-h, --help` | Show help for the CLI or for any `<command> --help`. |
 
 Example combining a global flag with a command:

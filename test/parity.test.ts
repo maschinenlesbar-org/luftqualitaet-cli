@@ -62,7 +62,7 @@ test("meta: use=airquality without dates is rejected by both, with no request", 
       "Invalid meta window: use=airquality requires date_from and date_to.",
       label,
     );
-    assert.equal(cli.err, `Error: ${(lib as { error: Error }).error.message}`, label);
+    assert.equal(cli.err, `ERROR [luftqualitaet.cli] ${(lib as { error: Error }).error.message}`, label);
     assert.equal(lib.requests.length, 0, label);
   }
 });
@@ -263,7 +263,7 @@ test("rejected inputs give the library's message on both sides, with no request"
     assert.equal(lib.requests.length, 0, label);
     assert.equal(cli.code, 1, label);
     assert.equal(cli.requests.length, 0, label);
-    assert.equal(cli.err, `Error: ${(lib as { error: Error }).error.message}`, label);
+    assert.equal(cli.err, `ERROR [luftqualitaet.cli] ${(lib as { error: Error }).error.message}`, label);
   }
 });
 

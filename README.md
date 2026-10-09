@@ -137,7 +137,7 @@ count so far, the period covered and the monthly counts, from preliminary data. 
 completed year's table is not updated to the final data, and its counts disagree with
 `annual-balances` and with the stations' own daily means (2019–2025: 10–35 % of PM₁₀
 stations, e.g. Halle/Paracelsusstr. 2024: 17 days here, 8 in `annual-balances` and in its
-daily means). For a completed year the CLI prints a `Note:` on stderr naming
+daily means). For a completed year the CLI logs a note (an `INFO` record) on stderr naming
 `annual-balances`. Same flags as `annual-balances`. Before 2019 the API has no transgressions for some
 components (NO₂ and PM₁₀ 2016–2018 fail with HTTP `500`; O₃ 2018 works); the CLI then
 adds a hint to the error.
@@ -200,6 +200,21 @@ luftqualitaet meta --use measure --lang de | jq 'keys'
 Every command prints **pretty JSON to stdout**. Errors and diagnostics go to
 stderr, so piping stdout into `jq` stays clean.
 
+Each line on stderr is a **log record**: a timestamp (UTC), a level (`ERROR`, `WARN`,
+`INFO`) and a topic, the program and the area it comes from (`luftqualitaet.cli` for usage
+errors, `luftqualitaet.api` for the API's answers and the notes and hints about them,
+`luftqualitaet.http` for the connection). By default it is written log4j style;
+`--log-format jsonl` writes one JSON object per line instead:
+
+```text
+2026-10-09T14:03:12.481Z WARN  [luftqualitaet.http] requests to mirror.test are sent unencrypted (http:, not https:)
+2026-10-09T14:03:12.902Z ERROR [luftqualitaet.api] Station 2 not found: the API answered with no data, and the station catalogue (meta --use measure) has no station with this id.
+```
+
+```bash
+luftqualitaet --log-format jsonl airquality --station 2 2>log.jsonl   # {"ts":"…","level":"ERROR","topic":"luftqualitaet.api","msg":"Station 2 not found: …"}
+```
+
 UBA responses are **index + data** structures: an `indices` array names the
 columns and the payload is a compact map keyed by id/code/timestamp. **Where the
 rows sit depends on the endpoint:** `networks` and the data commands
@@ -257,10 +272,10 @@ exits with its own code.
     JSON without data). So when an answer comes back empty, the CLI (the library, in fact)
     looks the id up in the station catalogue (`meta --use measure`, one more request of
     about 0.5 MB, only then): an id it doesn't list exits `4` with
-    `Error: Station <id> not found: …`; a listed one prints the empty answer, exit `0`, with
-    a `Note:` on stderr that the window has no data. Ids far outside the catalogue (seen:
-    65535 and above) get HTTP `409` (an HTML page, no detail) instead, exit `1`, with a
-    `Hint:` line.
+    `ERROR [luftqualitaet.api] Station <id> not found: …`; a listed one prints the empty
+    answer, exit `0`, with a note (an `INFO` record) on stderr that the window has no data.
+    Ids far outside the catalogue (seen: 65535 and above) get HTTP `409` (an HTML page, no
+    detail) instead, exit `1`, with a hint (an `INFO` record before the error).
   - an unknown **component** or **scope**, a year or window with no data →
     HTTP `200` with `"data": {}`, exit `0`.
 
@@ -300,7 +315,8 @@ These apply to every command and may be given before *or* after it:
 | `-V, --version` | Print the version number |
 | `-h, --help` | Show help for the program or a command |
 | `--compact` | Print JSON on a single line instead of pretty-printed |
-| `--base-url <url>` | API host (default `https://luftdaten.umweltbundesamt.de`); the CLI adds `/api/air-data/v3` itself. Credentials in it (`https://user:pw@mirror.example`) are sent as HTTP Basic auth and shown as `***` in everything the CLI prints, usage errors included. A plain `http:` URL to a host other than loopback (`localhost`, `127.0.0.0/8`, `::1`) prints one `warning: requests to <host> are sent unencrypted (http:, not https:)` line on stderr before the first request (`warning: the base URL's credentials are sent unencrypted to <host> …` when it carries any, never printing them); stdout and the exit code are unchanged |
+| `--log-format <format>` | How errors, warnings and notes are written to stderr: `text` (default; log4j style, `2026-10-09T14:03:12.481Z WARN  [luftqualitaet.http] …`) or `jsonl` (one JSON object per line: `ts`, `level`, `topic`, `msg`). stdout is not affected |
+| `--base-url <url>` | API host (default `https://luftdaten.umweltbundesamt.de`); the CLI adds `/api/air-data/v3` itself. Credentials in it (`https://user:pw@mirror.example`) are sent as HTTP Basic auth and shown as `***` in everything the CLI prints, usage errors included. A plain `http:` URL to a host other than loopback (`localhost`, `127.0.0.0/8`, `::1`) logs one `WARN` record of `luftqualitaet.http` on stderr before the first request, `requests to <host> are sent unencrypted (http:, not https:)` (`the base URL's credentials are sent unencrypted to <host> …` when it carries any, never printing them); stdout and the exit code are unchanged |
 | `--timeout <ms>` | Per-request timeout (default `30000`; at most `2147483647`) |
 | `--user-agent <ua>` | `User-Agent` header value (non-blank; no control characters or characters above U+00FF) |
 | `--max-retries <n>` | Retries for transient `429`/`503` responses and reset connections (`0..10`, default `2`). Each retry backs off linearly (200 ms, 400 ms, …), or waits the server's `Retry-After` when that is longer (up to 30 s; a longer one is not retried, and the error says so). Timeouts and refused connections are not retried |

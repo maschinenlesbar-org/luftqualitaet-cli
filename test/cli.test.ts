@@ -4,7 +4,7 @@ import { run } from "../src/cli/run.js";
 import { LuftqualitaetClient } from "../src/client/client.js";
 import type { CliDeps } from "../src/cli/io.js";
 import type { HttpRequest, HttpResponse } from "../src/client/http.js";
-import { makeMockTransport, jsonResponse, rawResponse, OK_BODY, WINDOW_BODY, withCatalogue } from "./helpers.js";
+import { makeMockTransport, jsonResponse, rawResponse, OK_BODY, WINDOW_BODY, withCatalogue, untimed } from "./helpers.js";
 
 const API = "/api/air-data/v3";
 
@@ -445,30 +445,30 @@ test("--max-retries is bounded to 0..10", async () => {
 test("transgressions before 2019: an upstream 500 gets a hint naming the year floor", async () => {
   const cli = makeCli(() => jsonResponse({}, 500));
   assert.equal(await run(["transgressions", "--component", "5", "--year", "2018"], cli.deps), 1);
-  const text = cli.err.join("\n");
-  assert.match(text, /Hint: the API has no transgressions for some components before 2019/);
-  assert.match(text, /Error: HTTP 500/);
+  const text = untimed(cli.err.join("\n"));
+  assert.match(text, /^INFO  \[luftqualitaet\.api\] The API has no transgressions for some components before 2019/m);
+  assert.match(text, /^ERROR \[luftqualitaet\.api\] HTTP 500/m);
 
   const later = makeCli(() => jsonResponse({}, 500));
   assert.equal(await run(["transgressions", "--component", "5", "--year", "2019"], later.deps), 1);
-  assert.doesNotMatch(later.err.join("\n"), /Hint:/);
+  assert.doesNotMatch(untimed(later.err.join("\n")), /^INFO /m);
 
   const balances = makeCli(() => jsonResponse({}, 500));
   assert.equal(await run(["annual-balances", "--component", "5", "--year", "2018"], balances.deps), 1);
-  assert.doesNotMatch(balances.err.join("\n"), /Hint:/);
+  assert.doesNotMatch(untimed(balances.err.join("\n")), /^INFO /m);
 });
 
 test("airquality/measures: an upstream 409 (unknown station) gets a hint, exit 1", async () => {
   for (const cmd of [["airquality"], ["measures", "--component", "5", "--scope", "2"]]) {
     const cli = makeCli(() => rawResponse("<html>conflict</html>", "text/html", 409));
     assert.equal(await run([...cmd, ...withWindowArg({ "--station": "999999" })], cli.deps), 1);
-    const text = cli.err.join("\n");
-    assert.match(text, /Hint: the API answers an unknown station id with HTTP 409\. Check that station 999999 exists/);
-    assert.match(text, /Error: HTTP 409/);
+    const text = untimed(cli.err.join("\n"));
+    assert.match(text, /^INFO  \[luftqualitaet\.api\] The API answers an unknown station id with HTTP 409\. Check that station 999999 exists/m);
+    assert.match(text, /^ERROR \[luftqualitaet\.api\] HTTP 409/m);
   }
   const other = makeCli(() => jsonResponse({}, 500));
   assert.equal(await run(["airquality", ...fullWindow], other.deps), 1);
-  assert.doesNotMatch(other.err.join("\n"), /Hint:/);
+  assert.doesNotMatch(untimed(other.err.join("\n")), /^INFO /m);
 });
 
 test("a --base-url with a query, a fragment or surrounding whitespace is a usage error", async () => {
@@ -536,14 +536,14 @@ test("a deeply nested response fails pretty-printing cleanly and still prints wi
   const pretty = makeCli(deep);
   assert.equal(await run(["components"], pretty.deps), 1);
   assert.deepEqual(pretty.out, []);
-  assert.equal(pretty.err.join("\n"), "Error: The response is nested too deeply to pretty-print; try --compact.");
+  assert.equal(untimed(pretty.err.join("\n")), "ERROR [luftqualitaet.cli] The response is nested too deeply to pretty-print; try --compact.");
 
   // Compact serialisation goes much deeper (it prints this one on current Node);
   // should a runtime's stack still be too small, it must fail just as cleanly.
   const compact = makeCli(deep);
   const code = await run(["--compact", "components"], compact.deps);
   if (code === 0) assert.equal(compact.out.join("").length, 2 * depth + '{"count":1,"indices":[],"1":}'.length);
-  else assert.equal(compact.err.join("\n"), "Error: The response is nested too deeply to print.");
+  else assert.equal(untimed(compact.err.join("\n")), "ERROR [luftqualitaet.cli] The response is nested too deeply to print.");
 });
 
 test("transgressions for a completed year prints the data and a note naming annual-balances (03#1, 06#1)", async () => {
@@ -551,7 +551,7 @@ test("transgressions for a completed year prints the data and a note naming annu
   const cli = makeCli(() => jsonResponse(body));
   assert.equal(await run(["--compact", "transgressions", "--component", "1", "--year", "2019"], cli.deps), 0);
   assert.deepEqual(JSON.parse(cli.out.join("")), body);
-  assert.match(cli.err.join("\n"), /^Note: transgressions is UBA's exceedance table for the running year, from preliminary data/);
+  assert.match(untimed(cli.err.join("\n")), /^INFO  \[luftqualitaet\.api\] transgressions is UBA's exceedance table for the running year, from preliminary data/);
   assert.match(cli.err.join("\n"), /use annual-balances \(final data\)/);
 });
 
@@ -559,7 +559,7 @@ test("annual-balances without rows says when the year's balance comes", async ()
   const cli = makeCli(() => jsonResponse({ request: {}, indices: [], headers: {}, data: {} }));
   const next = new Date().getFullYear() + 1;
   assert.equal(await run(["--compact", "annual-balances", "--component", "1", "--year", String(next)], cli.deps), 0);
-  assert.match(cli.err.join("\n"), new RegExp(`^Note: No annual balance for ${next}: UBA publishes it from the final data in June ${next + 1}`));
+  assert.match(untimed(cli.err.join("\n")), new RegExp(`^INFO  \\[luftqualitaet\\.api\\] No annual balance for ${next}: UBA publishes it from the final data in June ${next + 1}`));
 });
 
 test("an empty answer for a station the catalogue lacks exits 4 naming it; a listed one exits 0 with a note (02#1)", async () => {
@@ -574,8 +574,8 @@ test("an empty answer for a station the catalogue lacks exits 4 naming it; a lis
     const cli = makeCli(withCatalogue([143, 172], () => jsonResponse(empty)));
     assert.equal(await run(["--compact", ...argv], cli.deps), 4, argv.join(" "));
     assert.deepEqual(cli.out, []);
-    assert.deepEqual(cli.err, [
-      "Error: Station 2 not found: the API answered with no data, and the station catalogue (meta --use measure) has no station with this id.",
+    assert.deepEqual(cli.err.map(untimed), [
+      "ERROR [luftqualitaet.api] Station 2 not found: the API answered with no data, and the station catalogue (meta --use measure) has no station with this id.",
     ]);
     assert.deepEqual(cli.mt.calls.map((r) => new URL(r.url).pathname.split("/").slice(-2).join("/")), [`${argv[0]}/json`, "meta/json"]);
     assert.equal(new URL(cli.mt.last().url).searchParams.get("use"), "measure");
@@ -585,8 +585,8 @@ test("an empty answer for a station the catalogue lacks exits 4 naming it; a lis
     const cli = makeCli(withCatalogue([143, 172], () => jsonResponse(empty)));
     assert.equal(await run(["--compact", ...argv], cli.deps), 0, argv.join(" "));
     assert.deepEqual(JSON.parse(cli.out.join("")), empty);
-    assert.deepEqual(cli.err, [
-      "Note: No data for station 172 in this window (the station is in the catalogue). Check the window: airquality-limits / measures-limits show each station's range.",
+    assert.deepEqual(cli.err.map(untimed), [
+      "INFO  [luftqualitaet.api] No data for station 172 in this window (the station is in the catalogue). Check the window: airquality-limits / measures-limits show each station's range.",
     ]);
   }
   // Data: no lookup, no note.

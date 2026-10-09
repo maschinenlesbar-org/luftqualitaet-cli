@@ -98,10 +98,10 @@ skills encode the non-obvious parts of this API, for example:
 - all `airquality` times are **CET all year** (the response labels them so), one hour
   behind German local time in summer, and the newest hour lags the clock — "right now"
   means the latest hour in the data, not the current local hour;
-- an unknown station id fails as not found, exit `4` (`Error: Station <id> not found`): the
+- an unknown station id fails as not found, exit `4` (`ERROR [luftqualitaet.api] Station <id> not found`): the
   API answers it like an empty window, so the CLI checks an empty answer against the
   station catalogue; a listed station without data gives `"data": {}`, exit `0`, and a
-  `Note:` on stderr; ids far outside the catalogue get **HTTP 409** (exit `1`) instead;
+  note (an `INFO` record) on stderr; ids far outside the catalogue get **HTTP 409** (exit `1`) instead;
 - response shapes are **inconsistent**: `components`/`scopes`/`station-types`/
   `station-settings` put rows at the top level beside `indices`, while `networks` and the
   data endpoints nest them under `.data`; `annual-balances` rows have a different set of

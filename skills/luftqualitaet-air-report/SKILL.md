@@ -25,9 +25,9 @@ concentrations — decoded into the official German air-quality wording.
 
 This skill drives the `luftqualitaet` command. **Before anything else, validate it is available** — run `command -v luftqualitaet` (or `luftqualitaet --version`). If it is not on your PATH, STOP and inform the user that the `luftqualitaet` CLI (`@maschinenlesbar.org/luftqualitaet-cli`) is not installed — installing it is their responsibility; never install it yourself, and do not fall back to `npx` or a local `node dist/...` build.
 
-Always `--compact`. A window with no data returns `"data": {}` (exit `0`, with a `Note:`
-on stderr) — "no measurements for that window" at a station that exists. An **unknown
-station id** exits `4` (`Error: Station <id> not found`): the CLI checks an empty answer
+Always `--compact`. A window with no data returns `"data": {}` (exit `0`, with an `INFO
+[luftqualitaet.api]` note on stderr) — "no measurements for that window" at a station that exists. An **unknown
+station id** exits `4` (`ERROR [luftqualitaet.api] Station <id> not found`): the CLI checks an empty answer
 against the station catalogue.
 
 ## Step 1 — Resolve the station id
@@ -35,8 +35,8 @@ against the station catalogue.
 The user almost always names a place, not an id. If you don't already have the
 numeric station id, resolve it first via the **luftqualitaet-station-finder** skill
 (it reads the station list out of `meta --use measure`). An id that isn't in that catalogue
-fails with exit `4` (`Error: Station <id> not found`) — resolve the place again rather than
-retrying; ids far outside the catalogue get HTTP 409 (exit `1`, with a `Hint:`) instead.
+fails with exit `4` (`ERROR [luftqualitaet.api] Station <id> not found`) — resolve the place again rather than
+retrying; ids far outside the catalogue get HTTP 409 (exit `1`, with an `INFO` hint) instead.
 
 ## Step 2 — Pick a window that has data
 

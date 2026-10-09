@@ -13,7 +13,7 @@ import {
 } from "../src/client/validate.js";
 import * as root from "../src/index.js";
 import type { CliDeps } from "../src/cli/io.js";
-import { jsonResponse, makeMockTransport, parity, OK_BODY } from "./helpers.js";
+import { jsonResponse, makeMockTransport, parity, OK_BODY, untimed } from "./helpers.js";
 
 const nonBlank: Problem<string> = (v) => (v.trim() === "" ? "Expected a non-empty value." : undefined);
 
@@ -61,7 +61,7 @@ test("run() maps a LuftValidationError raised in an action to the usage exit cod
   const cli = cliWith((opts) => new Rejecting({ ...opts, transport: mt.transport }));
   const code = await run(["networks"], cli.deps);
   assert.equal(code, 1);
-  assert.equal(cli.err.join("\n"), 'Error: Invalid index: expected one of id, code, got "x".');
+  assert.equal(untimed(cli.err.join("\n")), 'ERROR [luftqualitaet.cli] Invalid index: expected one of id, code, got "x".');
   assert.equal(mt.calls.length, 0);
 });
 
@@ -71,7 +71,7 @@ test("run() maps a LuftValidationError from building the client to exit code 1",
   });
   const code = await run(["networks"], cli.deps);
   assert.equal(code, 1);
-  assert.equal(cli.err.join("\n"), "Error: Invalid baseUrl: Expected a valid URL.");
+  assert.equal(untimed(cli.err.join("\n")), "ERROR [luftqualitaet.cli] Invalid baseUrl: Expected a valid URL.");
 });
 
 test("parity() runs one input through the CLI and the library on one transport", async () => {

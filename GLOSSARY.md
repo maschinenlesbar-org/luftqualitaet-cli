@@ -216,6 +216,15 @@ timeout, for a library user's own transport too.
 **Read-only, no auth.** The UBA Air Data API needs no API key; this client
 implements only the open, read-only `GET` endpoints.
 
+**Log record.** Every diagnostic line the CLI writes to stderr: a timestamp, a level
+(`ERROR`, `WARN`, `INFO`) and a topic `luftqualitaet.<area>`, as text (log4j style) or with
+`--log-format jsonl` as one JSON object per line. The areas: `cli` (usage errors,
+commander's messages, unexpected errors), `api` (the API's answers and the notes on them:
+an error status, an unknown station, a malformed answer — bad JSON, the wrong shape or
+content type —, the notes on an empty window or an annual figure, the 409/500 hints),
+`http` (the connection, the cleartext warning) and `output` (a failed write to stdout). A
+record is always one line; control characters in it are escaped.
+
 ---
 
 > **Library & internals.** Terms for the TypeScript client and its internals —

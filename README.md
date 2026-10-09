@@ -202,7 +202,8 @@ stderr, so piping stdout into `jq` stays clean.
 
 Each line on stderr is a **log record**: a timestamp (UTC), a level (`ERROR`, `WARN`,
 `INFO`) and a topic, the program and the area it comes from (`luftqualitaet.cli` for usage
-errors, `luftqualitaet.api` for the API's answers and the notes and hints about them,
+errors, `luftqualitaet.api` for the API's answers and the notes and hints about them, a
+malformed answer included,
 `luftqualitaet.http` for the connection, `luftqualitaet.output` for a failed write to
 stdout). By default it is written log4j style;
 `--log-format jsonl` writes one JSON object per line instead. A record is always one line:

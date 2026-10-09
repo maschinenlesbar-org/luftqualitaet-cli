@@ -11,6 +11,7 @@ import {
   LuftError,
   LuftNetworkError,
   LuftNotFoundError,
+  LuftParseError,
   LuftValidationError,
   credentialsIn,
   echoedCredentialForms,
@@ -200,6 +201,18 @@ export function processLogger(argv: readonly string[]): Logger {
   });
 }
 
+/**
+ * The log area of a `LuftError` that is neither an API error nor a usage error: the
+ * connection (`http`), a malformed answer (`api`: bad JSON, the wrong shape or content
+ * type, an unknown charset, a station catalogue without stations — the API's answer as
+ * much as an error status is), else `cli` (an answer nested too deeply to print).
+ */
+function areaOf(err: LuftError): string {
+  if (err instanceof LuftNetworkError) return "http";
+  if (err instanceof LuftParseError) return "api";
+  return "cli";
+}
+
 export async function run(argv: string[], deps: CliDeps = defaultDeps): Promise<number> {
   // The log replaces the secrets of the run in every message, in either format.
   deps = withRedactedOutput(deps, argv);
@@ -271,7 +284,7 @@ export async function run(argv: string[], deps: CliDeps = defaultDeps): Promise<
       return USAGE_EXIT_CODE;
     }
     if (err instanceof LuftError) {
-      log.error(err instanceof LuftNetworkError ? "http" : "cli", err.message);
+      log.error(areaOf(err), err.message);
       return 1;
     }
     log.error("cli", `Unexpected error: ${err instanceof Error ? err.message : String(err)}`);

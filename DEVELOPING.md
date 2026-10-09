@@ -410,8 +410,10 @@ character, which jq rejects, stopping the whole stream) becomes U+FFFD (`toWellF
 exported from `errors.ts`), and a message longer than `MAX_RECORD_MESSAGE` (4000
 characters, exported) is cut at a code point and ends in `… (N more characters)`. The library's error messages keep a server's line
 breaks (`sanitizeServerText` strips only the other controls); the record escapes them. The areas are `cli` (usage errors, commander's messages, unexpected errors),
-`api` (the API's answers: HTTP errors, an unknown station, and the notes and hints about
-an answer — `annualDataNote`, `stationDataNote`, the 409/500 hints), `http` (the
+`api` (the API's answers: HTTP errors, an unknown station, a malformed answer — a
+`LuftParseError`: bad JSON, the wrong shape or content type, an unknown charset, a station
+catalogue without stations — and the notes and hints about an answer — `annualDataNote`,
+`stationDataNote`, the 409/500 hints), `http` (the
 connection, the cleartext warning) and `output` (a failed write to stdout). A failed write
 to stdout other than a closed pipe (`handleOutputErrors`, in the bin shim, outside `run()`)
 is an ERROR record of `luftqualitaet.output` (`Could not write to stdout: …`), and the

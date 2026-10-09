@@ -666,3 +666,26 @@ test("the log format is the one commander parsed, not what an option's value loo
   assert.notEqual(await run(["--user-agent", "--", "--log-format", "jsonl", "components"], cli.deps), 0);
   assert.ok(cli.err.length > 0 && cli.err.every((line) => line.startsWith("{")), cli.err.join("\n"));
 });
+
+test("a malformed answer, the station catalogue's included, is an ERROR record of luftqualitaet.api (L9)", async () => {
+  const answers: HttpResponse[] = [
+    rawResponse("<html>not json</html>", "application/json"),
+    rawResponse("<!doctype html><html>a proxy</html>", "text/html"),
+    jsonResponse([]),
+    jsonResponse({ count: "1", indices: [] }),
+    rawResponse("", "application/json"),
+    rawResponse(JSON.stringify(OK_BODY), "application/json; charset=x-unknown"),
+  ];
+  for (const answer of answers) {
+    const cli = makeCli(() => answer);
+    assert.equal(await run(["components"], cli.deps), 1);
+    assert.match(untimed(cli.err[0] ?? ""), /^ERROR \[luftqualitaet\.api\] /, cli.err.join("\n"));
+  }
+  // An empty window, and a catalogue without a `stations` object.
+  const catalogue = makeCli((req) =>
+    new URL(req.url).pathname.endsWith("/meta/json") ? jsonResponse({ request: {} }) : jsonResponse({ request: {}, indices: {}, data: {} }),
+  );
+  const window = ["--date-from", "2026-10-01", "--time-from", "1", "--date-to", "2026-10-01", "--time-to", "24", "--station", "7"];
+  assert.equal(await run(["airquality", ...window], catalogue.deps), 1);
+  assert.match(untimed(catalogue.err[0] ?? ""), /^ERROR \[luftqualitaet\.api\] Unexpected station catalogue/, catalogue.err.join("\n"));
+});

@@ -217,6 +217,16 @@ Bibliotheksnutzers durch.
 **Nur lesend, ohne Authentifizierung.** Die Air-Data-API des UBA benötigt keinen
 API-Schlüssel; dieser Client implementiert nur die offenen, lesenden `GET`-Endpoints.
 
+**Log-Eintrag (log record).** Jede Diagnosezeile, die die CLI nach stderr schreibt: ein
+Zeitstempel, eine Stufe (`ERROR`, `WARN`, `INFO`) und ein Thema `luftqualitaet.<Bereich>`,
+als Text (im Stil von log4j) oder mit `--log-format jsonl` als ein JSON-Objekt pro Zeile.
+Die Bereiche: `cli` (Bedienfehler, Meldungen von commander, unerwartete Fehler), `api` (die
+Antworten der API und die Hinweise dazu: ein Fehlerstatus, eine unbekannte Station, eine
+fehlerhafte Antwort — ungültiges JSON, die falsche Form oder der falsche Inhaltstyp —, die
+Hinweise zu einem Zeitfenster ohne Daten oder zu einer Jahreszahl, die Hinweise zu 409 und
+500), `http` (die Verbindung, die Klartext-Warnung) und `output` (ein Schreibfehler auf
+stdout). Ein Eintrag ist immer eine Zeile; Steuerzeichen darin werden maskiert.
+
 ---
 
 > **Bibliothek & Interna.** Begriffe zum TypeScript-Client und seinen Interna –

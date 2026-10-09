@@ -305,10 +305,13 @@ carry none — and `redactUrl` (exported from [`errors.ts`](src/client/errors.ts
 shows it as `***@` in every error message and in `LuftApiError.url`; the base-URL
 reasons never echo the URL, and a rejected parameter value is quoted with its userinfo
 cut out. The CLI also redacts on output: `run.ts` (`redactionFor`, `withRedactedOutput`)
-takes the exact userinfo of every argument (`credentialsIn`, exported) and replaces it with
-`***` in everything it prints — commander's usage errors, which echo rejected values, and
-the library's messages for `--lang`/`--use`/`--index` — so a password with spaces, quotes,
-`#`, `?` or `/` is caught as well as an ordinary one. The log replaces them in each
+takes the exact userinfo of every URL argument (`credentialsIn`, exported) and replaces it
+with `***` in everything it prints — commander's usage errors, which echo rejected values,
+and the library's messages for `--lang`/`--use`/`--index` — so a password with spaces,
+quotes, `#`, `?` or `/` is caught as well as an ordinary one. Only a value that starts with
+a scheme counts (a bare `a:b@c` is a User-Agent or a typed value as often as a credential),
+except as the `--base-url` value, where a `user:password@host` typed without its scheme is
+still a credential. The log replaces them in each
 record's *message*, before the record is cut and escaped, and writes it to the raw stderr:
 the frame (time, level, topic) is never touched, and a password with DEL, C1 or bidi
 characters is matched in its raw form. `redactUrl` falls back to the same

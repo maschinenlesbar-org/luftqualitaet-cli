@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { run } from "../src/cli/run.js";
 import { LuftqualitaetClient } from "../src/client/client.js";
+import { credentialsIn } from "../src/client/errors.js";
 import type { CliDeps } from "../src/cli/io.js";
 import type { HttpRequest, HttpResponse } from "../src/client/http.js";
 import { makeMockTransport, jsonResponse, rawResponse, OK_BODY, WINDOW_BODY, withCatalogue, untimed } from "./helpers.js";
@@ -598,4 +599,19 @@ test("an empty answer for a station the catalogue lacks exits 4 naming it; a lis
   const odd = makeCli((req) => jsonResponse(new URL(req.url).pathname.endsWith("/meta/json") ? { request: {} } : empty));
   assert.equal(await run(["--compact", "airquality", "--station", "2", ...window], odd.deps), 1);
   assert.match(odd.err.join("\n"), /Unexpected station catalogue from \/meta\/json \(use=measure\): expected a stations object/);
+});
+
+test("an a:b@c argument (a User-Agent, a typed value) is neither a credential in the log nor rewritten in the JSON on stdout (L14)", async () => {
+  const cli = makeCli(() => jsonResponse({ ...OK_BODY, note: "run:2026-10-09@x" }));
+  assert.equal(await run(["--user-agent", "run:2026-10-09@x", "components"], cli.deps), 0);
+  assert.match(cli.out.join("\n"), /"note": "run:2026-10-09@x"/);
+  const typed = makeCli(() => jsonResponse(OK_BODY));
+  assert.equal(await run(["--timeout", "run:2026-10-09@x", "components"], typed.deps), 1);
+  assert.ok(typed.err.some((line) => line.includes("'run:2026-10-09@x'")), typed.err.join("\n"));
+  assert.deepEqual(credentialsIn("run:2026-10-09@x"), []);
+  assert.deepEqual(credentialsIn("https://alice:pw@host"), ["alice:pw"]);
+  // A base URL typed without its scheme is still read as one: its password is never echoed.
+  const bare = makeCli(() => jsonResponse(OK_BODY));
+  assert.equal(await run(["--base-url", "alice:hunter2-pw@mirror.example", "components"], bare.deps), 1);
+  assert.ok(!bare.err.join("\n").includes("hunter2-pw"), bare.err.join("\n"));
 });

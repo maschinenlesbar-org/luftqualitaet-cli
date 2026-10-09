@@ -214,6 +214,7 @@ is cut and ends in `… (N more characters)`:
 
 ```text
 2026-10-09T14:03:12.481Z WARN  [luftqualitaet.http] requests to mirror.test are sent unencrypted (http:, not https:)
+2026-10-09T14:03:12.700Z WARN  [luftqualitaet.http] HTTP 503 from luftdaten.umweltbundesamt.de: retry 1 of 2 in 200 ms
 2026-10-09T14:03:12.902Z ERROR [luftqualitaet.api] Station 2 not found: the API answered with no data, and the station catalogue (meta --use measure) has no station with this id.
 ```
 
@@ -325,7 +326,7 @@ These apply to every command and may be given before *or* after it:
 | `--base-url <url>` | API host (default `https://luftdaten.umweltbundesamt.de`); the CLI adds `/api/air-data/v3` itself. Credentials in it (`https://user:pw@mirror.example`) are sent as HTTP Basic auth and shown as `***` in everything the CLI prints, usage errors included. A plain `http:` URL to a host other than loopback (`localhost`, `127.0.0.0/8`, `::1`) logs one `WARN` record of `luftqualitaet.http` on stderr before the first request, `requests to <host> are sent unencrypted (http:, not https:)` (`the base URL's credentials are sent unencrypted to <host> …` when it carries any, never printing them); stdout and the exit code are unchanged |
 | `--timeout <ms>` | Per-request timeout (default `30000`; at most `2147483647`) |
 | `--user-agent <ua>` | `User-Agent` header value (non-blank; no control characters or characters above U+00FF) |
-| `--max-retries <n>` | Retries for transient `429`/`503` responses and reset connections (`0..10`, default `2`). Each retry backs off linearly (200 ms, 400 ms, …), or waits the server's `Retry-After` when that is longer (up to 30 s; a longer one is not retried, and the error says so). Timeouts and refused connections are not retried |
+| `--max-retries <n>` | Retries for transient `429`/`503` responses and reset connections (`0..10`, default `2`). Each retry backs off linearly (200 ms, 400 ms, …), or waits the server's `Retry-After` when that is longer (up to 30 s; a longer one is not retried, and the error says so). Timeouts and refused connections are not retried. Each retry logs one WARN record of `luftqualitaet.http` before it waits (`HTTP 503 from host: retry 1 of 3 in 2 s`) |
 | `--max-redirects <n>` | HTTP redirects to follow (`0..20`; `0` = none; default `5`) |
 | `--max-response-bytes <n>` | Cap response body size in bytes (`0` = unlimited; default 100 MiB) |
 

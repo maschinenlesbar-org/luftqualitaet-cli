@@ -242,6 +242,12 @@ not retried") and carries `retryAfterMs`; after spent retries the message ends
 `ECONNABORTED`, undici's `UND_ERR_SOCKET`, anywhere in the error's `cause` chain;
 `isTransientNetworkError`) is retried the same number of times, after
 `retryDelayMs * attempt`; a refused connection, a DNS failure or a timeout is not.
+Each retry is announced: the engine option `onRetry(event: RetryEvent)` (exported type:
+`{ retry` (1-based), `maxRetries`, `delayMs`, `status?` (absent for a reset), `url` (userinfo
+redacted) `}`) is called once per retry right before the sleep, never when there is none, and
+a throw in it is swallowed. The CLI's `action()` sets it to log one `WARN` record of
+`luftqualitaet.http`, `HTTP 503 from <host>: retry 1 of 3 in 2 s` (`retryMessage`; host only,
+whole seconds, ms under 1 s). Tests: `test/engine.test.ts`, `test/retry-log.test.ts`.
 
 **Redirects.** The engine follows up to 5 HTTP redirects by default (the
 `maxRedirects` option / `--max-redirects` flag; `0` disables following). On a
@@ -417,7 +423,7 @@ breaks (`sanitizeServerText` strips only the other controls); the record escapes
 `LuftParseError`: bad JSON, the wrong shape or content type, an unknown charset, a station
 catalogue without stations — and the notes and hints about an answer — `annualDataNote`,
 `stationDataNote`, the 409/500 hints), `http` (the
-connection, the cleartext warning) and `output` (a failed write to stdout). A failed write
+connection, the cleartext warning, one WARN per retry before it waits) and `output` (a failed write to stdout). A failed write
 to stdout other than a closed pipe (`handleOutputErrors`, in the bin shim, outside `run()`)
 is an ERROR record of `luftqualitaet.output` (`Could not write to stdout: …`), and the
 shim's last-resort `Unexpected error: …` an ERROR of `luftqualitaet.cli`, both in the

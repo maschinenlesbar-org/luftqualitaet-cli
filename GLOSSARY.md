@@ -222,7 +222,7 @@ implements only the open, read-only `GET` endpoints.
 commander's messages, unexpected errors), `api` (the API's answers and the notes on them:
 an error status, an unknown station, a malformed answer — bad JSON, the wrong shape or
 content type —, the notes on an empty window or an annual figure, the 409/500 hints),
-`http` (the connection, the cleartext warning) and `output` (a failed write to stdout). A
+`http` (the connection, the cleartext warning, one WARN per retry before it waits) and `output` (a failed write to stdout). A
 record is always one line; control characters in it are escaped.
 
 ---

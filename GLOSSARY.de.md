@@ -224,7 +224,7 @@ Die Bereiche: `cli` (Bedienfehler, Meldungen von commander, unerwartete Fehler),
 Antworten der API und die Hinweise dazu: ein Fehlerstatus, eine unbekannte Station, eine
 fehlerhafte Antwort — ungültiges JSON, die falsche Form oder der falsche Inhaltstyp —, die
 Hinweise zu einem Zeitfenster ohne Daten oder zu einer Jahreszahl, die Hinweise zu 409 und
-500), `http` (die Verbindung, die Klartext-Warnung) und `output` (ein Schreibfehler auf
+500), `http` (die Verbindung, die Klartext-Warnung, je Wiederholung eine WARN-Zeile vor dem Warten) und `output` (ein Schreibfehler auf
 stdout). Ein Eintrag ist immer eine Zeile; Steuerzeichen darin werden maskiert.
 
 ---

@@ -187,7 +187,7 @@ These flags apply to every command and go before the subcommand:
 | `--base-url <url>` | Override the API host (default `https://luftdaten.umweltbundesamt.de`); the CLI adds `/api/air-data/v3` itself. A plain `http:` URL to a non-loopback host (not `localhost`, `127.0.0.0/8`, `::1`) gets one `WARN` record of `luftqualitaet.http` on stderr, `… sent unencrypted (http:, not https:)`, naming the host (and the URL's credentials, never printed); stdout and the exit code are unchanged. |
 | `--timeout <ms>` | Per-request timeout in milliseconds. |
 | `--user-agent <ua>` | Set the `User-Agent` header. |
-| `--max-retries <n>` | Retries for transient `429`/`503` responses and reset connections (`0..10`, default `2`). Each retry backs off linearly (200 ms, 400 ms, …), or waits the server's `Retry-After` when that is longer (up to 30 s; a longer one is not retried, and the error says so). |
+| `--max-retries <n>` | Retries for transient `429`/`503` responses and reset connections (`0..10`, default `2`). Each retry backs off linearly (200 ms, 400 ms, …), or waits the server's `Retry-After` when that is longer (up to 30 s; a longer one is not retried, and the error says so). Each retry logs one WARN record of `luftqualitaet.http` before it waits (`HTTP 503 from host: retry 1 of 3 in 2 s`). |
 | `--max-redirects <n>` | HTTP redirects to follow (`0..20`; `0` = none; default `5`). |
 | `--max-response-bytes <n>` | Cap response body size in bytes (`0` = unlimited; default 100 MiB). |
 | `--compact` | Print JSON on a single line instead of pretty-printed. |

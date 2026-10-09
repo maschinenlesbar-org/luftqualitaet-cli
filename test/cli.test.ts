@@ -615,3 +615,29 @@ test("an a:b@c argument (a User-Agent, a typed value) is neither a credential in
   assert.equal(await run(["--base-url", "alice:hunter2-pw@mirror.example", "components"], bare.deps), 1);
   assert.ok(!bare.err.join("\n").includes("hunter2-pw"), bare.err.join("\n"));
 });
+
+test("help for an unknown command logs an ERROR \"missing command\", then the help one INFO record per line (L5)", async () => {
+  const cli = makeCli(() => jsonResponse(OK_BODY));
+  assert.equal(await run(["help", "frobnicate"], cli.deps), 1);
+  const records = cli.err.map(untimed);
+  assert.equal(records[0], "ERROR [luftqualitaet.cli] missing command: `luftqualitaet <subcommand>`");
+  assert.ok(records.length > 3, records.join("\n"));
+  for (const record of records.slice(1)) assert.match(record, /^INFO  \[luftqualitaet\.cli\] .*\S$/);
+  assert.ok(records.some((record) => /\] Usage: luftqualitaet /.test(record)), records.join("\n"));
+  assert.deepEqual(cli.out, []);
+});
+
+test("the help after a usage error is one INFO record per line; a suggestion is part of the ERROR (L5)", async () => {
+  const cli = makeCli(() => jsonResponse(OK_BODY));
+  assert.equal(await run(["components", "--no-such-option"], cli.deps), 1);
+  const records = cli.err.map(untimed);
+  assert.equal(records[0], "ERROR [luftqualitaet.cli] unknown option '--no-such-option'");
+  assert.ok(records.length > 3, records.join("\n"));
+  for (const record of records.slice(1)) {
+    assert.match(record, /^INFO  \[luftqualitaet\.cli\] .*\S$/);
+    assert.doesNotMatch(record, /\\n/, "one line of the help per record");
+  }
+  const typo = makeCli(() => jsonResponse(OK_BODY));
+  assert.equal(await run(["airqualty"], typo.deps), 1);
+  assert.equal(untimed(typo.err[0] ?? ""), "ERROR [luftqualitaet.cli] unknown command 'airqualty' (Did you mean airquality?)");
+});

@@ -304,11 +304,14 @@ it as Basic auth (see **Redirects**) and request URLs in messages and `LuftApiEr
 carry none — and `redactUrl` (exported from [`errors.ts`](src/client/errors.ts))
 shows it as `***@` in every error message and in `LuftApiError.url`; the base-URL
 reasons never echo the URL, and a rejected parameter value is quoted with its userinfo
-cut out. The CLI also redacts on output: `run.ts` (`withRedactedOutput`) takes the exact
-userinfo of every argument (`credentialsIn`, exported) and replaces it with `***` in
-everything it prints — commander's usage errors, which echo rejected values, and the
-library's messages for `--lang`/`--use`/`--index` — so a password with spaces, quotes,
-`#`, `?` or `/` is caught as well as an ordinary one. `redactUrl` falls back to the same
+cut out. The CLI also redacts on output: `run.ts` (`redactionFor`, `withRedactedOutput`)
+takes the exact userinfo of every argument (`credentialsIn`, exported) and replaces it with
+`***` in everything it prints — commander's usage errors, which echo rejected values, and
+the library's messages for `--lang`/`--use`/`--index` — so a password with spaces, quotes,
+`#`, `?` or `/` is caught as well as an ordinary one. The log replaces them in each
+record's *message*, before the record is cut and escaped, and writes it to the raw stderr:
+the frame (time, level, topic) is never touched, and a password with DEL, C1 or bidi
+characters is matched in its raw form. `redactUrl` falls back to the same
 text-based cut (`redactCredentials`, exported) for a value that doesn't parse as a URL.
 The engine keeps the base URL in a real `#private` field, so `console.log(client)`,
 `util.inspect` and `JSON.stringify` never show it, and it scrubs the base URL's userinfo
@@ -404,8 +407,9 @@ breaks (`sanitizeServerText` strips only the other controls); the record escapes
 an answer — `annualDataNote`, `stationDataNote`, the 409/500 hints) and `http` (the
 connection, the cleartext warning). Code logs through `logOf(deps)` and never writes
 diagnostics with `io.err` directly. `run()` builds the logger from argv before commander
-parses it, so commander's own usage errors are records too, and on top of the redacted
-`io.err`, so a secret is kept out of the log in either format. `CliDeps.now` makes the
+parses it, so commander's own usage errors are records too, and with the run's redaction
+(`withRedactedOutput`), which replaces a secret in the message only, before it is
+escaped: the frame is never touched, and a secret is kept out of the log in either format. `CliDeps.now` makes the
 timestamps testable. stdout carries data only. Conformance test P23 checks all of this,
 and its body is shared across the *-cli repos (here with the `USAGE_EXIT` switch: a
 usage error exits 1). The bin shim's `Output error: …` (stdout failing, `handleOutputErrors`)

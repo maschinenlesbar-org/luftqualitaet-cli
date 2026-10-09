@@ -400,6 +400,23 @@ test("a redirect target and a Content-Type are quoted at most 500 characters lon
   await assert.rejects(type.getJson("/x"), (err: Error) => err instanceof LuftParseError && err.message.length < 700 && /Content-Type "text\/x+…"/.test(err.message));
 });
 
+test("credentials a server echoes are scrubbed from the error: Basic, user:password, password (L13)", async () => {
+  // The engine sends the pair UTF-8 encoded (basicAuthorization), so that is the form a server echoes.
+  const basic = Buffer.from("alice:pä ss-pw", "utf8").toString("base64");
+  const body = JSON.stringify({ detail: `no: Basic ${basic} / alice:pä ss-pw / pä ss-pw` });
+  const engine = new RequestEngine({
+    baseUrl: "https://alice:p%C3%A4%20ss-pw@mirror.example",
+    maxRetries: 0,
+    transport: async () => ({ status: 401, headers: { "content-type": "application/json" }, body: Buffer.from(body) }),
+  });
+  await assert.rejects(engine.getJson("/x"), (err: unknown) => {
+    assert.ok(err instanceof LuftApiError);
+    for (const form of [basic, "alice:pä ss-pw", "pä ss-pw"]) assert.ok(!err.message.includes(form), err.message);
+    assert.match(err.message, /no: Basic \*\*\* \/ \*\*\* \/ \*\*\*/);
+    return true;
+  });
+});
+
 test("cleartextProblem: exact wording, host with port, loopback range, never the secret", () => {
   assert.equal(cleartextProblem("http://mirror.example:8080/api"), "requests to mirror.example:8080 are sent unencrypted (http:, not https:)");
   assert.equal(

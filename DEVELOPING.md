@@ -316,7 +316,11 @@ text-based cut (`redactCredentials`, exported) for a value that doesn't parse as
 The engine keeps the base URL in a real `#private` field, so `console.log(client)`,
 `util.inspect` and `JSON.stringify` never show it, and it scrubs the base URL's userinfo
 (raw and percent-decoded) from error bodies and details, a redirect `Location` it can't
-parse, a custom transport's error text and the `cause` chain. Whatever a custom transport
+parse, a custom transport's error text and the `cause` chain — and with it the forms a
+server echoes it back in (`echoedCredentialForms`, exported): the `Authorization: Basic`
+value, the decoded `user:password`, and the password alone from 4 characters on
+(`redactSecrets`). The CLI replaces the Basic value and the pair on stdout and stderr, the
+bare password on stderr only (on stdout a short password may well occur in the data). Whatever a custom transport
 throws reaches the caller as a `LuftNetworkError` (`GET <url> failed: <reason>`, the
 original as `cause`).
 

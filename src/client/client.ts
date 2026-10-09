@@ -161,7 +161,8 @@ function hasNoRows(data: unknown): boolean {
  *   `annualBalances` (CLI `annual-balances`) as the year's exceedance count.
  * - `annualBalances` without rows: say there is no annual balance (yet), and when.
  *
- * `now` is the reference date (default: today); the CLI prints the note on stderr.
+ * `now` is the reference date (default: today); the CLI logs the note as an `INFO` record
+ * of `luftqualitaet.api` on stderr.
  */
 export function annualDataNote(
   kind: "transgressions" | "annualBalances",
@@ -199,7 +200,8 @@ export function annualDataNote(
  * data — HTTP 200 with `data: {}` ("Ungültige Abfragen liefern einen JSON ohne Daten
  * zurück", UBA) — but `airquality()` and `measures()` look such an id up in the station
  * catalogue and reject it with a LuftNotFoundError, so an empty answer they return is a
- * known station without data in the window. The CLI prints the note on stderr.
+ * known station without data in the window. The CLI logs the note as an `INFO` record of
+ * `luftqualitaet.api` on stderr.
  */
 export function stationDataNote(result: AirDataResult, station: number): string | undefined {
   if (!hasNoRows(result["data"])) return undefined;

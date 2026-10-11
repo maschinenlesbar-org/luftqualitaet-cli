@@ -164,7 +164,7 @@ window (start after end) before any request is sent.
 ## Enums / codes surfaced by the client
 
 These are the closed value sets the client validates against (defined in
-`src/client/enums.ts`):
+`packages/client/src/enums.ts`):
 
 **lang (`Lang`).** Response language for the labels in reference lists and
 metadata: `de` | `en`. CLI: `--lang`.

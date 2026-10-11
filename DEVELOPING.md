@@ -22,14 +22,14 @@ The package ships both a CLI (`luftqualitaet`) and a typed API client
 
 ```bash
 npm install
-npm run build        # compiles TypeScript to dist/
+npm run build        # compiles every workspace (tsc -b) to its dist/
 ```
 
 Run the locally built CLI without a global install:
 
 ```bash
-node dist/src/cli/index.js --help
-# or, after `npm link`:
+node apps/cli/dist/src/cli/index.js --help    # or: npm start -- --help
+# or, after `npm link --workspace apps/cli`:
 luftqualitaet --help
 ```
 
@@ -158,9 +158,46 @@ a window that passed the check. The CLI's `meta` passes its options straight thr
 
 ## Architecture
 
+The repository is an **npm workspace** with two folders: `apps/` holds the programs it
+publishes, `packages/` the libraries they are built from.
+
 ```
-src/
-  client/
+package.json         # private workspace manifest: no version, never packed
+apps/cli/            # @maschinenlesbar.org/luftqualitaet-cli — the published package
+  package.json       # its version, bin, files, bundleDependencies
+  src/index.ts       # library entry: re-exports @maschinenlesbar.org/luftqualitaet-client
+  src/cli/           # the CLI (below)
+  test/              # CLI tests and every conformance-*.test.ts
+packages/client/     # @maschinenlesbar.org/luftqualitaet-client — private, bundled into the CLI
+  src/               # the API client (below)
+  test/              # tests that only touch the client, + the transport helpers
+tools/pack/          # prepack/postpack: bundle the client and commander into the tarball
+tools/bump.mjs       # version bump + commit + tag (npm run bump)
+tsconfig.docs.json   # TypeDoc only: the package entry, with the client read from its sources
+```
+
+- **The client is its own package** so a later MCP app can share it with the CLI. It is
+  never published on its own: `apps/cli`'s `prepack` copies it (and commander) into the
+  app's `node_modules`, and `bundleDependencies` ships it inside the tarball. The library
+  entry re-exports the client's `"."`, so `import { LuftqualitaetClient } from
+  "@maschinenlesbar.org/luftqualitaet-cli"` is unchanged.
+- **The client's exports:** `"."` is the public library surface (`src/index.ts`);
+  `"./internal/*"` maps to any module (`…/luftqualitaet-client/internal/engine`) for what the
+  CLI needs beyond that; `"./test/*"` reaches the client's test helpers from the CLI's
+  tests (not bundled). Only `"."` is part of the library.
+- **Dependencies point one way:** the app depends on the client, the client on nothing
+  in the workspace.
+- **The version lives in `apps/cli/package.json`.** The root has none; a plain
+  `npm version` at the root is refused. Release with `npm run bump -- <patch|minor|major>`,
+  which bumps the app, commits (the bare version as the message) and tags `vX.Y.Z`.
+- **TypeScript:** `tsconfig.base.json` holds the compiler options; every workspace has a
+  `tsconfig.json` (`src/`) and a `tsconfig.test.json` (`test/`), and the root
+  `tsconfig.json`/`tsconfig.test.json` reference them, built with `tsc -b`.
+
+The client (`packages/client/src/`) and the CLI (`apps/cli/src/`):
+
+```
+packages/client/src/
     enums.ts     # Lang / IndexKind / MetaUse / ThresholdUse value sets
     types.ts     # parameter objects (responses kept as faithful JsonObject)
     query.ts     # dependency-free query-string builder
@@ -169,7 +206,8 @@ src/
     errors.ts    # LuftError / LuftApiError / LuftNetworkError / LuftParseError / LuftValidationError
     validate.ts  # the parameter rules (Problem, assertValid, assertDate, ...)
     client.ts    # LuftqualitaetClient — the air-data surface over the engine
-  cli/
+    index.ts     # the client's public surface (the library entry re-exports it)
+apps/cli/src/cli/
     io.ts        # injectable I/O seam (stdout/stderr), the logger and the clock
     log.ts       # the stderr log: records with ts, level, topic; --log-format text|jsonl
     shared.ts    # option parsers, global-option resolver, JSON renderer
@@ -190,14 +228,14 @@ src/
 
 ## Library / technical terms
 
-**API client.** [`LuftqualitaetClient`](src/client/client.ts) — the typed
+**API client.** [`LuftqualitaetClient`](packages/client/src/client.ts) — the typed
 wrapper over the Air Data API. Usable as a library independently of the CLI.
 
 **Transport.** A single function `(HttpRequest) => Promise<HttpResponse>`
-([`http.ts`](src/client/http.ts)). The default uses Node's built-in
+([`http.ts`](packages/client/src/http.ts)). The default uses Node's built-in
 `http`/`https`; tests inject a mock. This is the only HTTP seam.
 
-**Request engine.** [`RequestEngine`](src/client/engine.ts) — builds URLs,
+**Request engine.** [`RequestEngine`](packages/client/src/engine.ts) — builds URLs,
 serialises queries, applies retry/backoff, follows redirects, decodes JSON and
 maps errors. Sits between the client's resource methods and the transport.
 `DEFAULT_BASE_URL` is `https://luftdaten.umweltbundesamt.de`; the client appends
@@ -214,18 +252,18 @@ contentType, status }` — raw bytes, never lossily decoded.
 client method, reflecting the API's variable index/data layout.
 
 **CliDeps / CliIO.** The dependency-injection seam for the CLI
-([`io.ts`](src/cli/io.ts)): a client factory plus an I/O object (`out`/`err`).
+([`io.ts`](apps/cli/src/cli/io.ts)): a client factory plus an I/O object (`out`/`err`).
 Lets the whole CLI run in tests with a mocked client and captured output — no
 subprocess.
 
-**Error types.** [`errors.ts`](src/client/errors.ts): `LuftApiError` (non-2xx,
+**Error types.** [`errors.ts`](packages/client/src/errors.ts): `LuftApiError` (non-2xx,
 carries `status`/`detail`), `LuftNetworkError` (transport failure/timeout, and the default transport's
 per-hop scheme check; a bad configured `baseUrl` is a `LuftValidationError` instead),
 `LuftParseError` (bad JSON) and `LuftValidationError` (a rejected input, thrown before
 any request), all extending `LuftError`. The CLI maps a `404` to exit code `4`, a
 `LuftValidationError` to the usage-error code `1`, other errors to `1`.
 
-**Query builder.** [`buildQueryString`](src/client/query.ts) — a dependency-free
+**Query builder.** [`buildQueryString`](packages/client/src/query.ts) — a dependency-free
 serialiser: omits `undefined`/`null`, repeats keys for arrays, renders booleans
 as `true`/`false`, and encodes spaces as `%20` (not `+`).
 
@@ -247,7 +285,7 @@ Each retry is announced: the engine option `onRetry(event: RetryEvent)` (exporte
 redacted) `}`) is called once per retry right before the sleep, never when there is none, and
 a throw in it is swallowed. The CLI's `action()` sets it to log one `WARN` record of
 `luftqualitaet.http`, `HTTP 503 from <host>: retry 1 of 3 in 2 s` (`retryMessage`; host only,
-whole seconds, ms under 1 s). Tests: `test/engine.test.ts`, `test/retry-log.test.ts`.
+whole seconds, ms under 1 s). Tests: `packages/client/test/engine.test.ts`, `apps/cli/test/retry-log.test.ts`.
 
 **Redirects.** The engine follows up to 5 HTTP redirects by default (the
 `maxRedirects` option / `--max-redirects` flag; `0` disables following). On a
@@ -303,12 +341,12 @@ that doesn't start an escape (write a literal `%` as `%25`) each throw a `LuftVa
 and it holds for a library consumer that injects a custom transport too. Only an
 omitted `baseUrl` selects the default. The client constructor adds the API-path rule
 (`baseUrlApiPathProblem`, above). `--base-url`'s value parser (`parseBaseUrl` in
-[`shared.ts`](src/cli/shared.ts)) calls the same two rules, so a bad value is a usage
+[`shared.ts`](apps/cli/src/cli/shared.ts)) calls the same two rules, so a bad value is a usage
 error at parse time, before any client is built. And the default transport
-([`http.ts`](src/client/http.ts)) gates the scheme on **every redirect hop**, as a
+([`http.ts`](packages/client/src/http.ts)) gates the scheme on **every redirect hop**, as a
 `LuftNetworkError`. Userinfo (`http://user:secret@mirror/`) is allowed — the engine sends
 it as Basic auth (see **Redirects**) and request URLs in messages and `LuftApiError.url`
-carry none — and `redactUrl` (exported from [`errors.ts`](src/client/errors.ts))
+carry none — and `redactUrl` (exported from [`errors.ts`](packages/client/src/errors.ts))
 shows it as `***@` in every error message and in `LuftApiError.url`; the base-URL
 reasons never echo the URL, and a rejected parameter value is quoted with its userinfo
 cut out. The CLI also redacts on output: `run.ts` (`redactionFor`, `withRedactedOutput`)
@@ -337,16 +375,21 @@ original as `cause`).
 ## Testing
 
 ```bash
-npm test          # builds, then runs `node --test` over dist/test
+npm test          # builds, then runs `node --test` over each workspace's dist/test
+npm run coverage  # the same tests in one run, with a coverage report
+node --test apps/cli/dist/test/cli.test.js   # one file, after a build
 ```
+
+The client's tests are in `packages/client/test/` (`query`, `http`, `engine`, `client`),
+everything that drives the CLI is in `apps/cli/test/`.
 
 - **`query.test.ts`** — query-string serialisation.
 - **`http.test.ts`** — the default transport against a real loopback `http.createServer`.
 - **`engine.test.ts`** — URL building, JSON decoding, error mapping, 429/503 retry, redirects — mocked transport.
 - **`client.test.ts`** — a parameterized table over all 15 client methods asserting URL/query mapping plus parameter pruning — mocked transport.
 - **`validate.test.ts`** — `assertValid`, `LuftValidationError` and its exit-code mapping, and the `parity()` helper.
-- **`parity.test.ts`** — CLI ↔ library parity: one input through `run()` and through the library call on one recording mock transport (`parity()` in `test/helpers.ts`), asserting the same outcome.
-- **`log.test.ts`** — the record helpers of `src/cli/log.ts` on their own
+- **`parity.test.ts`** — CLI ↔ library parity: one input through `run()` and through the library call on one recording mock transport (`parity()` in `apps/cli/test/helpers.ts`), asserting the same outcome.
+- **`log.test.ts`** — the record helpers of `apps/cli/src/cli/log.ts` on their own
   (`escapeForRecord`, `formatLogRecord`, `installWarningLog`); the CLI-level checks are
   P23's. `io.test.ts` tests `handleOutputErrors` and `stderrAfterStdout` with fake streams
   (a closed pipe, a stdout write error as a record, a record held behind stdout's backlog).
@@ -369,9 +412,13 @@ npm test          # builds, then runs `node --test` over dist/test
 
 GitHub Actions workflows under `.github/workflows/`:
 
-- **ci.yml** — type-check, build and test on Node 22/24 for every push and PR.
-- **release.yml** — on a `v*` tag: verify the tag matches `package.json`, test, `npm pack`, and create a GitHub Release with the tarball.
-- **publish.yml** — manual dispatch from the release tag (`gh workflow run publish.yml --ref vX.Y.Z`; the version is the tag's): publish to npm via OIDC **Trusted Publishing** (no stored `NPM_TOKEN`) with provenance.
+- **ci.yml** — type-check, build and test on Node 22/24 for every push and PR; then pack the
+  real tarball, check the pack left nothing behind, install it globally with the registry out
+  of reach and run the bin.
+- **release.yml** — on a `v*` tag (made by `npm run bump`): verify the tag matches
+  `apps/cli/package.json`, test, write the SBOMs (scoped to the `apps/cli` workspace), then
+  `npm pack --workspace apps/cli`, and create a GitHub Release with the tarball.
+- **publish.yml** — manual dispatch from the release tag (`gh workflow run publish.yml --ref vX.Y.Z`; the version is the tag's): `npm publish --workspace apps/cli` via OIDC **Trusted Publishing** (no stored `NPM_TOKEN`) with provenance.
 - **docs.yml** — build the project website (`site/`, English and German) with the TypeDoc API docs
   under `/api/`, and deploy both to GitHub Pages on each `v*` tag.
   TypeDoc runs from the isolated, lockfile-pinned `tools/docs/` toolchain because it
@@ -387,7 +434,9 @@ and [Fylgja](https://fylgja.dev/) CSS, and deployed by `docs.yml` together with 
 reference under `/api/`. Its content comes from this repository: the README intro and quick
 start, the command tree of the built CLI (`site/scripts/cli-reference.mjs`), `Usage.md`,
 `GLOSSARY.md` and its German version `GLOSSARY.de.md`, the skills, and the skill examples in
-`EXAMPLE.md` and `EXAMPLE.de.md`. The only repo-specific files are `site/_config.yml` and
+`EXAMPLE.md` and `EXAMPLE.de.md`. The only repo-specific files are `site/_config.yml` (which
+also says where the published manifest and the built program are: `manifest:
+apps/cli/package.json`, `program: apps/cli/dist/src/cli/program.js`) and
 `site/_data/project.yml` (the German intro and the access requirements); the rest of `site/` is
 identical in every maschinenlesbar.org CLI, so change it in all of them together. When the
 README intro changes, update the German intro in `site/_data/project.yml`.
@@ -406,7 +455,7 @@ contributions; see **[CONTRIBUTING.md](CONTRIBUTING.md)**.
 
 ## The log on stderr
 
-Every diagnostic line on stderr is a log record (`src/cli/log.ts`): a timestamp, a level
+Every diagnostic line on stderr is a log record (`apps/cli/src/cli/log.ts`): a timestamp, a level
 (`ERROR`, `WARN`, `INFO`) and a topic, `luftqualitaet.<area>`. `--log-format text` (the
 default) writes it log4j style, `<ISO 8601 UTC> <LEVEL padded to 5> [<topic>] <message>`;
 `--log-format jsonl` writes one JSON object per line with exactly `ts`, `level`, `topic`

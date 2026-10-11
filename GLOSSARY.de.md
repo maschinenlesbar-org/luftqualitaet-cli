@@ -163,7 +163,7 @@ lehnt ein umgekehrtes Zeitfenster (Beginn nach Ende) ab, bevor eine Anfrage gese
 ## Enums / Codes des Clients
 
 Dies sind die geschlossenen Wertemengen, gegen die der Client validiert (definiert in
-`src/client/enums.ts`):
+`packages/client/src/enums.ts`):
 
 **lang (`Lang`).** Antwortsprache für die Bezeichnungen in Referenzlisten und
 Metadaten: `de` | `en`. CLI: `--lang`.

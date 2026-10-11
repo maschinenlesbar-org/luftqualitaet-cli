@@ -13,7 +13,7 @@ npm i -g @maschinenlesbar.org/luftqualitaet-cli
 
 The installed binary is **`luftqualitaet`**. All examples below assume it is on your
 `PATH`. (If you are running from a checkout instead, replace `luftqualitaet` with
-`node dist/src/cli/index.js`.)
+`node apps/cli/dist/src/cli/index.js`.)
 
 Every command prints JSON to stdout, so it pipes cleanly into [`jq`](https://jqlang.github.io/jq/).
 Use the global `--compact` flag to emit single-line JSON.

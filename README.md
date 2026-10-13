@@ -4,7 +4,7 @@
 [![Release](https://github.com/maschinenlesbar-org/luftqualitaet-cli/actions/workflows/release.yml/badge.svg)](https://github.com/maschinenlesbar-org/luftqualitaet-cli/actions/workflows/release.yml)
 [![npm](https://img.shields.io/npm/v/@maschinenlesbar.org/luftqualitaet-cli)](https://www.npmjs.com/package/@maschinenlesbar.org/luftqualitaet-cli)
 
-**Website:** [English](https://maschinenlesbar-org.github.io/luftqualitaet-cli/) · [Deutsch](https://maschinenlesbar-org.github.io/luftqualitaet-cli/de/) — command reference, guides and API docs
+**Website:** [English](https://maschinenlesbar.org/luftqualitaet-cli/) · [Deutsch](https://maschinenlesbar.org/luftqualitaet-cli/de/) — command reference, guides and API docs
 
 Query Germany's official **air-quality data** — measurements, indices, annual
 balances and exceedances — straight from your terminal. `luftqualitaet` is a

@@ -407,3 +407,27 @@ test("a __proto__ key from parsed JSON is an ordinary key: sent with allowUnknow
   assert.deepEqual(Object.keys(own ?? {}), ["2026-10-05 10:00:00", "2026-10-05 11:00:00"]);
   assert.equal(Object.getPrototypeOf(result.data), Object.prototype);
 });
+
+test("a closed value is a token: sent trimmed, refused with an invisible character shown escaped (D8, D10)", async () => {
+  const mt = constantJson(OK_BODY);
+  await clientWith(mt).components({ lang: " de " as never, index: "code\n" as never });
+  assert.equal(new URL(mt.last().url).search, "?lang=de&index=code");
+  await clientWith(mt).thresholds({ use: "\tmeasure" as never, lang: "en " as never });
+  assert.equal(new URL(mt.last().url).search, "?use=measure&lang=en");
+  await clientWith(mt).meta({ use: " measure" as never });
+  assert.equal(new URL(mt.last().url).search, "?use=measure");
+  await clientWith(mt).stationTypes(" en" as never);
+  assert.equal(new URL(mt.last().url).search, "?lang=en");
+  const before = mt.calls.length;
+  for (const [value, shown] of [["d\u200be", "\\u200b"], ["\u202ede", "\\u202e"], ["de\ud800", "\\ud800"], ["\u00ad", undefined]] as const) {
+    await assert.rejects(clientWith(mt).components({ lang: value as never }), (err: unknown) => {
+      assert.ok(err instanceof LuftValidationError, String(err));
+      if (shown === undefined) assert.equal(err.message, "Invalid lang: Expected a non-empty value.");
+      else assert.ok(err.message.includes(shown) && !err.message.includes(value), err.message);
+      return true;
+    });
+  }
+  // Case is not folded, and an unknown value still names the set.
+  await assert.rejects(clientWith(mt).components({ lang: "DE" as never }), /Invalid lang: expected one of de, en, got "DE"\./);
+  assert.equal(mt.calls.length, before);
+});

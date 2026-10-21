@@ -255,11 +255,11 @@ export function inTimeOrder(result: AirDataResult): AirDataResult {
   return result;
 }
 
-/** `component` + `year` (+ optional lang/index) of the annual endpoints. */
-function assertYearComponent(params: YearComponentParams): void {
+/** `component` + `year` (+ optional lang/index) of the annual endpoints; returns lang/index as they are sent. */
+function assertYearComponent(params: YearComponentParams): ReturnType<typeof assertListParams> {
   assertId("component", params.component);
   assertYear(params.year);
-  assertListParams(params);
+  return assertListParams(params);
 }
 
 /**
@@ -352,8 +352,8 @@ export class LuftqualitaetClient {
   async annualBalances(params: YearComponentParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("annualBalances", params, CALL_PARAMS.annualBalances, options);
-    assertYearComponent(params);
-    return this.engine.getJson(`${API}/annualbalances/json`, prune({ ...params }), shaped("annual"));
+    const lists = assertYearComponent(params);
+    return this.engine.getJson(`${API}/annualbalances/json`, prune({ ...params, ...lists }), shaped("annual"));
   }
 
   /**
@@ -368,8 +368,8 @@ export class LuftqualitaetClient {
   async transgressions(params: YearComponentParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("transgressions", params, CALL_PARAMS.transgressions, options);
-    assertYearComponent(params);
-    return this.engine.getJson(`${API}/transgressions/json`, prune({ ...params }), shaped("annual"));
+    const lists = assertYearComponent(params);
+    return this.engine.getJson(`${API}/transgressions/json`, prune({ ...params, ...lists }), shaped("annual"));
   }
 
   // --- Reference lists ------------------------------------------------------
@@ -377,48 +377,48 @@ export class LuftqualitaetClient {
   async components(params: ListParams = {}, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("components", params, CALL_PARAMS.components, options);
-    assertListParams(params);
-    return this.engine.getJson(`${API}/components/json`, prune({ ...params }), shaped("list"));
+    const lists = assertListParams(params);
+    return this.engine.getJson(`${API}/components/json`, prune({ ...params, ...lists }), shaped("list"));
   }
 
   async networks(params: ListParams = {}, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("networks", params, CALL_PARAMS.networks, options);
-    assertListParams(params);
-    return this.engine.getJson(`${API}/networks/json`, prune({ ...params }), shaped("list"));
+    const lists = assertListParams(params);
+    return this.engine.getJson(`${API}/networks/json`, prune({ ...params, ...lists }), shaped("list"));
   }
 
   async scopes(params: ListParams = {}, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("scopes", params, CALL_PARAMS.scopes, options);
-    assertListParams(params);
-    return this.engine.getJson(`${API}/scopes/json`, prune({ ...params }), shaped("list"));
+    const lists = assertListParams(params);
+    return this.engine.getJson(`${API}/scopes/json`, prune({ ...params, ...lists }), shaped("list"));
   }
 
   async stationSettings(lang?: Lang): Promise<AirDataResult> {
-    optional(lang, (v) => assertOneOf("lang", v, LangValues));
-    return this.engine.getJson(`${API}/stationsettings/json`, prune({ lang }), shaped("list"));
+    const sent = optional(lang, (v) => assertOneOf("lang", v, LangValues));
+    return this.engine.getJson(`${API}/stationsettings/json`, prune({ lang: sent }), shaped("list"));
   }
 
   async stationTypes(lang?: Lang): Promise<AirDataResult> {
-    optional(lang, (v) => assertOneOf("lang", v, LangValues));
-    return this.engine.getJson(`${API}/stationtypes/json`, prune({ lang }), shaped("list"));
+    const sent = optional(lang, (v) => assertOneOf("lang", v, LangValues));
+    return this.engine.getJson(`${API}/stationtypes/json`, prune({ lang: sent }), shaped("list"));
   }
 
   async transgressionTypes(lang?: Lang): Promise<AirDataResult> {
-    optional(lang, (v) => assertOneOf("lang", v, LangValues));
-    return this.engine.getJson(`${API}/transgressiontypes/json`, prune({ lang }), shaped("list"));
+    const sent = optional(lang, (v) => assertOneOf("lang", v, LangValues));
+    return this.engine.getJson(`${API}/transgressiontypes/json`, prune({ lang: sent }), shaped("list"));
   }
 
   /** Thresholds for a use (airquality | measure), optional component/scope. */
   async thresholds(params: ThresholdParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("thresholds", params, CALL_PARAMS.thresholds, options);
-    assertOneOf("use", params.use, ThresholdUseValues);
-    optional(params.lang, (v) => assertOneOf("lang", v, LangValues));
+    const use = assertOneOf("use", params.use, ThresholdUseValues);
+    const lang = optional(params.lang, (v) => assertOneOf("lang", v, LangValues));
     optional(params.component, (v) => assertId("component", v));
     optional(params.scope, (v) => assertId("scope", v));
-    return this.engine.getJson(`${API}/thresholds/json`, prune({ ...params }), shaped("list"));
+    return this.engine.getJson(`${API}/thresholds/json`, prune({ ...params, use, lang }), shaped("list"));
   }
 
   /**
@@ -429,10 +429,10 @@ export class LuftqualitaetClient {
   async meta(params: MetaParams, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("meta", params, CALL_PARAMS.meta, options);
-    assertOneOf("use", params.use, MetaUseValues);
-    optional(params.lang, (v) => assertOneOf("lang", v, LangValues));
+    const use = assertOneOf("use", params.use, MetaUseValues);
+    const lang = optional(params.lang, (v) => assertOneOf("lang", v, LangValues));
     // use=airquality needs a date window: the API requires one for that bundle.
-    if (params.use === "airquality" && (params.date_from === undefined || params.date_to === undefined)) {
+    if (use === "airquality" && (params.date_from === undefined || params.date_to === undefined)) {
       throw new LuftValidationError("Invalid meta window: use=airquality requires date_from and date_to.");
     }
     // For the other uses dates are optional; when given, both are needed and the
@@ -448,7 +448,7 @@ export class LuftqualitaetClient {
       const time_from = params.time_from ?? DEFAULT_META_TIME_FROM;
       const time_to = params.time_to ?? DEFAULT_META_TIME_TO;
       assertWindow(params.date_from, time_from, params.date_to, time_to);
-      const { use, lang, date_from, date_to } = params;
+      const { date_from, date_to } = params;
       return this.engine.getJson(
         `${API}/meta/json`,
         prune({ use, lang, date_from, date_to, time_from, time_to }),
@@ -458,6 +458,6 @@ export class LuftqualitaetClient {
     if (params.time_from !== undefined || params.time_to !== undefined) {
       throw new LuftValidationError("Invalid meta window: time_from/time_to need date_from and date_to.");
     }
-    return this.engine.getJson(`${API}/meta/json`, prune({ ...params }), shaped("meta"));
+    return this.engine.getJson(`${API}/meta/json`, prune({ ...params, use, lang }), shaped("meta"));
   }
 }

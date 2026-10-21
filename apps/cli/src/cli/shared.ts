@@ -8,7 +8,7 @@ import { logOf, type CliDeps } from "./io.js";
 import { LuftError } from "@maschinenlesbar.org/luftqualitaet-client/internal/errors";
 import { baseUrlApiPathProblem } from "@maschinenlesbar.org/luftqualitaet-client/internal/client";
 import { DEFAULT_BASE_URL, cleartextProblem, isBidiControl, type EngineOptions, type RetryEvent } from "@maschinenlesbar.org/luftqualitaet-client/internal/engine";
-import { baseUrlProblem, headerValueProblem } from "@maschinenlesbar.org/luftqualitaet-client/internal/validate";
+import { baseUrlProblem, headerValueProblem, tokenProblem } from "@maschinenlesbar.org/luftqualitaet-client/internal/validate";
 
 /**
  * Strictly parse a plain decimal integer string into a number.
@@ -25,6 +25,18 @@ function parseStrictInt(value: string): number | undefined {
   const n = Number(value);
   if (!Number.isSafeInteger(n)) return undefined;
   return n;
+}
+
+/**
+ * Refuse a value the library's token rule refuses ({@link tokenProblem}): blank (or only
+ * invisible characters), a lone surrogate, a control or format character. Every value parser
+ * of an id, hour, year or date calls it first, so such a value is named, and shown escaped
+ * (`"a\u200bb" contains an invisible or control character (U+200B).`), instead of only "Expected
+ * a positive integer".
+ */
+export function assertToken(value: string): void {
+  const problem = tokenProblem(value);
+  if (problem !== undefined) throw new InvalidArgumentError(problem);
 }
 
 /**
@@ -61,6 +73,7 @@ export function parseHeaderValue(value: string): string {
 
 /** commander value-parser: a non-negative integer. */
 export function parseIntArg(value: string): number {
+  assertToken(value);
   const n = parseStrictInt(value);
   if (n === undefined || n < 0) {
     throw new InvalidArgumentError("Expected a non-negative integer.");
@@ -71,6 +84,7 @@ export function parseIntArg(value: string): number {
 /** Build a commander value-parser for an integer constrained to [min, max]. */
 export function parseBoundedInt(min: number, max: number): (value: string) => number {
   return (value: string) => {
+    assertToken(value);
     const n = parseStrictInt(value);
     if (n === undefined || n < min || n > max) {
       throw new InvalidArgumentError(`Expected an integer in the range ${min}..${max}.`);
@@ -85,6 +99,7 @@ export function parseBoundedInt(min: number, max: number): (value: string) => nu
  * should be caught locally rather than sent.
  */
 export function parsePositiveIntArg(value: string): number {
+  assertToken(value);
   const n = parseStrictInt(value);
   if (n === undefined || n < 1) {
     throw new InvalidArgumentError("Expected a positive integer (>= 1).");
@@ -97,6 +112,7 @@ export function parsePositiveIntArg(value: string): number {
  * (The UBA API uses hour-ending times; `0` and `> 24` are invalid.)
  */
 export function parseHour(value: string): number {
+  assertToken(value);
   const n = parseStrictInt(value);
   if (n === undefined || n < 1 || n > 24) {
     throw new InvalidArgumentError("Expected an hour in the range 1..24.");
@@ -106,6 +122,7 @@ export function parseHour(value: string): number {
 
 /** commander value-parser: a four-digit year, `>= 2016` (the API's earliest). */
 export function parseYear(value: string): number {
+  assertToken(value);
   const n = parseStrictInt(value);
   if (n === undefined || n < 2016 || n > 9999) {
     throw new InvalidArgumentError("Expected a four-digit year >= 2016.");

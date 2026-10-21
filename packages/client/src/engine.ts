@@ -365,6 +365,8 @@ export function isTransientNetworkError(err: unknown): boolean {
 // The message-text cut lives with the error types (validate.ts quotes values too); it is
 // exported from here as before.
 export { MAX_MESSAGE_TEXT, cutForMessage };
+// quoteValue lives with the other message helpers (validate.ts quotes refused values with it).
+export { quoteValue } from "./errors.js";
 
 const realSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));

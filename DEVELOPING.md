@@ -133,7 +133,19 @@ instead of reaching a custom transport or failing at request time with Node's ra
 
 The methods check their parameters before any request, like the CLI: dates as real
 `YYYY-MM-DD` calendar dates, hours `1..24`, a window in order, positive integer ids,
-`year >= 2016`, and `lang`/`index`/`use` from their value sets. A bad value is a
+`year >= 2016`, and `lang`/`index`/`use` from their value sets. A closed value is a token
+(`tokenProblem`, `normalizeToken`, both exported): refused when blank or holding only invisible
+characters or combining marks, a lone surrogate, or any control or format character (a
+zero-width space, a soft hyphen, a bidi control); otherwise sent trimmed and in NFC, so `" de "`
+sends `de` (`DE` is still refused: case is not folded). A refused value is quoted visibly
+(`quoteValue`, in `errors.ts`, re-exported by `engine.ts`: `Invalid lang: "d\u200be" contains an
+invisible or control character (U+200B).`); so is a value an own message quotes (`assertKnownParams`'s
+parameter name included). The kit's `textProblem`/`normalizeText` and `splitList`/`listProblem`
+are exported too; the API takes no free text and no list, so nothing uses them yet. The CLI's
+value parsers of ids, hours, years and dates run `tokenProblem` first (`assertToken` in
+`shared.ts`), so a typed invisible character is named, not only "Expected a positive integer",
+and commander's own echo of a rejected value escapes the invisible format characters
+(`escapeCommanderError` in `run.ts`). A bad value is a
 rejected promise with a `LuftValidationError` (a `LuftError`; `Invalid time_to: expected
 an hour from 1 to 24, got 99.`), and no request is sent. The checks (`assertDate`,
 `assertHour`, `assertId`, `assertWindow`, `assertYear`, `MIN_YEAR`) are exported, as is

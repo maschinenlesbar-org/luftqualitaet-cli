@@ -45,6 +45,7 @@ export {
   redactUrl,
   credentialsIn,
   redactCredentials,
+  quoteValue,
 } from "./errors.js";
 
 export {
@@ -60,7 +61,13 @@ export {
   baseUrlProblem,
   baseUrlWhitespaceProblem,
   headerValueProblem,
+  listProblem,
   nonBlankProblem,
+  normalizeText,
+  normalizeToken,
+  splitList,
+  textProblem,
+  tokenProblem,
 } from "./validate.js";
 export type { FilterOptions, Problem } from "./validate.js";
 

@@ -153,7 +153,7 @@ test("a rejected value is quoted at most MAX_MESSAGE_TEXT characters long, its u
   const long = "x".repeat(5000);
   await assert.rejects(
     client.components({ lang: long as never }),
-    (err: unknown) => err instanceof LuftValidationError && err.message.length < 700 && /got "x+…"/.test(err.message),
+    (err: unknown) => err instanceof LuftValidationError && err.message.length < 700 && /got "x+"…/.test(err.message),
   );
   await assert.rejects(
     client.components({ lang: `https://alice:${long}@h` as never }),

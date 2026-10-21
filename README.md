@@ -84,6 +84,11 @@ Flags for reference commands:
 | `--lang de\|en` | Label language (default varies by endpoint) |
 | `--index id\|code` | Key the response map by numeric id or short code (where supported) |
 
+A value is sent without surrounding whitespace (`--lang " de"` sends `de`) and checked as
+typed, in its case. One that is blank or holds an invisible or control character (a
+zero-width space, a soft hyphen, a bidi control) is refused before any request, here and for
+every id, hour, year and date, and the error shows that character escaped (`"d\u200be"`).
+
 ### Data commands — measurements and aggregations
 
 **`airquality`** — air-quality index for a station over a time window. The hours come

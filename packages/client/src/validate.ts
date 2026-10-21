@@ -10,8 +10,8 @@
 // function and turn the reason into a usage error, so a rule is written once and
 // the CLI and the library cannot drift apart.
 
-import { LuftValidationError, cutForMessage, redactUrl } from "./errors.js";
-import { IndexValues, LangValues } from "./enums.js";
+import { LuftValidationError, cutForMessage, quoteValue, redactUrl } from "./errors.js";
+import { IndexValues, LangValues, type IndexKind, type Lang } from "./enums.js";
 import type { WindowParams } from "./types.js";
 
 /** The earliest year the annual endpoints (`annualBalances`, `transgressions`) serve. */
@@ -109,13 +109,124 @@ export const baseUrlProblem: Problem<unknown> = (value) => {
 };
 
 /**
- * The rejected value as the message shows it: a string quoted, with any URL userinfo
- * cut out (`redactUrl`), so a credential URL typed into the wrong option or parameter
- * (`--lang https://u:pw@h`) never reaches the message, then cut at `MAX_MESSAGE_TEXT`
- * (`cutForMessage`; after the redaction, so a cut can't leave part of a password).
+ * The rejected value as the message shows it: a string quoted visibly (`quoteValue`: an
+ * invisible, format or control character escaped, `"a\u200bb"`), with any URL userinfo cut out
+ * (`redactUrl`), so a credential URL typed into the wrong option or parameter (`--lang
+ * https://u:pw@h`) never reaches the message, then cut at `MAX_MESSAGE_TEXT` (after the
+ * redaction, so a cut can't leave part of a password).
  */
 function describe(value: unknown): string {
-  return typeof value === "string" ? JSON.stringify(cutForMessage(redactUrl(value))) : cutForMessage(String(value));
+  return typeof value === "string" ? quoteValue(redactUrl(value)) : cutForMessage(String(value));
+}
+
+/** Characters that never make a value non-blank: whitespace, controls, format characters, combining marks. */
+const INVISIBLE = /[\s\p{Cc}\p{Cf}\p{M}]/gu;
+
+/** A lone surrogate: half of a character, which URLSearchParams would send as U+FFFD. */
+const LONE_SURROGATE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+
+/**
+ * True when nothing in `value` would match anything: it holds only whitespace, control and
+ * format characters (a zero-width space, a soft hyphen) and combining marks. Such a value reads
+ * as "no filter" upstream, or matches nothing, so it is refused as blank.
+ */
+function isBlank(value: string): boolean {
+  return value.replace(INVISIBLE, "") === "";
+}
+
+/** `U+200B` for the first character of `text` that `pattern` matches. */
+function codePointOf(text: string, pattern: RegExp): string {
+  const ch = pattern.exec(text)?.[0] ?? "";
+  return `U+${(ch.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, "0")}`;
+}
+
+/** A control character inside a text filter: C0 and C1, but not TAB, LF or CR (whitespace in a pasted phrase). */
+const TEXT_CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/;
+
+/** A format character inside a text filter, but not ZWNJ/ZWJ (U+200C/U+200D), which some scripts and emoji need. */
+const TEXT_FORMAT = /(?![\u200c\u200d])\p{Cf}/u;
+
+/**
+ * Why `value` cannot be sent as a text filter, or undefined when it can. The Air Data API takes
+ * no free text today; the rule is the kit's, exported for a library caller and a future text
+ * parameter. Refused, before any request, as an API would match nothing or everything:
+ * - a value that is blank once trimmed (Unicode whitespace, U+00A0 included), or that holds only
+ *   invisible characters and combining marks (`isBlank`): an empty filter reads as "no filter";
+ * - a lone surrogate (half of a character, sent as U+FFFD);
+ * - a control character (but TAB, LF and CR) or a format character (a zero-width space, a soft
+ *   hyphen, a bidi control; ZWNJ and ZWJ are allowed): pasted along, it makes a search find
+ *   nothing.
+ * The reason quotes the value with every invisible character escaped (`quoteValue`).
+ */
+export function textProblem(value: string): string | undefined {
+  if (typeof value !== "string") return "Expected a string.";
+  if (isBlank(value)) return "Expected a non-empty value.";
+  if (LONE_SURROGATE.test(value)) return `${quoteValue(value)} contains half of a character (a lone surrogate).`;
+  if (TEXT_CONTROL.test(value)) return `${quoteValue(value)} contains a control character (${codePointOf(value, TEXT_CONTROL)}).`;
+  if (TEXT_FORMAT.test(value)) return `${quoteValue(value)} contains an invisible character (${codePointOf(value, TEXT_FORMAT)}).`;
+  return undefined;
+}
+
+/**
+ * A text filter as an API matches it: without surrounding whitespace and in composed Unicode,
+ * NFC (a decomposed "Müller", u plus U+0308 as pasted from a macOS file name, matched nothing).
+ * Inner whitespace is kept.
+ */
+export function normalizeText(value: string): string {
+  return value.trim().normalize("NFC");
+}
+
+/** A control or format character in a token (after trimming): every Cc and every Cf. */
+const TOKEN_INVISIBLE = /[\p{Cc}\p{Cf}]/u;
+
+/**
+ * Why `value` cannot be sent as a token, or undefined when it can. A token is a value the API
+ * compares exactly: here the closed sets `lang`, `index` and `use` (and every value the CLI
+ * parses into a date, an hour, a year or an id). The rules apply to the value with surrounding
+ * whitespace trimmed, as it is sent ({@link normalizeToken}): not blank (and not only invisible
+ * characters or combining marks), no lone surrogate, and no control or format character at all
+ * (a zero-width space, ZWJ, a soft hyphen, a bidi control), since an invisible character in a
+ * code only ever makes it match nothing. The reason quotes the value visibly.
+ */
+export function tokenProblem(value: string): string | undefined {
+  if (typeof value !== "string") return "Expected a string.";
+  if (isBlank(value)) return "Expected a non-empty value.";
+  const token = value.trim();
+  if (LONE_SURROGATE.test(token)) return `${quoteValue(value)} contains half of a character (a lone surrogate).`;
+  if (TOKEN_INVISIBLE.test(token)) {
+    return `${quoteValue(value)} contains an invisible or control character (${codePointOf(token, TOKEN_INVISIBLE)}).`;
+  }
+  return undefined;
+}
+
+/** A token as it is sent: trimmed and in composed Unicode (NFC). Check it with {@link tokenProblem} first. */
+export function normalizeToken(value: string): string {
+  return value.trim().normalize("NFC");
+}
+
+/**
+ * The items of a comma-separated list, as typed: each item is checked (`listProblem`) and
+ * canonicalised (`normalizeToken`) on its own, so `"a1, a2"` sends `a2`, and `"a1,,a2"`, `"a1,"`
+ * and `","` are refused rather than sent as an empty item (which an API may read as "no
+ * filter"). The Air Data API takes no list today; the rule is the kit's.
+ */
+export function splitList(value: string): string[] {
+  return value.split(",");
+}
+
+/**
+ * Why `items` cannot be sent as a list, or undefined when it can: not an array of strings, no
+ * item at all (an empty list reads as "no filter"), or an item that `itemProblem` refuses (by
+ * default {@link tokenProblem}: a blank item is refused, never dropped). The reason names the item.
+ */
+export function listProblem(items: readonly string[], itemProblem: Problem<string> = tokenProblem): string | undefined {
+  if (!Array.isArray(items)) return "Expected a list of strings.";
+  if (items.length === 0) return "Expected at least one value.";
+  for (let i = 0; i < items.length; i++) {
+    const problem = itemProblem(items[i] as string);
+    if (problem !== undefined) return items.length === 1 ? problem : `item ${i + 1} of ${items.length}: ${problem}`;
+  }
+  return undefined;
 }
 
 function invalid(name: string, expected: string, value: unknown): never {
@@ -157,9 +268,19 @@ export function assertYear(value: unknown): number {
   return invalid("year", `a four-digit year >= ${MIN_YEAR}`, value);
 }
 
-/** One of a closed value set. */
+/**
+ * One of a closed value set, as a token: checked with {@link tokenProblem} (not blank, no
+ * invisible, control or half character, quoted visibly), then trimmed and in NFC
+ * ({@link normalizeToken}) and looked up. Returns the canonical value, which is what is sent:
+ * `" de "` sends `de`. Case is not folded: `DE` is refused.
+ */
 export function assertOneOf<T extends string>(name: string, value: unknown, allowed: readonly T[]): T {
-  if (typeof value === "string" && (allowed as readonly string[]).includes(value)) return value as T;
+  if (typeof value === "string") {
+    const problem = tokenProblem(value);
+    if (problem !== undefined) throw new LuftValidationError(`Invalid ${name}: ${problem}`);
+    const token = normalizeToken(value);
+    if ((allowed as readonly string[]).includes(token)) return token as T;
+  }
   return invalid(name, `one of ${allowed.join(", ")}`, value);
 }
 
@@ -201,7 +322,7 @@ export function assertKnownParams(
 ): void {
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || known.includes(key)) continue;
-    const name = JSON.stringify(key.length > 100 ? `${key.slice(0, 100)}…` : key);
+    const name = quoteValue(key);
     if (options?.allowUnknownFilters !== true) {
       throw new LuftValidationError(
         `Invalid parameter ${name}: ${call} takes only ${known.join(", ")}; the API would ignore it. ` +
@@ -219,10 +340,12 @@ export function optional<T>(value: T | undefined, check: (v: unknown) => T): T |
   return value === undefined ? undefined : check(value);
 }
 
-/** `lang` and `index`, both optional. */
-export function assertListParams(params: { lang?: unknown; index?: unknown }): void {
-  optional(params.lang, (v) => assertOneOf("lang", v, LangValues));
-  optional(params.index, (v) => assertOneOf("index", v, IndexValues));
+/** `lang` and `index`, both optional; returns them as they are sent (canonical, or undefined). */
+export function assertListParams(params: { lang?: unknown; index?: unknown }): { lang: Lang | undefined; index: IndexKind | undefined } {
+  return {
+    lang: optional(params.lang as Lang | undefined, (v) => assertOneOf("lang", v, LangValues)),
+    index: optional(params.index as IndexKind | undefined, (v) => assertOneOf("index", v, IndexValues)),
+  };
 }
 
 /** A date + hour-ending window, in order (start not after end). */

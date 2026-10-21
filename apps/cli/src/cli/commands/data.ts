@@ -2,6 +2,7 @@ import { InvalidArgumentError, type Command } from "commander";
 import { logOf, type CliDeps } from "../io.js";
 import {
   action,
+  assertToken,
   parseHour,
   parseIndexArg,
   parseLangArg,
@@ -35,6 +36,7 @@ const TRANSGRESSIONS_COMPLETE_FROM = 2019;
 
 /** commander value-parser: a real calendar date in `YYYY-MM-DD` form. */
 function parseDate(value: string): string {
+  assertToken(value);
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) {
     throw new InvalidArgumentError("Expected a date in YYYY-MM-DD format.");

@@ -163,7 +163,13 @@ lehnt ein umgekehrtes Zeitfenster (Beginn nach Ende) ab, bevor eine Anfrage gese
 ## Enums / Codes des Clients
 
 Dies sind die geschlossenen Wertemengen, gegen die der Client validiert (definiert in
-`packages/client/src/enums.ts`):
+`packages/client/src/enums.ts`). Ein Wert ist ein Token: Er wird ohne umgebende Leerzeichen
+gesendet (`" de "` sendet `de`) und so geprüft, wie er ist, mit seiner Groß- und
+Kleinschreibung (`DE` wird abgelehnt); ein leerer Wert oder einer mit einem unsichtbaren
+Zeichen, einem Steuerzeichen oder einem halben Zeichen (ein Leerzeichen der Breite null, ein
+weiches Trennzeichen, ein Bidi-Steuerzeichen) wird vor jeder Anfrage abgelehnt, und die
+Ablehnung zeigt dieses Zeichen maskiert (`"d\u200be"`). Dasselbe gilt für jede ID, Stunde,
+jedes Jahr und Datum, das die CLI liest.
 
 **lang (`Lang`).** Antwortsprache für die Bezeichnungen in Referenzlisten und
 Metadaten: `de` | `en`. CLI: `--lang`.

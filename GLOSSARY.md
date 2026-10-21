@@ -164,7 +164,11 @@ window (start after end) before any request is sent.
 ## Enums / codes surfaced by the client
 
 These are the closed value sets the client validates against (defined in
-`packages/client/src/enums.ts`):
+`packages/client/src/enums.ts`). A value is a token: sent without surrounding whitespace
+(`" de "` sends `de`) and checked as it is, in its case (`DE` is refused); a blank one, or one
+with an invisible, control or half character (a zero-width space, a soft hyphen, a bidi
+control), is refused before any request, and the refusal shows that character escaped
+(`"d\u200be"`). The same holds for every id, hour, year and date the CLI reads.
 
 **lang (`Lang`).** Response language for the labels in reference lists and
 metadata: `de` | `en`. CLI: `--lang`.

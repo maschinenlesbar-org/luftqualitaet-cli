@@ -296,7 +296,8 @@ exits with its own code.
     looks the id up in the station catalogue (`meta --use measure`, one more request of
     about 0.5 MB, only then): an id it doesn't list exits `4` with
     `ERROR [luftqualitaet.api] Station <id> not found: …`; a listed one prints the empty
-    answer, exit `0`, with a note (an `INFO` record) on stderr that the window has no data.
+    answer, exit `0`, with a note (an `INFO` record) on stderr that the window has no data
+    (for `measures`, that the station may also not measure that component in that scope).
     Ids far outside the catalogue (seen: 65535 and above) get HTTP `409` (an HTML page, no
     detail) instead, exit `1`, with a hint (an `INFO` record before the error).
   - an unknown **component** or **scope**, a year or window with no data →

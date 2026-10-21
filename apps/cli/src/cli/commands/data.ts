@@ -81,10 +81,11 @@ async function withStationHint(
   deps: CliDeps,
   station: number,
   query: () => Promise<AirDataResult>,
+  series?: { component: number; scope: number },
 ): Promise<{ result: AirDataResult; note: string | undefined }> {
   try {
     const result = await query();
-    return { result, note: stationDataNote(result, station) };
+    return { result, note: stationDataNote(result, station, series) };
   } catch (err) {
     if (err instanceof LuftApiError && err.status === 409 && isStationQueryError(err)) {
       logOf(deps).info(
@@ -156,6 +157,7 @@ export function registerDataCommands(program: Command, deps: CliDeps): void {
           component: opts["component"] as number,
           scope: opts["scope"] as number,
         }),
+        { component: opts["component"] as number, scope: opts["scope"] as number },
       );
       renderJson(deps, global, result);
       if (note !== undefined) logOf(deps).info("api", note);

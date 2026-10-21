@@ -107,8 +107,10 @@ data (HTTP 200, `data: {}`); only ids far outside the catalogue get HTTP 409. So
 catalogue — `meta?use=measure`, whose `stations` object is keyed by id (525 stations, ids
 7..10472 on 2026-10-06), one request, only then — and rejects an id it doesn't list with
 `LuftNotFoundError` (exported, `.station`; the CLI exits 4). A listed station returns the
-empty answer, and `stationDataNote(result, station)` (exported) says the window has no
-data; the CLI logs it as an `INFO` record of `luftqualitaet.api` on stderr (exit 0). A catalogue without a `stations`
+empty answer, and `stationDataNote(result, station, series?)` (exported) says the window has no
+data (for `measures`, given its component and scope, it names them: an unknown scope or a
+component the station doesn't measure gives the same empty answer, and `measures-limits` shows
+which station has which series); the CLI logs it as an `INFO` record of `luftqualitaet.api` on stderr (exit 0). A catalogue without a `stations`
 object is a `LuftParseError`, and a failing lookup fails the call: no guess either way.
 `catalogueHasStation(catalogue, station)` is the check itself. A 409 to the station query
 still gets a hint (an `INFO` record) before the error (exit 1); a 409 to the catalogue

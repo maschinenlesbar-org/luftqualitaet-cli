@@ -200,11 +200,27 @@ export function annualDataNote(
  * data — HTTP 200 with `data: {}` ("Ungültige Abfragen liefern einen JSON ohne Daten
  * zurück", UBA) — but `airquality()` and `measures()` look such an id up in the station
  * catalogue and reject it with a LuftNotFoundError, so an empty answer they return is a
- * known station without data in the window. The CLI logs the note as an `INFO` record of
+ * known station without data in the window. For a `measures` answer pass its `series`
+ * (component and scope): an unknown scope, or a component the station doesn't measure, gives the
+ * same empty answer, so the note names them too. The CLI logs the note as an `INFO` record of
  * `luftqualitaet.api` on stderr.
  */
-export function stationDataNote(result: AirDataResult, station: number): string | undefined {
+export function stationDataNote(
+  result: AirDataResult,
+  station: number,
+  series?: { component: number; scope: number },
+): string | undefined {
   if (!hasNoRows(result["data"])) return undefined;
+  if (series !== undefined) {
+    // A measures series: the API answers an unknown scope, or a component the station doesn't
+    // measure, with the same empty data as a window without values. Name all three causes.
+    return (
+      `No data for station ${station}, component ${series.component}, scope ${series.scope} in this window ` +
+      `(the station is in the catalogue). The station may not measure this component in this scope ` +
+      `(scopes lists the scope ids), or the window has none: measures-limits shows each station's ` +
+      `components, scopes and range.`
+    );
+  }
   return (
     `No data for station ${station} in this window (the station is in the catalogue). ` +
     `Check the window: airquality-limits / measures-limits show each station's range.`

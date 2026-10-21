@@ -667,9 +667,15 @@ test("an empty answer for a station the catalogue lacks exits 4 naming it; a lis
     const cli = makeCli(withCatalogue([143, 172], () => jsonResponse(empty)));
     assert.equal(await run(["--compact", ...argv], cli.deps), 0, argv.join(" "));
     assert.deepEqual(JSON.parse(cli.out.join("")), empty);
+    // measures names its series: an unknown scope or a component the station doesn't measure
+    // gives the same empty answer as a window without data (04#2).
     assert.deepEqual(cli.err.map(untimed), [
-      "INFO  [luftqualitaet.api] No data for station 172 in this window (the station is in the catalogue). Check the window: airquality-limits / measures-limits show each station's range.",
-    ]);
+      argv[0] === "measures"
+        ? "INFO  [luftqualitaet.api] No data for station 172, component 5, scope 2 in this window (the station is in the catalogue). " +
+          "The station may not measure this component in this scope (scopes lists the scope ids), or the window has none: " +
+          "measures-limits shows each station's components, scopes and range."
+        : "INFO  [luftqualitaet.api] No data for station 172 in this window (the station is in the catalogue). Check the window: airquality-limits / measures-limits show each station's range.",
+    ], argv.join(" "));
   }
   // Data: no lookup, no note.
   const cli = makeCli(() => jsonResponse({ request: {}, indices: {}, data: { "2": { "2026-10-04 00:00:00": ["2026-10-04 01:00:00", 1, 0] } } }));

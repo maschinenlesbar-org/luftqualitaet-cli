@@ -62,6 +62,7 @@ new LuftqualitaetClient({
   maxResponseBytes: 50 << 20, // abort responses larger than 50 MiB (0 = unlimited)
   userAgent: "my-app/1.0",
   transport: customTransport, // inject your own HTTP transport
+  bigIntegerKeys: new Set(["_version_"]), // members whose numbers may pass 2^53: delivered as strings
 });
 ```
 
@@ -344,7 +345,13 @@ would print as `5e-324`). Past 2^53 and in the subnormal range the check compare
 as it would print (`String(value)`) with the number as written, so a double a server wrote in
 its shortest form (`1E23`, `1.7976931348623157E308`, `5e-324`, `1e-310`) passes, while
 `12345678901234567890` (which prints as `…7000`) is refused. Between them a decimal fraction
-keeps a double's precision, so the measured values (`17.384`) pass unchanged.
+keeps a double's precision, so the measured values (`17.384`) pass unchanged. A member named
+in the engine option `bigIntegerKeys` (a set or list of non-empty member names, copied; default
+none, and this client declares none: the API sends ids and values as strings or small numbers)
+is the one exception: its number value is delivered as its exact literal, as written, as a JSON
+string (`"1858054135406919680"`, `"5"`), whatever its size, so its type is stable. The engine
+does both in one linear scan of the text before `JSON.parse` (`scanNumbers`, which quotes the
+declared values in place; no reviver).
 
 **The transport contract, enforced by the engine.** `timeoutMs` and `maxResponseBytes`
 hold for every transport, not only the built-in one: the engine runs each transport call

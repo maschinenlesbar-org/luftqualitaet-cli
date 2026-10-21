@@ -390,3 +390,20 @@ test("an answer without data is checked against the station catalogue: unknown â
     await assert.rejects(call(clientWith(failing), 143), LuftApiError);
   }
 });
+
+test("a __proto__ key from parsed JSON is an ordinary key: sent with allowUnknownFilters, kept as a station (T12, 03#1)", async () => {
+  // prune() assigned out[k] = v, which for "__proto__" ran the prototype setter: the parameter
+  // was dropped and the call resolved as if it hadn't been given.
+  const mt = constantJson(OK_BODY);
+  await clientWith(mt).components(JSON.parse('{"__proto__":"x","lang":"de"}') as {}, { allowUnknownFilters: true });
+  assert.equal(new URL(mt.last().url).search, "?__proto__=x&lang=de");
+  // A station keyed "__proto__" in an answer keeps its hours, in time order, as its own entry.
+  const body = JSON.parse(
+    '{"request":{},"indices":{},"data":{"__proto__":{"2026-10-05 11:00:00":[1],"2026-10-05 10:00:00":[2]}}}',
+  ) as object;
+  const w = { date_from: "2026-10-05", time_from: 1, date_to: "2026-10-05", time_to: 24, station: 172 };
+  const result = (await clientWith(constantJson(body)).airquality(w)) as { data: object };
+  const own = Object.getOwnPropertyDescriptor(result.data, "__proto__")?.value as object | undefined;
+  assert.deepEqual(Object.keys(own ?? {}), ["2026-10-05 10:00:00", "2026-10-05 11:00:00"]);
+  assert.equal(Object.getPrototypeOf(result.data), Object.prototype);
+});

@@ -240,7 +240,14 @@ export function inTimeOrder(result: AirDataResult): AirDataResult {
     const keys = Object.keys(hours);
     const sorted = [...keys].sort();
     if (keys.every((key, i) => key === sorted[i])) continue;
-    (data as Record<string, unknown>)[station] = Object.fromEntries(sorted.map((key) => [key, hours[key]]));
+    // Defined, not assigned: a station keyed "__proto__" (an own key JSON.parse made) would
+    // otherwise run the prototype setter and keep its hours unsorted.
+    Object.defineProperty(data, station, {
+      value: Object.fromEntries(sorted.map((key) => [key, hours[key]])),
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
   }
   return result;
 }
@@ -252,9 +259,13 @@ function assertYearComponent(params: YearComponentParams): void {
   assertListParams(params);
 }
 
-/** Drop undefined values so only the parameters the caller set are sent. */
+/**
+ * Drop undefined values so only the parameters the caller set are sent. The result has no
+ * prototype: a `__proto__` key from parsed JSON (sent with `allowUnknownFilters`) is an own
+ * entry like any other, never the prototype setter, which dropped it without a word.
+ */
 function prune(params: Record<string, unknown>): QueryParams {
-  const out: QueryParams = {};
+  const out = Object.create(null) as QueryParams;
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined) out[k] = v as QueryParams[string];
   }

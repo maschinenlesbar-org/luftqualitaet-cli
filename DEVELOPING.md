@@ -118,7 +118,7 @@ documents (`CALL_PARAMS`, `assertKnownParams`): a misspelled key (`componet`), a
 another call (`lang` on `measures`) or `__proto__`/`constructor` from parsed JSON is a
 `LuftValidationError` before any request. A parameter the API adds later can still be
 sent with `{ allowUnknownFilters: true }` as the call's second argument (strings, finite
-numbers and booleans only). In the CLI, every option takes one value; giving one twice is
+numbers and booleans only; a `__proto__` key is sent like any other, never dropped). In the CLI, every option takes one value; giving one twice is
 a usage error (`forbidRepeatedOptions` in `shared.ts`).
 
 `userAgent` is checked there too, with the same rule as the CLI's `--user-agent`

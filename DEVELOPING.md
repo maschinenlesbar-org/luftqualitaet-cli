@@ -234,6 +234,12 @@ apps/cli/src/cli/
   driven in-process by tests with a mocked client and captured output — no subprocesses.
 - UBA responses are index/data structures whose exact shape varies by endpoint, so they are returned
   as faithful raw `JsonObject`s rather than partially-guessed types.
+- Rendering (`renderJson` in `shared.ts`): an answer nested too deeply to pretty-print is a
+  clean error that suggests `--compact`. `--compact` takes V8's fast path (`JSON.stringify`
+  without a gap), the only one that prints very deep nesting on Node 26, unless the answer
+  holds a string or key of 64 Mi characters or more (`holdsHugeString`): on Node 26 the fast
+  path aborts the process on a ~250 MB string, so such an answer goes through the gap path
+  (an empty gap, the same text).
 
 ## Library / technical terms
 

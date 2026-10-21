@@ -634,7 +634,7 @@ test("an empty answer for a station the catalogue lacks exits 4 naming it; a lis
   // A catalogue without a stations object is a parse error (exit 1), never "unknown".
   const odd = makeCli((req) => jsonResponse(new URL(req.url).pathname.endsWith("/meta/json") ? { request: {} } : empty));
   assert.equal(await run(["--compact", "airquality", "--station", "2", ...window], odd.deps), 1);
-  assert.match(odd.err.join("\n"), /Unexpected station catalogue from \/meta\/json \(use=measure\): expected a stations object/);
+  assert.match(odd.err.join("\n"), /GET https:\/\/luftdaten\.umweltbundesamt\.de\/api\/air-data\/v3\/meta\/json\?use=measure: unexpected station catalogue: expected a stations object\./);
 });
 
 test("an a:b@c argument (a User-Agent, a typed value) is neither a credential in the log nor rewritten in the JSON on stdout (L14)", async () => {
@@ -723,7 +723,7 @@ test("a malformed answer, the station catalogue's included, is an ERROR record o
   );
   const window = ["--date-from", "2026-10-01", "--time-from", "1", "--date-to", "2026-10-01", "--time-to", "24", "--station", "7"];
   assert.equal(await run(["airquality", ...window], catalogue.deps), 1);
-  assert.match(untimed(catalogue.err[0] ?? ""), /^ERROR \[luftqualitaet\.api\] Unexpected station catalogue/, catalogue.err.join("\n"));
+  assert.match(untimed(catalogue.err[0] ?? ""), /^ERROR \[luftqualitaet\.api\] GET \S+\/meta\/json\?use=measure: unexpected station catalogue/, catalogue.err.join("\n"));
 });
 
 test("a 409 from the station catalogue lookup gets no unknown-station hint, only its own ERROR (01-1)", async () => {

@@ -498,6 +498,22 @@ export class RequestEngine {
     return this.composeUrl(this.#baseUrl, path, query);
   }
 
+  /** The base URL without its userinfo: what the transport sees (the userinfo goes as a header). */
+  private requestBase(): string {
+    const [userinfo] = credentialsIn(this.#baseUrl);
+    return userinfo === undefined ? this.#baseUrl : this.#baseUrl.replace(`://${userinfo}@`, "://");
+  }
+
+  /**
+   * The request URL as an error about the answer shows it: absolute (so a message names the
+   * host that gave a bad answer, which matters with a custom base URL), without the base URL's
+   * userinfo (as the network errors show it), cut at MAX_MESSAGE_TEXT characters. It never
+   * throws: describing a URL for a message does not validate it.
+   */
+  describeUrl(path: string, query?: QueryParams): string {
+    return cutForMessage(redactUrl(this.composeUrl(this.requestBase(), path, query)));
+  }
+
   /** `base` + path + query string. */
   private composeUrl(base: string, path: string, query?: QueryParams): string {
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
@@ -541,12 +557,7 @@ export class RequestEngine {
     // Authorization header, per hop, so a redirect to the same origin (relative or
     // absolute) keeps it and one to another origin or scheme drops it. A transport such
     // as fetch also refuses a URL with credentials outright.
-    const [userinfo] = credentialsIn(this.#baseUrl);
-    let url = this.composeUrl(
-      userinfo === undefined ? this.#baseUrl : this.#baseUrl.replace(`://${userinfo}@`, "://"),
-      path,
-      options.query,
-    );
+    let url = this.composeUrl(this.requestBase(), path, options.query);
     const headers: Record<string, string> = {
       Accept: options.accept,
       "User-Agent": this.userAgent,
@@ -711,12 +722,19 @@ export class RequestEngine {
   /**
    * Perform a GET expecting JSON and parse it into `T`. With `shape`, the parsed body must
    * pass it (see `responseShapeProblem` in client.ts): a 2xx body without the documented
-   * envelope (`null`, `{}`, an error object, a proxy's text) is a LuftParseError naming the
-   * path, never data.
+   * envelope (`null`, `{}`, an error object, a proxy's text) is a LuftParseError, never data.
+   * An empty (or whitespace-only) body is one too: every endpoint answers with a JSON document.
+   * Every error about the answer names the request (`GET <url>: …`, without the userinfo).
    */
   async getJson<T>(path: string, query?: QueryParams, shape?: (value: unknown) => string | undefined): Promise<T> {
     const res = await this.request("GET", path, { query, accept: "application/json" });
-    const text = decodeBody(res.data, res.contentType, path);
+    const request = `GET ${this.describeUrl(path, query)}`;
+    const text = decodeBody(res.data, res.contentType, request);
+    if (text.trim() === "") {
+      // A broken answer, not "no results": printed as nothing with exit 0, it would let a
+      // script carry on as if the API had found nothing.
+      throw new LuftParseError(`${request}: empty response body.`);
+    }
     // Declared big integers are quoted first, so JSON.parse delivers them exactly.
     const { json, inexact } = scanNumbers(text, this.bigIntegerKeys);
     let value: unknown;
@@ -724,17 +742,18 @@ export class RequestEngine {
       value = JSON.parse(json);
     } catch (cause) {
       // A maintenance or proxy page answered with 200: say what it was.
-      const type = res.contentType === "" ? "" : ` (Content-Type ${JSON.stringify(cutForMessage(sanitizeServerText(res.contentType)))})`;
-      throw new LuftParseError(`Failed to parse JSON response from ${path}${type}`, { cause });
+      const type = res.contentType.split(";")[0]?.trim() ?? "";
+      const hint = type !== "" && !/json/i.test(type) ? ` (expected JSON, got Content-Type "${cutForMessage(sanitizeServerText(type))}")` : "";
+      throw new LuftParseError(`${request}: the answer is not valid JSON${hint}.`, { cause });
     }
     // JSON.parse rounds and overflows numbers silently: refuse the answer rather than print a
     // changed value.
     if (inexact !== undefined) {
-      throw new LuftParseError(`Unexpected response from ${path}: the number ${cutForMessage(inexact)} cannot be represented exactly.`);
+      throw new LuftParseError(`${request}: the number ${cutForMessage(inexact)} cannot be represented exactly.`);
     }
     const problem = shape?.(value);
     if (problem !== undefined) {
-      throw new LuftParseError(`Unexpected response from ${path}: ${problem}. The server may be down or behind a proxy.`);
+      throw new LuftParseError(`${request}: unexpected response shape: ${problem}. The server may be down or behind a proxy.`);
     }
     return value as T;
   }
@@ -797,15 +816,15 @@ function originOf(url: string): string {
  * none). TextDecoder drops a leading byte order mark, which Buffer#toString keeps and
  * JSON.parse then rejects, so a BOM added by a proxy or a backend change cannot turn a
  * valid answer into a parse error, and a Latin-1 body keeps its umlauts. An unknown
- * charset label is a LuftParseError.
+ * charset label is a LuftParseError naming `request` (`GET <url>`).
  */
-export function decodeBody(body: Buffer, contentType: string, path: string): string {
+export function decodeBody(body: Buffer, contentType: string, request: string): string {
   const charset = /;\s*charset\s*=\s*"?([^";\s]+)"?/i.exec(contentType)?.[1] ?? "utf-8";
   let decoder: TextDecoder;
   try {
     decoder = new TextDecoder(charset);
   } catch {
-    throw new LuftParseError(`Unsupported response charset "${cutForMessage(sanitizeServerText(charset))}" from ${path}.`);
+    throw new LuftParseError(`${request}: unsupported response charset "${cutForMessage(sanitizeServerText(charset))}".`);
   }
   return decoder.decode(body);
 }

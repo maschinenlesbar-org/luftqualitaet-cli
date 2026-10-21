@@ -307,7 +307,7 @@ test("P9: null, {}, an array, a string or an error object answered with 200 is a
     for (const body of [null, {}, [], "maintenance", { error: "boom" }, { data: null }]) {
       await assert.rejects(
         fn(clientWith(constantJson(body))),
-        (e: unknown) => e instanceof LuftParseError && /Unexpected response from \/api\/air-data\/v3\//.test((e as Error).message),
+        (e: unknown) => e instanceof LuftParseError && /^GET https:\/\/luftdaten\.umweltbundesamt\.de\/api\/air-data\/v3\/[^:]*: unexpected response shape: /.test((e as Error).message),
         `${label} ${JSON.stringify(body)}`,
       );
     }

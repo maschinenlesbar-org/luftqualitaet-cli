@@ -111,7 +111,8 @@ data; the CLI logs it as an `INFO` record of `luftqualitaet.api` on stderr (exit
 object is a `LuftParseError`, and a failing lookup fails the call: no guess either way.
 `catalogueHasStation(catalogue, station)` is the check itself. A 409 to the station query
 still gets a hint (an `INFO` record) before the error (exit 1); a 409 to the catalogue
-lookup gets none, since it says nothing about the station (its ERROR names `/meta/json`).
+lookup gets none, since it says nothing about the station (its ERROR names the
+`/meta/json?use=measure` request).
 
 **Unknown parameters.** The API ignores a query parameter it doesn't take and answers as
 if it weren't there, so each call checks its parameter object against the keys it
@@ -332,11 +333,16 @@ mark; an unknown charset label is a `LuftParseError`. Every 2xx body must then h
 envelope its endpoint documents (`responseShapeProblem`, exported, with the shapes
 `list`: `count` + `indices`; `window`/`limits`: `request` + a `data` object; `annual`:
 `request` + `indices` + `data` rows; `meta`: `request`): `null`, `{}`, an error object or
-a proxy's page is a `LuftParseError` naming the path (CLI exit `1`), never data or an
-empty result read as "nothing found". A non-JSON body's parse error names its
-`Content-Type`. A number `JSON.parse` can't carry exactly is a `LuftParseError` too, never a
-changed value (`Unexpected response from <path>: the number <N> cannot be represented
-exactly.`, `firstInexactNumber`): one out of a double's range (`1e400`, which would print as
+a proxy's page is a `LuftParseError` (CLI exit `1`), never data or an empty result read as
+"nothing found", and so is an empty body. Every error about an answer names the request, as
+the network errors do: `GET <url>: …`, the URL absolute and without the base URL's userinfo
+(`describeUrl`): `GET <url>: unexpected response shape: expected a numeric count. The server
+may be down or behind a proxy.`, `GET <url>: the answer is not valid JSON (expected JSON, got
+Content-Type "text/html").`, `GET <url>: empty response body.`, `GET <url>: unsupported
+response charset "…".` and `GET <url>: unexpected station catalogue: expected a stations
+object.` A number `JSON.parse` can't carry exactly is a `LuftParseError` too, never a
+changed value (`GET <url>: the number <N> cannot be represented exactly.`,
+`firstInexactNumber`): one out of a double's range (`1e400`, which would print as
 `null`), one past 2^53 in any written form (`12345678901234567890`, `…890.0`,
 `9007199254740993e0`, `9007199254740992.5`), a non-zero one too small for a double
 (`1e-400`, which would become 0), and a subnormal one (below 2.2250738585072014e-308, where a

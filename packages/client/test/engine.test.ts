@@ -19,6 +19,7 @@ import {
   toWellFormed,
 } from "../src/errors.js";
 import { makeMockTransport, jsonResponse, rawResponse, OK_BODY } from "./helpers.js";
+import type { HttpResponse } from "../src/http.js";
 
 // Built via char codes so no raw control bytes ever appear in this source file.
 const ESC = String.fromCharCode(0x1b);
@@ -93,7 +94,7 @@ test("a number the JSON cannot carry exactly is a parse error, never a changed v
     const e = new RequestEngine({ transport: makeMockTransport(() => rawResponse(body(n), "application/json")).transport });
     await assert.rejects(e.getJson("/items/a"), (err: unknown) => {
       assert.ok(err instanceof LuftParseError, n);
-      assert.equal(err.message, `Unexpected response from /items/a: the number ${n} cannot be represented exactly.`);
+      assert.equal(err.message, `GET https://luftdaten.umweltbundesamt.de/items/a: the number ${n} cannot be represented exactly.`);
       return true;
     });
   }
@@ -422,7 +423,7 @@ test("a JSON body is decoded by its declared charset, BOM dropped; an unknown ch
   const engine = new RequestEngine({
     transport: async () => ({ status: 200, headers: { "content-type": "application/json; charset=x-klingon" }, body: Buffer.from("{}") }),
   });
-  await assert.rejects(engine.getJson("/x"), (e: unknown) => e instanceof LuftParseError && /Unsupported response charset "x-klingon"/.test((e as Error).message));
+  await assert.rejects(engine.getJson("/x"), (e: unknown) => e instanceof LuftParseError && /^GET https:\/\/luftdaten\.umweltbundesamt\.de\/x: unsupported response charset "x-klingon"\.$/.test((e as Error).message));
 });
 
 test("server text in an error message is cut at 500 characters; the body is kept whole", async () => {
@@ -670,4 +671,26 @@ test("bigIntegerKeys: a declared member's number is its exact literal as a strin
   // Without declarations the scan is the plain number check.
   assert.equal(firstInexactNumber('{"a":"1e400","b":3e-324}'), "3e-324");
   assert.deepEqual(scanNumbers('{"a":1}'), { json: '{"a":1}', inexact: undefined });
+});
+
+test("an answer error names the request: method and URL, without the base URL's userinfo (D9)", async () => {
+  const answers: Array<[string, () => HttpResponse]> = [
+    ["the answer is not valid JSON (expected JSON, got Content-Type \"text/html\")", () => rawResponse("<html>", "text/html")],
+    ["the answer is not valid JSON.", () => rawResponse("{", "application/json")],
+    ["empty response body", () => rawResponse(" ", "application/json")],
+    ["cannot be represented exactly", () => rawResponse('{"n":1e400}', "application/json")],
+    ["unsupported response charset", () => rawResponse("{}", "application/json; charset=x-bogus")],
+    ["unexpected response shape: expected a JSON object, got null. The server may be down", () => rawResponse("null", "application/json")],
+  ];
+  for (const [what, respond] of answers) {
+    const e = new RequestEngine({ baseUrl: "https://alice:s3cret@mirror.example/m", transport: makeMockTransport(respond).transport });
+    const shape = (value: unknown): string | undefined => (value === null ? "expected a JSON object, got null" : undefined);
+    await assert.rejects(e.getJson("/items", { q: "x" }, shape), (err: unknown) => {
+      assert.ok(err instanceof LuftParseError, what);
+      assert.ok(err.message.startsWith("GET https://mirror.example/m/items?q=x: "), err.message);
+      assert.ok(err.message.includes(what), `${what}: ${err.message}`);
+      assert.ok(!err.message.includes("s3cret") && !err.message.includes("alice"), err.message);
+      return true;
+    });
+  }
 });

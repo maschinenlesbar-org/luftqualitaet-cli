@@ -296,10 +296,11 @@ exits with its own code.
   when they ran out, so wait a moment and retry. When the server asks for a longer wait
   the CLI does not retry at all and says so (`the server asked to retry after 3600 s,
   longer than the 30 s the client waits; not retried`): wait that long before trying again.
-- **`Unexpected response from …` / `Failed to parse JSON response`** (exit `1`) — the
-  server answered `200` with something that isn't the API's documented JSON (`null`, `{}`,
-  an error object, a proxy or maintenance page). The CLI never prints that as data; try
-  again later, or check `--base-url`.
+- **`GET <url>: unexpected response shape …` / `GET <url>: the answer is not valid JSON`**
+  (exit `1`) — the server answered `200` with something that isn't the API's documented JSON
+  (`null`, `{}`, an error object, an empty body, a proxy or maintenance page). The message
+  names the request it answered. The CLI never prints that as data; try again later, or
+  check `--base-url`.
 - **Empty `.data`** — the query matched nothing or the window has no data; use the
   `-limits` commands to find a window that has data for that station/component.
 - **Reversed window error** — `--date-from`/`--time-from` must come before

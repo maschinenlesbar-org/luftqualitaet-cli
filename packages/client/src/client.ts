@@ -214,14 +214,17 @@ export function stationDataNote(result: AirDataResult, station: number): string 
 /**
  * Whether the station catalogue (a `meta?use=measure` answer) lists `station`. Its
  * `stations` object is keyed by the station id; an answer without one is a
- * LuftParseError, never read as "unknown".
+ * LuftParseError naming `request` (the client passes `GET <url>` of the lookup), never read
+ * as "unknown".
  */
-export function catalogueHasStation(catalogue: AirDataResult, station: number): boolean {
+export function catalogueHasStation(
+  catalogue: AirDataResult,
+  station: number,
+  request = `GET ${API_PATH}/meta/json?use=measure`,
+): boolean {
   const stations = catalogue["stations"];
   if (!isRecord(stations)) {
-    throw new LuftParseError(
-      "Unexpected station catalogue from /meta/json (use=measure): expected a stations object.",
-    );
+    throw new LuftParseError(`${request}: unexpected station catalogue: expected a stations object.`);
   }
   return Object.hasOwn(stations, String(station));
 }
@@ -327,7 +330,9 @@ export class LuftqualitaetClient {
    */
   private async assertStationKnown(station: number, result: AirDataResult): Promise<void> {
     if (!hasNoRows(result["data"])) return;
-    if (!catalogueHasStation(await this.meta({ use: "measure" }), station)) throw new LuftNotFoundError(station);
+    const catalogue = await this.meta({ use: "measure" });
+    const request = `GET ${this.engine.describeUrl(`${API}/meta/json`, { use: "measure" })}`;
+    if (!catalogueHasStation(catalogue, station, request)) throw new LuftNotFoundError(station);
   }
 
   /** The available date range per scope/component/station for measurements. */

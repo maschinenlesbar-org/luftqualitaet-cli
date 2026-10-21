@@ -225,8 +225,8 @@ Antworten der API und die Hinweise dazu: ein Fehlerstatus, eine unbekannte Stati
 fehlerhafte Antwort — ungültiges JSON, die falsche Form, der falsche Inhaltstyp oder eine
 Zahl, die JSON nicht exakt tragen kann —, die
 Hinweise zu einem Zeitfenster ohne Daten oder zu einer Jahreszahl, die Hinweise zu 409 und
-500), `http` (die Verbindung, die Klartext-Warnung, je Wiederholung eine WARN-Zeile vor dem Warten) und `output` (ein Schreibfehler auf
-stdout). Ein Eintrag ist immer eine Zeile; Steuerzeichen darin werden maskiert.
+500), `http` (die Verbindung, die Klartext-Warnung, je Wiederholung eine WARN-Zeile vor dem Warten) und `output` (eine Antwort, die zu tief
+verschachtelt oder zu groß zum Ausgeben ist, ein Schreibfehler auf stdout). Ein Eintrag ist immer eine Zeile; Steuerzeichen darin werden maskiert.
 
 ---
 

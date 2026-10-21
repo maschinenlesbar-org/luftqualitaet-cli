@@ -5,6 +5,7 @@
 import { CommanderError, type Command } from "commander";
 import { buildProgram, defaultDeps } from "./program.js";
 import { logOf, type CliDeps } from "./io.js";
+import { OutputError } from "./shared.js";
 import { DEFAULT_LOG_FORMAT, createLogger, logFormatFromArgv, type LogFormat, type Logger } from "./log.js";
 import {
   LuftApiError,
@@ -205,11 +206,13 @@ export function processLogger(argv: readonly string[]): Logger {
  * The log area of a `LuftError` that is neither an API error nor a usage error: the
  * connection (`http`), a malformed answer (`api`: bad JSON, the wrong shape or content
  * type, an unknown charset, a station catalogue without stations — the API's answer as
- * much as an error status is), else `cli` (an answer nested too deeply to print).
+ * much as an error status is), an answer that can't be printed (`output`: nested too deeply
+ * or too large), else `cli`.
  */
 function areaOf(err: LuftError): string {
   if (err instanceof LuftNetworkError) return "http";
   if (err instanceof LuftParseError) return "api";
+  if (err instanceof OutputError) return "output";
   return "cli";
 }
 

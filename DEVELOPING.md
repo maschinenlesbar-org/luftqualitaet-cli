@@ -236,12 +236,19 @@ apps/cli/src/cli/
   driven in-process by tests with a mocked client and captured output — no subprocesses.
 - UBA responses are index/data structures whose exact shape varies by endpoint, so they are returned
   as faithful raw `JsonObject`s rather than partially-guessed types.
-- Rendering (`renderJson` in `shared.ts`): an answer nested too deeply to pretty-print is a
-  clean error that suggests `--compact`. `--compact` takes V8's fast path (`JSON.stringify`
-  without a gap), the only one that prints very deep nesting on Node 26, unless the answer
-  holds a string or key of 64 Mi characters or more (`holdsHugeString`): on Node 26 the fast
-  path aborts the process on a ~250 MB string, so such an answer goes through the gap path
-  (an empty gap, the same text). The printed JSON escapes what `JSON.stringify` leaves raw
+- Rendering (`renderJson` in `shared.ts`): an answer that can't be printed is an
+  `OutputError`, an ERROR record of `luftqualitaet.output` (exit 1) that names the cause:
+  `The answer is nested too deeply to pretty-print.` or `The answer is too large (more than
+  536870888 characters of JSON) to pretty-print.` (`… to print.` with `--compact`). It adds
+  `; try --compact` only when the compact form of this very answer prints (`compactPrints`,
+  probed, never assumed: V8's compact fast path is iterative on Node 26, but only for an answer
+  without integer-like keys, and every UBA answer has them, `"1"` and the station ids).
+  `--compact` takes V8's fast path (`JSON.stringify` without a gap) unless the answer holds a
+  string or key of 64 Mi characters or more (`holdsHugeString`: iterative, linear, an array
+  walked by index and an object by `for…in`, no allocation per value; `Object.entries` made a
+  pair per element and cost 3–7× the time and memory of the print itself): on Node 26 the
+  fast path aborts the process on a ~250 MB string, so such an answer goes through the gap
+  path (an empty gap, the same text). The printed JSON escapes what `JSON.stringify` leaves raw
   although a terminal acts on it (`escapeControlChars`): DEL, the C1 range U+0080–U+009F and
   the bidi controls (`isBidiControl`, exported: U+061C, U+200E, U+200F, U+202A–U+202E,
   U+2066–U+2069), so a station name with U+202E prints as `\u202e`.
@@ -460,7 +467,9 @@ everything that drives the CLI is in `apps/cli/test/`.
   raw: no text filter here, so its text case has no inputs; the station and component ids,
   query parameters, stand in for the path ids) and P25 (a number a double can't carry, and an
   empty answer, are errors on both sides; a number it carries prints as the same value). P26
-  (`-o` integrity) does not apply: there is no `-o`.
+  (`-o` integrity) does not apply: there is no `-o`. The fix plan of the 2026-10-21 sweep added
+  P27 (a big or odd answer is printed or refused in one clean record, within memory: a large
+  flat answer prints with `--compact` under a 256 MB heap; starts the built bin, 30 s).
 
 ## Continuous integration
 
@@ -531,7 +540,7 @@ breaks (`sanitizeServerText` strips only the other controls); the record escapes
 `LuftParseError`: bad JSON, the wrong shape or content type, an unknown charset, a station
 catalogue without stations — and the notes and hints about an answer — `annualDataNote`,
 `stationDataNote`, the 409/500 hints), `http` (the
-connection, the cleartext warning, one WARN per retry before it waits) and `output` (a failed write to stdout). A failed write
+connection, the cleartext warning, one WARN per retry before it waits) and `output` (an answer too deep or too large to print, a failed write to stdout). A failed write
 to stdout other than a closed pipe (`handleOutputErrors`, in the bin shim, outside `run()`)
 is an ERROR record of `luftqualitaet.output` (`Could not write to stdout: …`), and the
 shim's last-resort `Unexpected error: …` an ERROR of `luftqualitaet.cli`, both in the

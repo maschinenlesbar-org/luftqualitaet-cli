@@ -237,7 +237,8 @@ Zahl, die JSON nicht exakt tragen kann —, durch U+FFFD ersetzter Text, die
 Hinweise zu einem Zeitfenster ohne Daten oder zu einer Jahreszahl, die Hinweise zu 409 und
 500), `http` (die Verbindung, die Klartext-Warnung, je Wiederholung eine WARN-Zeile vor dem Warten) und `output` (eine Antwort, die zu tief
 verschachtelt oder zu groß zum Ausgeben ist, ein fehlgeschlagener oder abgeschnittener
-Schreibvorgang auf stdout). Ein Eintrag ist immer eine Zeile; Steuerzeichen darin werden maskiert.
+Schreibvorgang auf stdout). Ein Eintrag ist immer eine Zeile; Steuerzeichen darin werden maskiert (die im Text eines
+Servers werden vorher entfernt).
 
 ---
 

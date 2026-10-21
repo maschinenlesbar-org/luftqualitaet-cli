@@ -569,7 +569,11 @@ forge another one or steer the terminal. Before that a lone surrogate (half a
 character, which jq rejects, stopping the whole stream) becomes U+FFFD (`toWellFormed`,
 exported from `errors.ts`), and a message longer than `MAX_RECORD_MESSAGE` (4000
 characters, exported) is cut at a code point and ends in `… (N more characters)`. The library's error messages keep a server's line
-breaks (`sanitizeServerText` strips only the other controls); the record escapes them. The areas are `cli` (usage errors, commander's messages, unexpected errors),
+breaks and bidi controls, which the record escapes; every other C0 control (tab kept), DEL and
+C1 are removed from server text first (`sanitizeServerText`: an error `detail`, a Content-Type,
+a charset, a redirect target, a transport's reason), so a server's ESC never shows as `\u001b`
+either: it is gone, and the printable rest of its sequence (`[31m`) stays as text. That is the
+deliberate defence: a server's text must not drive the terminal. The areas are `cli` (usage errors, commander's messages, unexpected errors),
 `api` (the API's answers: HTTP errors, an unknown station, text replaced with U+FFFD, a malformed answer — a
 `LuftParseError`: bad JSON, the wrong shape or content type, an unknown charset, a station
 catalogue without stations — and the notes and hints about an answer — `annualDataNote`,

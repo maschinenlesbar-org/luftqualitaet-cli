@@ -220,10 +220,13 @@ valid in its charset and half characters (lone surrogates) are replaced with U+F
 output stays readable for `jq`, and a `WARN` record of `luftqualitaet.api` says how many. By
 default it is written log4j style;
 `--log-format jsonl` writes one JSON object per line instead. A record is always one line:
-a line break, a control character or a bidi control in a message (a server's text, a value
-you typed) is written as an escape (`\n`, `\u001b`, `\u202e`), so it can neither split a
-record nor forge another one, nor steer the terminal; a message longer than 4000 characters
-is cut and ends in `… (N more characters)`:
+a line break, a control character or a bidi control in a message is written as an escape
+(`\n`, `\u001b`, `\u202e`), so it can neither split a record nor forge another one, nor steer
+the terminal. A value you typed keeps every character, escaped; in a server's text (an error
+message, a Content-Type) the control characters other than tab and line break are removed
+before that (an ESC with the `[31m` after it shows as `[31m`), so what a server sends can't
+drive the terminal even inside an escape. A message longer than 4000 characters is cut and
+ends in `… (N more characters)`:
 
 ```text
 2026-10-09T14:03:12.481Z WARN  [luftqualitaet.http] requests to mirror.test are sent unencrypted (http:, not https:)

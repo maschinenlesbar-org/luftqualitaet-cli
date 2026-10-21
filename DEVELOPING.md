@@ -496,7 +496,9 @@ everything that drives the CLI is in `apps/cli/test/`.
   raw: no text filter here, so its text case has no inputs; the station and component ids,
   query parameters, stand in for the path ids) and P25 (a number a double can't carry, and an
   empty answer, are errors on both sides; a number it carries prints as the same value). P26
-  (`-o` integrity) does not apply: there is no `-o`. The fix plan of the 2026-10-21 sweep added
+  (output integrity) runs its stdout case only (`HAS_OUTPUT_OPTION = false`: there is no `-o`):
+  stdout redirected to a file under `ulimit -f` exits 1 with an ERROR record of
+  `luftqualitaet.output`. The fix plan of the 2026-10-21 sweep added
   P27 (a big or odd answer is printed or refused in one clean record, within memory: a large
   flat answer prints with `--compact` under a 256 MB heap, 20 MB of DEL print escaped under a
   512 MB heap, and 90 MB of DEL, too large once escaped, are an ERROR record of
@@ -572,9 +574,13 @@ breaks (`sanitizeServerText` strips only the other controls); the record escapes
 `LuftParseError`: bad JSON, the wrong shape or content type, an unknown charset, a station
 catalogue without stations — and the notes and hints about an answer — `annualDataNote`,
 `stationDataNote`, the 409/500 hints), `http` (the
-connection, the cleartext warning, one WARN per retry before it waits) and `output` (an answer too deep or too large to print, a failed write to stdout). A failed write
+connection, the cleartext warning, one WARN per retry before it waits) and `output` (an answer too deep or too large to print, a failed or cut-short write to stdout). A failed write
 to stdout other than a closed pipe (`handleOutputErrors`, in the bin shim, outside `run()`)
-is an ERROR record of `luftqualitaet.output` (`Could not write to stdout: …`), and the
+is an ERROR record of `luftqualitaet.output` (`Could not write to stdout: …`; with stdout a
+regular file, `defaultIO.out` writes through `stdoutWriter`, every byte with `writeSync` in a
+loop, so a write a full disk or a file-size limit cuts short, EFBIG or ENOSPC, is that error
+and exit 1, never a shortened file with exit 0; a pipe or a terminal goes through the stream as
+before), and the
 shim's last-resort `Unexpected error: …` an ERROR of `luftqualitaet.cli`, both in the
 format argv asks for and redacted like the run's log (`processLogger`), and so are Node's
 own process warnings (`NODE_TLS_REJECT_UNAUTHORIZED=0`), WARN records of

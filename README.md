@@ -210,7 +210,9 @@ Each line on stderr is a **log record**: a timestamp (UTC), a level (`ERROR`, `W
 errors, `luftqualitaet.api` for the API's answers and the notes and hints about them, a
 malformed answer included,
 `luftqualitaet.http` for the connection, `luftqualitaet.output` for output that fails: an
-answer nested too deeply or too large to print, a failed write to stdout). An answer too deep
+answer nested too deeply or too large to print, a failed or cut-short write to stdout: with
+stdout redirected to a file, a full disk or a file-size limit is an error, exit 1, never a
+shortened file with exit 0). An answer too deep
 or too large to pretty-print says which of the two it is, and suggests `--compact` only when
 `--compact` prints that answer. An error about an answer names the request (`GET <url>: the
 answer is not valid JSON`). Text in an answer is never changed silently: bytes that are not

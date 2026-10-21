@@ -230,7 +230,7 @@ implements only the open, read-only `GET` endpoints.
 commander's messages, unexpected errors), `api` (the API's answers and the notes on them:
 an error status, an unknown station, a malformed answer — bad JSON, the wrong shape or
 content type, a number JSON can't carry exactly —, text replaced with U+FFFD, the notes on an empty window or an annual figure, the 409/500 hints),
-`http` (the connection, the cleartext warning, one WARN per retry before it waits) and `output` (an answer too deep or too large to print, a failed write to stdout). A
+`http` (the connection, the cleartext warning, one WARN per retry before it waits) and `output` (an answer too deep or too large to print, a failed or cut-short write to stdout). A
 record is always one line; control characters in it are escaped.
 
 ---

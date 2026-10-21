@@ -318,7 +318,13 @@ envelope its endpoint documents (`responseShapeProblem`, exported, with the shap
 `request` + `indices` + `data` rows; `meta`: `request`): `null`, `{}`, an error object or
 a proxy's page is a `LuftParseError` naming the path (CLI exit `1`), never data or an
 empty result read as "nothing found". A non-JSON body's parse error names its
-`Content-Type`.
+`Content-Type`. A number `JSON.parse` can't carry exactly is a `LuftParseError` too, never a
+changed value (`Unexpected response from <path>: the number <N> cannot be represented
+exactly.`, `firstInexactNumber`): one out of a double's range (`1e400`, which would print as
+`null`), one past 2^53 in any written form (`12345678901234567890`, `…890.0`,
+`9007199254740993e0`, `9007199254740992.5`), and a non-zero one too small for a double
+(`1e-400`, which would become 0). Below 2^53 a decimal fraction keeps a double's precision,
+so the measured values (`17.384`) pass unchanged.
 
 **The transport contract, enforced by the engine.** `timeoutMs` and `maxResponseBytes`
 hold for every transport, not only the built-in one: the engine runs each transport call

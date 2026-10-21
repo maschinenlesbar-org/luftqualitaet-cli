@@ -222,7 +222,8 @@ Zeitstempel, eine Stufe (`ERROR`, `WARN`, `INFO`) und ein Thema `luftqualitaet.<
 als Text (im Stil von log4j) oder mit `--log-format jsonl` als ein JSON-Objekt pro Zeile.
 Die Bereiche: `cli` (Bedienfehler, Meldungen von commander, unerwartete Fehler), `api` (die
 Antworten der API und die Hinweise dazu: ein Fehlerstatus, eine unbekannte Station, eine
-fehlerhafte Antwort — ungültiges JSON, die falsche Form oder der falsche Inhaltstyp —, die
+fehlerhafte Antwort — ungültiges JSON, die falsche Form, der falsche Inhaltstyp oder eine
+Zahl, die JSON nicht exakt tragen kann —, die
 Hinweise zu einem Zeitfenster ohne Daten oder zu einer Jahreszahl, die Hinweise zu 409 und
 500), `http` (die Verbindung, die Klartext-Warnung, je Wiederholung eine WARN-Zeile vor dem Warten) und `output` (ein Schreibfehler auf
 stdout). Ein Eintrag ist immer eine Zeile; Steuerzeichen darin werden maskiert.

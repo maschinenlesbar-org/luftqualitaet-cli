@@ -846,3 +846,30 @@ test("the README's --log-format jsonl example runs as shown: an ERROR record of 
   assert.match(record.msg ?? "", /^Station 2 not found: /);
   assert.match(line[2]!, /"topic":"luftqualitaet\.api","msg":"Station 2 not found: …"/);
 });
+
+test("a URL with a password anywhere in an argument is redacted on stderr: padded, mid-phrase, dash-led, encoded (T15)", async () => {
+  const url = "https://bob:s3cretpw@mirror.example/x";
+  const window = ["--date-from", "2024-01-01", "--time-from", "1", "--date-to", "2024-01-01", "--time-to", "24"];
+  const cases: string[][] = [];
+  for (const value of [` ${url}`, `\t${url}`, `x ${url} y`, ` -${url}`, `de${url}`, encodeURIComponent(` ${url}`)]) {
+    cases.push(
+      ["components", "--lang", value], // the library's refusal quotes it
+      ["thresholds", "--use", value],
+      ["airquality", ...window, "--station", value], // commander's echo of a rejected value
+      ["airquality", "--date-from", value, "--time-from", "1", "--date-to", "2024-01-01", "--time-to", "24", "--station", "1"],
+      [value], // an unknown command
+      ["components", value], // a stray argument
+    );
+  }
+  for (const argv of cases) {
+    for (const format of [[], ["--log-format", "jsonl"]]) {
+      const cli = makeCli(() => jsonResponse(OK_BODY));
+      const code = await run([...format, ...argv], cli.deps);
+      const err = cli.err.join("\n");
+      assert.notEqual(code, 0, argv.join(" "));
+      assert.ok(err !== "", argv.join(" "));
+      assert.ok(!err.includes("s3cretpw") && !err.includes("bob:"), `${JSON.stringify(argv)}: ${err}`);
+      assert.equal(cli.mt.calls.length, 0, argv.join(" "));
+    }
+  }
+});

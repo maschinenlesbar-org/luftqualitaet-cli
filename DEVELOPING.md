@@ -433,9 +433,11 @@ cut out. The CLI also redacts on output: `run.ts` (`redactionFor`, `withRedacted
 takes the exact userinfo of every URL argument (`credentialsIn`, exported) and replaces it
 with `***` in everything it prints — commander's usage errors, which echo rejected values,
 and the library's messages for `--lang`/`--use`/`--index` — so a password with spaces,
-quotes, `#`, `?` or `/` is caught as well as an ordinary one. Only a value that starts with
-a scheme counts (a bare `a:b@c` is a User-Agent or a typed value as often as a credential),
-except as the `--base-url` value, where a `user:password@host` typed without its scheme is
+quotes, `#`, `?` or `/` is caught as well as an ordinary one. A URL counts wherever it
+starts in an argument (`urlsWithin`: padded, after a dash, inside a phrase), and in an
+argument's percent-decoded form too, and the userinfo is also replaced in its percent-encoded
+form. Only a URL with a scheme counts (a bare `a:b@c` is a User-Agent or a typed value as
+often as a credential), except as the `--base-url` value, where a `user:password@host` typed without its scheme is
 still a credential. The log replaces them in each
 record's *message*, before the record is cut and escaped, and writes it to the raw stderr:
 the frame (time, level, topic) is never touched, and a password with DEL, C1 or bidi

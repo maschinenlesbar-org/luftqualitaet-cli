@@ -25,6 +25,7 @@ export {
   assertHeaderValue,
   cleartextProblem,
   cutForMessage,
+  isBidiControl,
   isTransientNetworkError,
   parseRetryAfter,
   validateBaseUrl,

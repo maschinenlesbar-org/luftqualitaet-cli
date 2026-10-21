@@ -239,7 +239,10 @@ apps/cli/src/cli/
   without a gap), the only one that prints very deep nesting on Node 26, unless the answer
   holds a string or key of 64 Mi characters or more (`holdsHugeString`): on Node 26 the fast
   path aborts the process on a ~250 MB string, so such an answer goes through the gap path
-  (an empty gap, the same text).
+  (an empty gap, the same text). The printed JSON escapes what `JSON.stringify` leaves raw
+  although a terminal acts on it (`escapeControlChars`): DEL, the C1 range U+0080–U+009F and
+  the bidi controls (`isBidiControl`, exported: U+061C, U+200E, U+200F, U+202A–U+202E,
+  U+2066–U+2069), so a station name with U+202E prints as `\u202e`.
 
 ## Library / technical terms
 

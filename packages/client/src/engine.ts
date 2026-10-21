@@ -182,7 +182,7 @@ export function parseRetryAfter(
  * or MITM'd endpoint could drive ANSI/OSC escape sequences into the user's
  * terminal when the message is printed raw to stderr. The CLI's JSON output is
  * escaped separately (`escapeControlChars` in cli/shared.ts): `JSON.stringify`
- * alone leaves DEL and the C1 range raw.
+ * alone leaves DEL, the C1 range and the bidi controls raw.
  */
 function sanitizeServerText(text: string): string {
   let out = "";
@@ -193,6 +193,21 @@ function sanitizeServerText(text: string): string {
     out += ch;
   }
   return out;
+}
+
+/**
+ * True for a bidi control: U+061C, U+200E, U+200F, U+202A–U+202E, U+2066–U+2069. A terminal
+ * applies them to the text that follows, so an override in server text can reorder what the
+ * user sees ("Trojan Source" spoofing). The CLI escapes them in its JSON output.
+ */
+export function isBidiControl(code: number): boolean {
+  return (
+    code === 0x061c ||
+    code === 0x200e ||
+    code === 0x200f ||
+    (code >= 0x202a && code <= 0x202e) ||
+    (code >= 0x2066 && code <= 0x2069)
+  );
 }
 
 /**

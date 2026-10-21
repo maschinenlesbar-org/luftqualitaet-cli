@@ -239,6 +239,22 @@ test("DEL and C1 control characters in server data are escaped in the JSON outpu
   }
 });
 
+test("bidi controls in server data are escaped in the JSON output", async () => {
+  // A right-to-left override in a station name reorders what the terminal shows after it
+  // ("Trojan Source"); JSON.stringify leaves it raw.
+  const bidi = [0x061c, 0x200e, 0x200f, 0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069];
+  const served = { count: 1, indices: [], name: `Station ${String.fromCharCode(...bidi)} evil` };
+  for (const format of [[], ["--compact"]]) {
+    const cli = makeCli(() => jsonResponse(served));
+    assert.equal(await run([...format, "components"], cli.deps), 0);
+    const text = cli.out.join("\n");
+    assert.deepEqual([...text].filter((c) => bidi.includes(c.charCodeAt(0))), [], format.join(" "));
+    assert.ok(text.includes("\\u202e"), text);
+    assert.ok(text.includes(bidi.map((c) => `\\u${c.toString(16).padStart(4, "0")}`).join("")), text);
+    assert.deepEqual(JSON.parse(text), served);
+  }
+});
+
 test("no command prints help to stdout and exits 0", async () => {
   const cli = makeCli(() => jsonResponse(OK_BODY));
   const code = await run([], cli.deps);

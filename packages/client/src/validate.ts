@@ -183,7 +183,7 @@ export interface FilterOptions {
    * an unknown key is rejected, because the API ignores it and answers as if it weren't
    * there — the unfiltered result, or another series than the one meant.
    */
-  allowUnknownFilters?: boolean;
+  allowUnknownFilters?: boolean | undefined;
 }
 
 /**

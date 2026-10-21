@@ -56,21 +56,21 @@ export interface EngineOptions {
    * fragment, whitespace or control characters) throws a LuftValidationError, and so
    * does (in the client) a path that already ends in the API path.
    */
-  baseUrl?: string;
+  baseUrl?: string | undefined;
   /** Swappable transport. Defaults to the built-in node http/https transport. */
-  transport?: Transport;
+  transport?: Transport | undefined;
   /**
    * Value of the User-Agent header (default `luftqualitaet-cli`). A blank value, a
    * control character other than tab, or a character above U+00FF throws a
    * LuftValidationError.
    */
-  userAgent?: string;
+  userAgent?: string | undefined;
   /**
    * Time limit per request in milliseconds, covering the whole response body, not only
    * idle gaps (0 disables; at most `MAX_TIMEOUT_MS`, 2^31 - 1 ms). Enforced by the engine
    * for every transport.
    */
-  timeoutMs?: number;
+  timeoutMs?: number | undefined;
   /**
    * Number of automatic retries for transient (429/503) responses and for a GET whose
    * connection was reset (see {@link isTransientNetworkError}), 0..`MAX_RETRIES` (10).
@@ -78,28 +78,28 @@ export interface EngineOptions {
    * longer (up to `MAX_RETRY_AFTER_MS`; a longer one is not retried, and the LuftApiError
    * says so).
    */
-  maxRetries?: number;
+  maxRetries?: number | undefined;
   /**
    * Base backoff between retries in milliseconds (grows linearly), an integer
    * 0..`MAX_RETRY_AFTER_MS` (30 000). Defaults to 200. It is also the floor under a
    * `Retry-After`: the header can lengthen a wait, never shorten it.
    */
-  retryDelayMs?: number;
+  retryDelayMs?: number | undefined;
   /** Number of HTTP redirects (301/302/303/307/308) to follow, 0..`MAX_REDIRECTS` (20). Defaults to 5. */
-  maxRedirects?: number;
+  maxRedirects?: number | undefined;
   /**
    * Hard cap on response body size in bytes (defends against memory exhaustion
    * from a hostile/buggy endpoint). Defaults to 100 MiB; set to 0 for no limit.
    * Enforced by the engine for every transport.
    */
-  maxResponseBytes?: number;
+  maxResponseBytes?: number | undefined;
   /** Injectable sleep, primarily for deterministic tests. */
-  sleep?: (ms: number) => Promise<void>;
+  sleep?: ((ms: number) => Promise<void>) | undefined;
   /**
    * Called once per retry, right before the backoff sleep, for each retried 429/503
    * and reset connection; never when there is no retry. A throw is swallowed.
    */
-  onRetry?: (event: RetryEvent) => void;
+  onRetry?: ((event: RetryEvent) => void) | undefined;
 }
 
 /** What `EngineOptions.onRetry` is told about one retry. */

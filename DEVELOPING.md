@@ -79,6 +79,12 @@ user's input (a redirect target, a Content-Type or charset, a transport's error 
 rejected parameter value, after its userinfo is cut out), so `err.message` stays bounded
 for a library caller; `LuftApiError.body` keeps the whole body.
 
+Every optional field of the option and parameter types (`EngineOptions`, `FilterOptions`,
+`ListParams`, `YearComponentParams`, `ThresholdParams`, `MetaParams`) is declared
+`?: T | undefined`: a field given as `undefined` means the same as one left out (its
+default, or no parameter), so `new LuftqualitaetClient({ baseUrl: process.env.X })`
+compiles in a consumer that sets `exactOptionalPropertyTypes`.
+
 **Annual balances vs transgressions.** Both answer "how often was the limit exceeded",
 but from different data (UBA's Schnittstellenbeschreibung Luftdaten-API): `annualBalances`
 from the final data, published in June of the following year; `transgressions` is the
@@ -395,6 +401,9 @@ everything that drives the CLI is in `apps/cli/test/`.
 - **`query.test.ts`** — query-string serialisation.
 - **`http.test.ts`** — the default transport against a real loopback `http.createServer`.
 - **`engine.test.ts`** — URL building, JSON decoding, error mapping, 429/503 retry, redirects — mocked transport.
+- **`types.test.ts`** — compiles a consumer file with `exactOptionalPropertyTypes` against the
+  built declarations (starts `tsc`, 30 s), and checks that every option given as `undefined`
+  means its default.
 - **`client.test.ts`** — a parameterized table over all 15 client methods asserting URL/query mapping plus parameter pruning — mocked transport.
 - **`validate.test.ts`** — `assertValid`, `LuftValidationError` and its exit-code mapping, and the `parity()` helper.
 - **`parity.test.ts`** — CLI ↔ library parity: one input through `run()` and through the library call on one recording mock transport (`parity()` in `apps/cli/test/helpers.ts`), asserting the same outcome.

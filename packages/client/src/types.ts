@@ -21,8 +21,8 @@ export type AirDataResult = JsonObject;
 
 /** Common options for the reference-list endpoints. */
 export interface ListParams {
-  lang?: Lang;
-  index?: IndexKind;
+  lang?: Lang | undefined;
+  index?: IndexKind | undefined;
 }
 
 /** The time window + station shared by the data endpoints. */
@@ -58,24 +58,24 @@ export interface YearComponentParams {
   component: number;
   /** Four-digit year, >= 2016. */
   year: number;
-  lang?: Lang;
-  index?: IndexKind;
+  lang?: Lang | undefined;
+  index?: IndexKind | undefined;
 }
 
 /** Parameters for `/thresholds/json`. */
 export interface ThresholdParams {
   use: ThresholdUse;
-  lang?: Lang;
-  component?: number;
-  scope?: number;
+  lang?: Lang | undefined;
+  component?: number | undefined;
+  scope?: number | undefined;
 }
 
 /** Parameters for `/meta/json`. */
 export interface MetaParams {
   use: MetaUse;
-  lang?: Lang;
-  date_from?: string;
-  date_to?: string;
-  time_from?: number;
-  time_to?: number;
+  lang?: Lang | undefined;
+  date_from?: string | undefined;
+  date_to?: string | undefined;
+  time_from?: number | undefined;
+  time_to?: number | undefined;
 }

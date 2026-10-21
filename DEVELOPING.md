@@ -337,12 +337,14 @@ empty result read as "nothing found". A non-JSON body's parse error names its
 changed value (`Unexpected response from <path>: the number <N> cannot be represented
 exactly.`, `firstInexactNumber`): one out of a double's range (`1e400`, which would print as
 `null`), one past 2^53 in any written form (`12345678901234567890`, `…890.0`,
-`9007199254740993e0`, `9007199254740992.5`), and a non-zero one too small for a double
-(`1e-400`, which would become 0). Past 2^53 the check compares the number as it would print
-(`String(value)`) with the number as written, so a double a server wrote in its shortest form
-(`1E23`, `1.7976931348623157E308`) passes, while `12345678901234567890` (which prints as
-`…7000`) is refused. Below 2^53 a decimal fraction keeps a double's precision, so the measured
-values (`17.384`) pass unchanged.
+`9007199254740993e0`, `9007199254740992.5`), a non-zero one too small for a double
+(`1e-400`, which would become 0), and a subnormal one (below 2.2250738585072014e-308, where a
+double has fewer significant digits) that would print as another number (`3e-324`, which
+would print as `5e-324`). Past 2^53 and in the subnormal range the check compares the number
+as it would print (`String(value)`) with the number as written, so a double a server wrote in
+its shortest form (`1E23`, `1.7976931348623157E308`, `5e-324`, `1e-310`) passes, while
+`12345678901234567890` (which prints as `…7000`) is refused. Between them a decimal fraction
+keeps a double's precision, so the measured values (`17.384`) pass unchanged.
 
 **The transport contract, enforced by the engine.** `timeoutMs` and `maxResponseBytes`
 hold for every transport, not only the built-in one: the engine runs each transport call

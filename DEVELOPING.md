@@ -441,6 +441,11 @@ everything that drives the CLI is in `apps/cli/test/`.
   base-URL variable and no secret but the URL's own credentials here, so those two cases are
   skipped) and P21 (every relative link in `README.md` points to a file `package.json` `files`
   ships, since npmjs.com shows the README; other documents are linked by their GitHub URL).
+  The kit rollout of 2026-10-21 added P24 (an input is canonicalised or refused, never sent
+  raw: no text filter here, so its text case has no inputs; the station and component ids,
+  query parameters, stand in for the path ids) and P25 (a number a double can't carry, and an
+  empty answer, are errors on both sides; a number it carries prints as the same value). P26
+  (`-o` integrity) does not apply: there is no `-o`.
 
 ## Continuous integration
 

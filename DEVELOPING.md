@@ -251,7 +251,12 @@ apps/cli/src/cli/
   path (an empty gap, the same text). The printed JSON escapes what `JSON.stringify` leaves raw
   although a terminal acts on it (`escapeControlChars`): DEL, the C1 range U+0080–U+009F and
   the bidi controls (`isBidiControl`, exported: U+061C, U+200E, U+200F, U+202A–U+202E,
-  U+2066–U+2069), so a station name with U+202E prints as `\u202e`.
+  U+2066–U+2069), so a station name with U+202E prints as `\u202e`. Each such character becomes
+  six, so the output is measured first: one longer than V8's longest string is an
+  `OutputError` (`The answer is too large to print (N characters once its control characters
+  are escaped).`, exit 1), before anything is built; otherwise it is built in chunks of 64 Ki
+  characters and joined once (one `+=` per character made a rope of 100 M pieces, and 90 MiB of
+  DEL ended in a heap out-of-memory crash, exit 134).
 
 ## Library / technical terms
 
@@ -469,7 +474,9 @@ everything that drives the CLI is in `apps/cli/test/`.
   empty answer, are errors on both sides; a number it carries prints as the same value). P26
   (`-o` integrity) does not apply: there is no `-o`. The fix plan of the 2026-10-21 sweep added
   P27 (a big or odd answer is printed or refused in one clean record, within memory: a large
-  flat answer prints with `--compact` under a 256 MB heap; starts the built bin, 30 s).
+  flat answer prints with `--compact` under a 256 MB heap, 20 MB of DEL print escaped under a
+  512 MB heap, and 90 MB of DEL, too large once escaped, are an ERROR record of
+  `luftqualitaet.output`; starts the built bin, 30 s).
 
 ## Continuous integration
 

@@ -385,7 +385,11 @@ value, the decoded `user:password`, and the password alone from 4 characters on
 (`redactSecrets`). The CLI replaces the Basic value and the pair on stdout and stderr, the
 bare password on stderr only (on stdout a short password may well occur in the data). Whatever a custom transport
 throws reaches the caller as a `LuftNetworkError` (`GET <url> failed: <reason>`, the
-original as `cause`).
+original as `cause`), and so does every network failure of the default transport and the
+engine: a timeout (`… failed: Request exceeded the 5000ms deadline`), the size cap, a
+refused connection (`… failed: connect ECONNREFUSED 127.0.0.1:9`), a DNS failure and a
+reset, the URL with its userinfo redacted, so a caller making several calls can tell which
+one failed.
 
 ## Testing
 

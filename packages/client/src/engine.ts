@@ -539,12 +539,17 @@ export class RequestEngine {
         // password (fetch refuses a URL with credentials and quotes it). Keep the
         // library's error contract — every failure is a LuftError — and scrub that text.
         if (cause instanceof LuftError && !(cause instanceof LuftNetworkError)) throw cause;
-        if (cause instanceof LuftNetworkError && this.scrub(cause.message) === cause.message) throw cause;
+        // Every network failure names the request — a timeout (the transport's or the
+        // engine's deadline), a refused connection, a DNS failure, a reset — with the
+        // original as the cause; one that names it already is passed on.
+        const prefix = `${method} ${redactUrl(url)} failed: `;
+        if (cause instanceof LuftNetworkError && cause.message.startsWith(prefix) && this.scrub(cause.message) === cause.message) {
+          throw cause;
+        }
         const reason = cause instanceof Error ? cause.message : String(cause);
-        throw new LuftNetworkError(
-          `${method} ${redactUrl(url)} failed: ${cutForMessage(sanitizeServerText(this.scrub(reason)))}`,
-          { cause: this.scrubCause(cause) },
-        );
+        throw new LuftNetworkError(`${prefix}${cutForMessage(sanitizeServerText(this.scrub(reason)))}`, {
+          cause: this.scrubCause(cause),
+        });
       }
 
       // An injected transport may resolve with anything; a malformed HttpResponse would

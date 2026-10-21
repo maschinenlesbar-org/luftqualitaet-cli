@@ -561,3 +561,47 @@ test("onRetry is never called without a retry", async () => {
 test("onRetry must be a function", () => {
   assert.throws(() => new RequestEngine({ onRetry: 5 as never }), LuftValidationError);
 });
+
+test("a timeout, the size cap, a refused connection, a DNS failure and a reset name the request", async () => {
+  // They said only "Request exceeded the 20ms deadline", "connect ECONNREFUSED 127.0.0.1:9" or
+  // "getaddrinfo ENOTFOUND …", so a caller making several calls could not tell which one failed.
+  const url = "http://127.0.0.1:9/api/x?station=5";
+  const refused = Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:9"), { code: "ECONNREFUSED" });
+  const dns = Object.assign(new Error("getaddrinfo ENOTFOUND luft.invalid"), { code: "ENOTFOUND" });
+  const reset = Object.assign(new Error("socket hang up"), { code: "ECONNRESET" });
+  const cases: Array<[string, ConstructorParameters<typeof RequestEngine>[0], RegExp]> = [
+    ["engine deadline", { transport: () => new Promise<never>(() => {}), timeoutMs: 20 }, /^Request exceeded the 20ms deadline$/],
+    ["size cap", { transport: async () => rawResponse("x".repeat(100), "application/json"), maxResponseBytes: 10 }, /^Response exceeded the size limit of 10 bytes/],
+    ["refused", { transport: async () => { throw new LuftNetworkError(refused.message, { cause: refused }); } }, /^connect ECONNREFUSED 127\.0\.0\.1:9$/],
+    ["dns", { transport: async () => { throw new LuftNetworkError(dns.message, { cause: dns }); } }, /^getaddrinfo ENOTFOUND luft\.invalid$/],
+    ["reset", { transport: async () => { throw new LuftNetworkError(reset.message, { cause: reset }); } }, /^socket hang up$/],
+    ["transport timeout", { transport: async () => { throw new LuftNetworkError("Request timed out after 5ms"); } }, /^Request timed out after 5ms$/],
+  ];
+  for (const [name, options, reason] of cases) {
+    const e = new RequestEngine({ baseUrl: "http://127.0.0.1:9", maxRetries: 0, ...options });
+    await assert.rejects(e.getJson("/api/x", { station: 5 }), (err: unknown) => {
+      assert.ok(err instanceof LuftNetworkError, name);
+      assert.ok(err.message.startsWith(`GET ${url} failed: `), `${name}: ${err.message}`);
+      assert.match(err.message.slice(`GET ${url} failed: `.length), reason, name);
+      // The original stays the cause.
+      if (name !== "size cap") assert.ok(err.cause instanceof Error, `${name}: cause`);
+      return true;
+    });
+  }
+  // The base URL's userinfo is redacted, and a message that names the request already is not
+  // prefixed twice.
+  const secret = new RequestEngine({ baseUrl: "http://user:pw@127.0.0.1:9", maxRetries: 0, transport: async () => { throw new LuftNetworkError(refused.message, { cause: refused }); } });
+  await assert.rejects(secret.getJson("/api/x"), { message: "GET http://127.0.0.1:9/api/x failed: connect ECONNREFUSED 127.0.0.1:9" });
+  const named = new RequestEngine({ baseUrl: "http://127.0.0.1:9", transport: async () => { throw new LuftNetworkError(`GET ${url} failed: x`); } });
+  await assert.rejects(named.getJson("/api/x", { station: 5 }), { message: `GET ${url} failed: x` });
+});
+
+test("a refused connection through the default transport names the request", async () => {
+  // Port 9 (discard) on loopback: nothing listens there, so the connection is refused locally.
+  const e = new RequestEngine({ baseUrl: "http://127.0.0.1:9", maxRetries: 0, timeoutMs: 2000 });
+  await assert.rejects(e.getJson("/api/x"), (err: unknown) => {
+    assert.ok(err instanceof LuftNetworkError);
+    assert.match(err.message, /^GET http:\/\/127\.0\.0\.1:9\/api\/x failed: connect ECONNREFUSED 127\.0\.0\.1:9$/);
+    return true;
+  });
+});

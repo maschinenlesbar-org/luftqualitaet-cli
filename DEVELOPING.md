@@ -348,7 +348,11 @@ that aren't valid in the answer's charset and lone surrogates written as JSON es
 engine option `onWarning` gets one message naming the count and the request (`GET <url>: 2
 characters of the answer were not valid text (invalid bytes or a lone surrogate) and replaced
 with U+FFFD.`); the CLI's `action()` logs it as a `WARN` record of `luftqualitaet.api`. One
-bad character never sinks a whole answer. Every 2xx body must then have the
+bad character never sinks a whole answer. A body too large to become one string (512 MB and
+more, possible only with `maxResponseBytes: 0` or `--max-response-bytes 0`) is a
+`LuftParseError`, `GET <url>: the answer is too large to read as text (N bytes; the longest
+string is 536870888 characters).`, not a plain `Error` ("Unexpected error" in the CLI); an
+error status with such a body keeps its `LuftApiError`, without the body. Every 2xx body must then have the
 envelope its endpoint documents (`responseShapeProblem`, exported, with the shapes
 `list`: `count` + `indices`; `window`/`limits`: `request` + a `data` object; `annual`:
 `request` + `indices` + `data` rows; `meta`: `request`): `null`, `{}`, an error object or

@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { run } from "../src/cli/run.js";
-import { renderJson } from "../src/cli/shared.js";
+import { forbidRepeatedOptions, renderJson } from "../src/cli/shared.js";
+import { buildProgram } from "../src/cli/program.js";
 import { LuftqualitaetClient } from "@maschinenlesbar.org/luftqualitaet-client/internal/client";
 import { credentialsIn } from "@maschinenlesbar.org/luftqualitaet-client/internal/errors";
 import type { CliDeps } from "../src/cli/io.js";
@@ -782,5 +783,45 @@ test("a 409 from the station catalogue lookup gets no unknown-station hint, only
     const records = cli.err.map(untimed);
     assert.equal(records.length, 1, records.join("\n"));
     assert.match(records[0] ?? "", /^ERROR \[luftqualitaet\.api\] HTTP 409 for GET .*\/meta\/json\?use=measure/);
+  }
+});
+
+test("a boolean that can be switched both ways may be given only once: optional value, or --x / --no-x (T11)", async () => {
+  // commander calls no value parser for a bare `--is-open`, so `--is-open false --is-open` turned
+  // into true without a word (fragdenstaat-cli); `--x --no-x` keeps the last one the same way.
+  const build = () => {
+    const program = buildProgram(makeCli(() => jsonResponse(OK_BODY)).deps);
+    const seen: unknown[] = [];
+    program
+      .command("flags")
+      .option("--is-open [bool]", "optional value", (value: string) => value === "true")
+      .option("--cache", "negatable")
+      .option("--no-cache", "negatable")
+      .option("--archived", "plain flag")
+      .action((opts: Record<string, unknown>) => void seen.push(opts));
+    forbidRepeatedOptions(program);
+    for (const command of program.commands) command.exitOverride().configureOutput({ writeErr: () => {}, outputError: () => {} });
+    program.exitOverride();
+    return { program, seen };
+  };
+  for (const argv of [
+    ["--is-open", "false", "--is-open"],
+    ["--is-open", "--is-open", "false"],
+    ["--is-open", "--is-open"],
+    ["--cache", "--no-cache"],
+    ["--no-cache", "--no-cache"],
+  ]) {
+    const { program, seen } = build();
+    await assert.rejects(program.parseAsync(["flags", ...argv], { from: "user" }), (err: Error) => /may be given only once/.test(err.message), argv.join(" "));
+    assert.deepEqual(seen, [], argv.join(" "));
+  }
+  for (const [argv, expected] of [
+    [["--is-open", "false"], { isOpen: false }],
+    [["--is-open"], { isOpen: true }],
+    [["--no-cache", "--archived", "--archived"], { cache: false, archived: true }],
+  ] as const) {
+    const { program, seen } = build();
+    await program.parseAsync(["flags", ...argv], { from: "user" });
+    assert.deepEqual(seen, [expected], argv.join(" "));
   }
 });

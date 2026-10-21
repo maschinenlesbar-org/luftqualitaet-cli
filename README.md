@@ -232,7 +232,7 @@ is cut and ends in `… (N more characters)`:
 ```
 
 ```bash
-luftqualitaet --log-format jsonl airquality --station 2 2>log.jsonl   # {"ts":"…","level":"ERROR","topic":"luftqualitaet.api","msg":"Station 2 not found: …"}
+luftqualitaet --log-format jsonl airquality --station 2 --date-from 2024-01-01 --time-from 1 --date-to 2024-01-01 --time-to 24 2>log.jsonl   # {"ts":"…","level":"ERROR","topic":"luftqualitaet.api","msg":"Station 2 not found: …"}
 ```
 
 UBA responses are **index + data** structures: an `indices` array names the

@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { run } from "../src/cli/run.js";
 import { forbidRepeatedOptions, renderJson } from "../src/cli/shared.js";
@@ -824,4 +825,18 @@ test("a boolean that can be switched both ways may be given only once: optional 
     await program.parseAsync(["flags", ...argv], { from: "user" });
     assert.deepEqual(seen, [expected], argv.join(" "));
   }
+});
+
+test("the README's --log-format jsonl example runs as shown: an ERROR record of api for an unknown station (04#1)", async () => {
+  const readme = readFileSync(new URL("../../../../README.md", import.meta.url), "utf8");
+  const line = /^luftqualitaet (--log-format jsonl .*?) 2>log\.jsonl\s+# (.*)$/m.exec(readme);
+  assert.ok(line, "the README has the jsonl example");
+  const argv = line[1]!.split(/\s+/);
+  const empty = { request: {}, indices: {}, data: {} };
+  const cli = makeCli(withCatalogue([143], () => jsonResponse(empty)));
+  assert.equal(await run(argv, cli.deps), 4, cli.err.join("\n"));
+  const record = JSON.parse(cli.err[0] ?? "{}") as { level?: string; topic?: string; msg?: string };
+  assert.deepEqual([record.level, record.topic], ["ERROR", "luftqualitaet.api"]);
+  assert.match(record.msg ?? "", /^Station 2 not found: /);
+  assert.match(line[2]!, /"topic":"luftqualitaet\.api","msg":"Station 2 not found: …"/);
 });

@@ -207,7 +207,11 @@ malformed answer included,
 `luftqualitaet.http` for the connection, `luftqualitaet.output` for output that fails: an
 answer nested too deeply or too large to print, a failed write to stdout). An answer too deep
 or too large to pretty-print says which of the two it is, and suggests `--compact` only when
-`--compact` prints that answer. By default it is written log4j style;
+`--compact` prints that answer. An error about an answer names the request (`GET <url>: the
+answer is not valid JSON`). Text in an answer is never changed silently: bytes that are not
+valid in its charset and half characters (lone surrogates) are replaced with U+FFFD, so the
+output stays readable for `jq`, and a `WARN` record of `luftqualitaet.api` says how many. By
+default it is written log4j style;
 `--log-format jsonl` writes one JSON object per line instead. A record is always one line:
 a line break, a control character or a bidi control in a message (a server's text, a value
 you typed) is written as an escape (`\n`, `\u001b`, `\u202e`), so it can neither split a

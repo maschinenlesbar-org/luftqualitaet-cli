@@ -63,6 +63,7 @@ new LuftqualitaetClient({
   userAgent: "my-app/1.0",
   transport: customTransport, // inject your own HTTP transport
   bigIntegerKeys: new Set(["_version_"]), // members whose numbers may pass 2^53: delivered as strings
+  onWarning: (message) => console.warn(message), // an answer delivered changed (U+FFFD), see Decoding
 });
 ```
 
@@ -341,7 +342,13 @@ endpoint. CLI: `--max-response-bytes`.
 
 **Decoding.** A JSON body is decoded by the charset its `Content-Type` declares
 (UTF-8 when it names none) with `TextDecoder`, which also drops a leading byte order
-mark; an unknown charset label is a `LuftParseError`. Every 2xx body must then have the
+mark; an unknown charset label is a `LuftParseError`. Text is never changed silently: bytes
+that aren't valid in the answer's charset and lone surrogates written as JSON escapes
+(`\ud800`) become U+FFFD (the result is well-formed, so `jq` reads the CLI's output), and the
+engine option `onWarning` gets one message naming the count and the request (`GET <url>: 2
+characters of the answer were not valid text (invalid bytes or a lone surrogate) and replaced
+with U+FFFD.`); the CLI's `action()` logs it as a `WARN` record of `luftqualitaet.api`. One
+bad character never sinks a whole answer. Every 2xx body must then have the
 envelope its endpoint documents (`responseShapeProblem`, exported, with the shapes
 `list`: `count` + `indices`; `window`/`limits`: `request` + a `data` object; `annual`:
 `request` + `indices` + `data` rows; `meta`: `request`): `null`, `{}`, an error object or
@@ -476,7 +483,8 @@ everything that drives the CLI is in `apps/cli/test/`.
   P27 (a big or odd answer is printed or refused in one clean record, within memory: a large
   flat answer prints with `--compact` under a 256 MB heap, 20 MB of DEL print escaped under a
   512 MB heap, and 90 MB of DEL, too large once escaped, are an ERROR record of
-  `luftqualitaet.output`; starts the built bin, 30 s).
+  `luftqualitaet.output`; a lone surrogate or invalid bytes become U+FFFD with a `WARN` record
+  of `luftqualitaet.api`; the memory cases start the built bin, 30 s).
 
 ## Continuous integration
 
@@ -543,7 +551,7 @@ character, which jq rejects, stopping the whole stream) becomes U+FFFD (`toWellF
 exported from `errors.ts`), and a message longer than `MAX_RECORD_MESSAGE` (4000
 characters, exported) is cut at a code point and ends in `… (N more characters)`. The library's error messages keep a server's line
 breaks (`sanitizeServerText` strips only the other controls); the record escapes them. The areas are `cli` (usage errors, commander's messages, unexpected errors),
-`api` (the API's answers: HTTP errors, an unknown station, a malformed answer — a
+`api` (the API's answers: HTTP errors, an unknown station, text replaced with U+FFFD, a malformed answer — a
 `LuftParseError`: bad JSON, the wrong shape or content type, an unknown charset, a station
 catalogue without stations — and the notes and hints about an answer — `annualDataNote`,
 `stationDataNote`, the 409/500 hints), `http` (the

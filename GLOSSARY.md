@@ -216,12 +216,16 @@ timeout, for a library user's own transport too.
 **Read-only, no auth.** The UBA Air Data API needs no API key; this client
 implements only the open, read-only `GET` endpoints.
 
+**Replaced text.** Bytes of an answer that are not valid in its charset, and half characters
+(lone surrogates), are replaced with U+FFFD and reported in one `WARN` record of
+`luftqualitaet.api` with the count and the request; the run still succeeds.
+
 **Log record.** Every diagnostic line the CLI writes to stderr: a timestamp, a level
 (`ERROR`, `WARN`, `INFO`) and a topic `luftqualitaet.<area>`, as text (log4j style) or with
 `--log-format jsonl` as one JSON object per line. The areas: `cli` (usage errors,
 commander's messages, unexpected errors), `api` (the API's answers and the notes on them:
 an error status, an unknown station, a malformed answer — bad JSON, the wrong shape or
-content type, a number JSON can't carry exactly —, the notes on an empty window or an annual figure, the 409/500 hints),
+content type, a number JSON can't carry exactly —, text replaced with U+FFFD, the notes on an empty window or an annual figure, the 409/500 hints),
 `http` (the connection, the cleartext warning, one WARN per retry before it waits) and `output` (an answer too deep or too large to print, a failed write to stdout). A
 record is always one line; control characters in it are escaped.
 

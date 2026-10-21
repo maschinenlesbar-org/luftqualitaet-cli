@@ -217,13 +217,17 @@ Bibliotheksnutzers durch.
 **Nur lesend, ohne Authentifizierung.** Die Air-Data-API des UBA benötigt keinen
 API-Schlüssel; dieser Client implementiert nur die offenen, lesenden `GET`-Endpoints.
 
+**Ersetzter Text.** Bytes einer Antwort, die in ihrem Zeichensatz ungültig sind, und halbe
+Zeichen (einzelne Surrogate) werden durch U+FFFD ersetzt und in einem `WARN`-Eintrag von
+`luftqualitaet.api` mit Anzahl und Anfrage gemeldet; der Lauf gelingt trotzdem.
+
 **Log-Eintrag (log record).** Jede Diagnosezeile, die die CLI nach stderr schreibt: ein
 Zeitstempel, eine Stufe (`ERROR`, `WARN`, `INFO`) und ein Thema `luftqualitaet.<Bereich>`,
 als Text (im Stil von log4j) oder mit `--log-format jsonl` als ein JSON-Objekt pro Zeile.
 Die Bereiche: `cli` (Bedienfehler, Meldungen von commander, unerwartete Fehler), `api` (die
 Antworten der API und die Hinweise dazu: ein Fehlerstatus, eine unbekannte Station, eine
 fehlerhafte Antwort — ungültiges JSON, die falsche Form, der falsche Inhaltstyp oder eine
-Zahl, die JSON nicht exakt tragen kann —, die
+Zahl, die JSON nicht exakt tragen kann —, durch U+FFFD ersetzter Text, die
 Hinweise zu einem Zeitfenster ohne Daten oder zu einer Jahreszahl, die Hinweise zu 409 und
 500), `http` (die Verbindung, die Klartext-Warnung, je Wiederholung eine WARN-Zeile vor dem Warten) und `output` (eine Antwort, die zu tief
 verschachtelt oder zu groß zum Ausgeben ist, ein Schreibfehler auf stdout). Ein Eintrag ist immer eine Zeile; Steuerzeichen darin werden maskiert.

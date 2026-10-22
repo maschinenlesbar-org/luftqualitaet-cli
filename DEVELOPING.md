@@ -436,7 +436,8 @@ and the library's messages for `--lang`/`--use`/`--index` — so a password with
 quotes, `#`, `?` or `/` is caught as well as an ordinary one. A URL counts wherever it
 starts in an argument (`urlsWithin`: padded, after a dash, inside a phrase), and in an
 argument's percent-decoded form too, and the userinfo is also replaced in its percent-encoded
-form. Only a URL with a scheme counts (a bare `a:b@c` is a User-Agent or a typed value as
+form. Each `://` is found with `indexOf` and its scheme by walking back, so the search stays
+linear in a long argument, and at most 64 URLs are read from one argument. Only a URL with a scheme counts (a bare `a:b@c` is a User-Agent or a typed value as
 often as a credential), except as the `--base-url` value, where a `user:password@host` typed without its scheme is
 still a credential. The log replaces them in each
 record's *message*, before the record is cut and escaped, and writes it to the raw stderr:

@@ -16,6 +16,7 @@ import {
   LuftNetworkError,
   LuftParseError,
   LuftValidationError,
+  echoedCredentialForms,
   redactUrl,
   toWellFormed,
 } from "../src/errors.js";
@@ -773,5 +774,36 @@ test("a number literal with a long run of zeros is checked in linear time, with 
   }
   for (const inexact of ["12345678901234567890", "3e-324", "1e-400", "1.0000000000000000000000001e300"]) {
     assert.equal(firstInexactNumber(`[${inexact}]`), inexact, inexact);
+  }
+});
+
+test("echoedCredentialForms treats a userinfo without a password as a token (Basic `TOKEN:`)", () => {
+  const basic = (pair: string): string => Buffer.from(pair, "utf8").toString("base64");
+  assert.deepEqual(echoedCredentialForms("alice:s3cret"), [basic("alice:s3cret"), "alice:s3cret", "s3cret"]);
+  assert.deepEqual(echoedCredentialForms("T0ken"), [basic("T0ken:"), "T0ken:", "T0ken"]);
+  assert.deepEqual(echoedCredentialForms("T0ken:"), [basic("T0ken:"), "T0ken:", "T0ken"]);
+  assert.deepEqual(echoedCredentialForms("T%C3%B6k"), [basic("Tök:"), "Tök:"]); // short: not alone
+  assert.deepEqual(echoedCredentialForms(":pw12"), [basic(":pw12"), ":pw12", "pw12"]);
+  assert.deepEqual(echoedCredentialForms(""), []);
+  assert.deepEqual(echoedCredentialForms(":"), []);
+});
+
+test("a token as the base URL's user name is scrubbed from the error in every form a server echoes it", async () => {
+  const token = "tok3nsecretvalue";
+  const basic = Buffer.from(`${token}:`, "utf8").toString("base64");
+  for (const base of [`https://${token}@mirror.example`, `https://${token}:@mirror.example`]) {
+    for (const echo of [`bad token ${token}`, `rejected credentials Basic ${basic}`, `user ${token}: unknown`]) {
+      const engine = new RequestEngine({
+        baseUrl: base,
+        maxRetries: 0,
+        transport: async () => ({ status: 401, headers: { "content-type": "application/json" }, body: Buffer.from(JSON.stringify({ detail: echo })) }),
+      });
+      await assert.rejects(engine.getJson("/x"), (err: unknown) => {
+        assert.ok(err instanceof LuftApiError, String(err));
+        const seen = `${err.message}\n${err.body}\n${err.url}`;
+        assert.ok(!seen.includes(token) && !seen.includes(basic), `${base} ${echo}: ${seen}`);
+        return true;
+      });
+    }
   }
 });

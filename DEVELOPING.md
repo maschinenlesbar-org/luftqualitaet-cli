@@ -450,8 +450,10 @@ The engine keeps the base URL in a real `#private` field, so `console.log(client
 parse, a custom transport's error text and the `cause` chain — and with it the forms a
 server echoes it back in (`echoedCredentialForms`, exported): the `Authorization: Basic`
 value, the decoded `user:password`, and the password alone from 4 characters on
-(`redactSecrets`). The CLI replaces the Basic value and the pair on stdout and stderr, the
-bare password on stderr only (on stdout a short password may well occur in the data). Whatever a custom transport
+(`redactSecrets`). A userinfo without a password (`https://TOKEN@host`, `https://TOKEN:@host`)
+is a token: it is sent as `Basic base64("TOKEN:")`, and its forms are that value, `TOKEN:` and
+the token alone, in place of the password. The CLI replaces the Basic value and the pair on stdout and stderr, the
+bare password (or token) on stderr only (on stdout a short password may well occur in the data). Whatever a custom transport
 throws reaches the caller as a `LuftNetworkError` (`GET <url> failed: <reason>`, the
 original as `cause`), and so does every network failure of the default transport and the
 engine: a timeout (`… failed: Request exceeded the 5000ms deadline`), the size cap, a

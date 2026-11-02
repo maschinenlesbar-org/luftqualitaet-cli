@@ -414,10 +414,20 @@ the exported `validateBaseUrl` (rule: `baseUrlProblem`, the same one the CLI's
 `--base-url` uses): a value that does not parse (`notaurl`, `""`), a scheme other than
 `http:`/`https:` (`file:///etc/passwd`, `ftp://…`), a query (`?`) or fragment (`#`) —
 paths are appended to the base URL as a string, so they would swallow every request
-path — and surrounding or inner whitespace or control characters (`new URL()` would hide
-them, while the raw string is joined to each path), and a `%` in the user name or password
+path — a backslash (`A base URL cannot contain a backslash (\); write "/" instead.`), surrounding
+or inner whitespace or control characters (`new URL()` would hide them, so the URL requested
+would not be the one typed), and a `%` in the user name or password
 that doesn't start an escape (write a literal `%` as `%25`) each throw a `LuftValidationError`
-(`Invalid baseUrl: <reason>`). That is a configuration error, not a `LuftNetworkError`,
+(`Invalid baseUrl: <reason>`). WHATWG ends an http(s) host at a backslash and skips any
+slashes after the scheme, where text-based code read on: `http://u:pw@127.0.0.1\@b.example`
+was loopback to the parser and the cleartext warning, but the request went to b.example with
+`u:pw`. So, besides the refusal, the engine builds every request URL from the parsed base URL
+(`new URL(...).href`, userinfo cleared, trailing slashes stripped): the host is lower-cased, a
+default port dropped and the path percent-encoded as WHATWG does it, and that is the spelling
+error messages, `buildUrl` and a custom transport see. `credentialsIn` ends a special
+scheme's authority at a backslash too and skips the slashes and backslashes WHATWG skips
+after it (`http:///u:pw@host` sends `u:pw`), and the engine scrubs the userinfo as typed and
+as WHATWG spells it. That is a configuration error, not a `LuftNetworkError`,
 and it holds for a library consumer that injects a custom transport too. Only an
 omitted `baseUrl` selects the default. The client constructor adds the API-path rule
 (`baseUrlApiPathProblem`, above). `--base-url`'s value parser (`parseBaseUrl` in

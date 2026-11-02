@@ -393,6 +393,8 @@ export class RequestEngine {
   // JSON.stringify of a client never show it, so a password in the base URL can't be
   // logged by accident. Messages show request URLs through redactUrl.
   readonly #baseUrl: string;
+  /** `#baseUrl` without its userinfo: what every request URL starts with (the userinfo goes as a header). */
+  readonly #requestBase: string;
   /** The base URL's userinfo, raw and percent-decoded, for scrubbing server and transport text. */
   readonly #credentials: string[];
   /**
@@ -427,17 +429,25 @@ export class RequestEngine {
     // cannot slip past it; only an omitted baseUrl selects the default. Checked
     // here, not only in the default transport: a library consumer that injects a
     // custom transport would otherwise get no gating at all.
-    this.#baseUrl = validateBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
-    this.#credentials = credentialsIn(this.#baseUrl).flatMap((raw) => {
+    const baseUrl = validateBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
+    // Requests go to the base URL as WHATWG parses it, the reading every check of it makes (the
+    // host, the cleartext warning, the Authorization header), never to a text-based reading of
+    // the string: a transport that reads the URL as text reaches the same host.
+    const parsed = new URL(baseUrl);
+    this.#baseUrl = parsed.href.replace(/\/+$/, "");
+    parsed.username = "";
+    parsed.password = "";
+    this.#requestBase = parsed.href.replace(/\/+$/, "");
+    // The userinfo as typed and as sent (WHATWG percent-encodes some of its characters).
+    const userinfos = [...new Set([...credentialsIn(baseUrl), ...credentialsIn(this.#baseUrl)])];
+    this.#credentials = userinfos.flatMap((raw) => {
       try {
         return [raw, decodeURIComponent(raw)];
       } catch {
         return [raw];
       }
     });
-    this.#echoed = credentialsIn(this.#baseUrl)
-      .flatMap(echoedCredentialForms)
-      .sort((a, b) => b.length - a.length);
+    this.#echoed = [...new Set(userinfos.flatMap(echoedCredentialForms))].sort((a, b) => b.length - a.length);
     this.transport = options.transport ?? nodeHttpTransport;
     // Only an omitted userAgent selects the default: a blank one is an error, and a
     // malformed one fails here rather than at request time.
@@ -521,12 +531,6 @@ export class RequestEngine {
     return this.composeUrl(this.#baseUrl, path, query);
   }
 
-  /** The base URL without its userinfo: what the transport sees (the userinfo goes as a header). */
-  private requestBase(): string {
-    const [userinfo] = credentialsIn(this.#baseUrl);
-    return userinfo === undefined ? this.#baseUrl : this.#baseUrl.replace(`://${userinfo}@`, "://");
-  }
-
   /**
    * The request URL as an error about the answer shows it: absolute (so a message names the
    * host that gave a bad answer, which matters with a custom base URL), without the base URL's
@@ -534,7 +538,7 @@ export class RequestEngine {
    * throws: describing a URL for a message does not validate it.
    */
   describeUrl(path: string, query?: QueryParams): string {
-    return cutForMessage(redactUrl(this.composeUrl(this.requestBase(), path, query)));
+    return cutForMessage(redactUrl(this.composeUrl(this.#requestBase, path, query)));
   }
 
   /** `base` + path + query string. */
@@ -580,7 +584,7 @@ export class RequestEngine {
     // Authorization header, per hop, so a redirect to the same origin (relative or
     // absolute) keeps it and one to another origin or scheme drops it. A transport such
     // as fetch also refuses a URL with credentials outright.
-    let url = this.composeUrl(this.requestBase(), path, options.query);
+    let url = this.composeUrl(this.#requestBase, path, options.query);
     const headers: Record<string, string> = {
       Accept: options.accept,
       "User-Agent": this.userAgent,

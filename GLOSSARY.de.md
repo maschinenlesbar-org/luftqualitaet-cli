@@ -209,7 +209,9 @@ DNS-Fehler oder eine Zeitüberschreitung nicht.
 **Cross-Origin**-Weiterleitung entfernt sie die Request-Header (und setzt nur die
 unbedenklichen `Accept` / `User-Agent` wieder), damit nichts Sensibles an einen anderen
 Origin gelangt. Zugangsdaten in `--base-url` (`https://user:pw@mirror/`) gehen als
-`Authorization: Basic`-Header nur an den Origin der Basis-URL (Schema, Host, Port): Eine
+`Authorization: Basic`-Header nur an den Origin der Basis-URL (Schema, Host, Port, so wie der
+URL-Parser sie liest; eine Basis-URL mit Backslash, der für den Parser einen http(s)-Host
+beendet, wird abgelehnt): Eine
 Weiterleitung auf denselben Origin behält sie, relativ oder absolut, eine auf einen anderen
 Origin lässt sie weg, und ein `401`/`403` danach sagt das (bei http→https: eine https-Basis-URL
 verwenden). Zugangsdaten im `Location` eines Servers werden nie verwendet.

@@ -145,6 +145,9 @@ test("baseUrlProblem: parse, scheme, query/fragment and whitespace, never echoin
   assert.equal(baseUrlProblem("https://h/#f"), "A base URL cannot have a query (?) or fragment (#).");
   assert.equal(baseUrlProblem("https://h "), "A base URL cannot have surrounding whitespace.");
   assert.equal(root.validateBaseUrl("https://h.example/p//"), "https://h.example/p");
+  for (const value of ["https://u:pw@a.example\\@b.example", "https://h.example\\p", "https:\\\\h.example"]) {
+    assert.equal(baseUrlProblem(value), 'A base URL cannot contain a backslash (\\); write "/" instead.', value);
+  }
 });
 
 test("a rejected value is quoted at most MAX_MESSAGE_TEXT characters long, its userinfo cut out first (L3)", async () => {

@@ -62,10 +62,8 @@ export const headerValueProblem: Problem<unknown> = (value) => {
 
 /**
  * A base URL must not carry whitespace or control characters. `new URL()` trims
- * surrounding whitespace and drops tab/CR/LF inside silently, but the engine joins
- * the raw string to each request path, so `"https://h "` would request
- * `https://h /api/air-data/v3/...` and a custom transport would see the raw value.
- * Reject rather than guess.
+ * surrounding whitespace and drops tab/CR/LF inside silently, so the URL requested would
+ * not be the one typed. Reject rather than guess.
  */
 export const baseUrlWhitespaceProblem: Problem<unknown> = (value) => {
   if (typeof value !== "string") return "Expected a string.";
@@ -78,7 +76,10 @@ export const baseUrlWhitespaceProblem: Problem<unknown> = (value) => {
  * Every engine rule for a base URL, in order: a URL that parses, the `http:` or
  * `https:` scheme, no query or fragment — request paths are appended to the base URL
  * as a string, so a `?` or `#` would swallow every path (`http://h/#f` requests `/`)
- * — no whitespace or control characters (see {@link baseUrlWhitespaceProblem}), and no
+ * — no backslash (WHATWG ends an http(s) host at one, as at a `/`, while text-based code
+ * reads on, so `https://u:pw@a.example\@b.example` was checked as a.example and its
+ * credentials went to b.example), no whitespace or control characters (see
+ * {@link baseUrlWhitespaceProblem}), and no
  * `%` in the userinfo that doesn't start an escape (`%25` for a literal one): the engine
  * percent-decodes it for the Authorization header.
  * The reasons never echo the URL, so a credential in it cannot leak. (A path that
@@ -96,6 +97,9 @@ export const baseUrlProblem: Problem<unknown> = (value) => {
     return `Unsupported scheme "${cutForMessage(url.protocol)}". Expected an http(s) URL.`;
   }
   if (/[?#]/.test(value)) return "A base URL cannot have a query (?) or fragment (#).";
+  // WHATWG reads a "\" in an http(s) URL as "/", so it ends the host: in
+  // `https://u:pw@a.example\@b.example` every reader of the base URL has to agree where.
+  if (value.includes("\\")) return 'A base URL cannot contain a backslash (\\); write "/" instead.';
   // The userinfo is percent-decoded for the Authorization header; a "%" that isn't an
   // escape fails there ("URI malformed") at request time, as a raw URIError. Reject it here.
   for (const part of [url.username, url.password]) {

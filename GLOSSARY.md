@@ -208,7 +208,8 @@ is not.
 **cross-origin** redirect it strips request headers (re-adding only the benign
 `Accept` / `User-Agent`) so nothing sensitive leaks to a different origin. Credentials in
 `--base-url` (`https://user:pw@mirror/`) go out as an `Authorization: Basic` header, to the
-base URL's own origin (scheme, host, port) only: a same-origin redirect keeps them, relative
+base URL's own origin (scheme, host, port, as the URL parser reads them; a base URL with a
+backslash, which ends an http(s) host for the parser, is refused) only: a same-origin redirect keeps them, relative
 or absolute, a cross-origin one drops them, and a `401`/`403` after such a drop says so (an
 http→https redirect: use an https base URL). Userinfo in a server's `Location` is never used.
 

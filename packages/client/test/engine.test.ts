@@ -9,6 +9,7 @@ import {
   firstInexactNumber,
   parseRetryAfter,
   scanNumbers,
+  validateBaseUrl,
 } from "../src/engine.js";
 import {
   LuftApiError,
@@ -16,6 +17,7 @@ import {
   LuftNetworkError,
   LuftParseError,
   LuftValidationError,
+  credentialsIn,
   echoedCredentialForms,
   redactUrl,
   toWellFormed,
@@ -802,6 +804,83 @@ test("a token as the base URL's user name is scrubbed from the error in every fo
         assert.ok(err instanceof LuftApiError, String(err));
         const seen = `${err.message}\n${err.body}\n${err.url}`;
         assert.ok(!seen.includes(token) && !seen.includes(basic), `${base} ${echo}: ${seen}`);
+        return true;
+      });
+    }
+  }
+});
+
+test("a base URL with a backslash is refused by the engine, never echoing the password", () => {
+  const pw = "s3cretpw";
+  // WHATWG ends an http(s) host at "\\": the request went to evil.example with alice's Basic value
+  // while every check saw api.example (or loopback, without the cleartext warning).
+  for (const base of [`https://alice:${pw}@api.example\\@evil.example`, "https://api.example\\evil", `http://alice:${pw}@127.0.0.1\\@evil.example`, "https:\\\\h.example"]) {
+    for (const build of [() => new RequestEngine({ baseUrl: base }), () => validateBaseUrl(base)]) {
+      assert.throws(
+        build,
+        (err: unknown) => err instanceof LuftValidationError && /backslash/.test(err.message) && !err.message.includes(pw),
+        base,
+      );
+    }
+  }
+});
+
+test("credentialsIn ends the authority of a special scheme at a backslash and skips the slashes WHATWG skips", () => {
+  for (const scheme of ["http", "https", "HTTPS", "ws", "wss", "ftp"]) {
+    assert.deepEqual(credentialsIn(`${scheme}://u:p@a.example\\@b.example/x`), ["u:p"], scheme);
+    assert.equal(new URL(`${scheme}://u:p@a.example\\@b.example/x`).password, "p", scheme);
+  }
+  // Another scheme's authority runs on to "/", "?" or "#".
+  assert.deepEqual(credentialsIn("foo://u:p@a.example\\@b.example/x"), ["u:p@a.example\\"]);
+  assert.deepEqual(credentialsIn("https://u:p@a.example/x\\@y"), ["u:p"]);
+  assert.deepEqual(credentialsIn("https://alice:pw@api.example/v1/@x"), ["alice:pw"]);
+  // After a special scheme WHATWG skips any number of "/" and "\\" (none too): the userinfo
+  // starts after them.
+  for (const base of ["http:alice:pw@h.example", "http:/alice:pw@h.example", "http:///alice:pw@h.example/x", "HTTPS:\\\\alice:pw@h.example", "https:/\\/alice:pw@h.example"]) {
+    assert.deepEqual(credentialsIn(base), ["alice:pw"], base);
+    assert.equal(new URL(base).password, "pw", base);
+  }
+  // Without a scheme there is no URL, and a non-special scheme needs its "//".
+  assert.deepEqual(credentialsIn("alice:pw@h.example"), []);
+  assert.deepEqual(credentialsIn("foo:alice:pw@h.example"), []);
+});
+
+test("requests go to the host of the parsed base URL, spelled as it parses, with the userinfo only in the Authorization header", async () => {
+  for (const base of [
+    "https://alice:pw@api.example/v1/@evil.example",
+    "https://API.Example:443/v1",
+    "https://bob:p%40ss@h.example:8443/m/",
+    "http:///carol:pw@127.0.0.1:9/m",
+    "https://tok3n@h.example",
+  ]) {
+    const parsed = new URL(base);
+    const mt = makeMockTransport(() => jsonResponse(OK_BODY));
+    await new RequestEngine({ transport: mt.transport, baseUrl: base }).getJson("/x");
+    const sent = mt.last();
+    assert.equal(new URL(sent.url).origin, parsed.origin, `${base}: ${sent.url}`);
+    // The URL as sent names that host in the text too, without the userinfo, so a transport
+    // that reads the string (not the parsed URL) reaches the same host and sends no credential.
+    assert.equal(sent.url.slice(sent.url.indexOf("//") + 2).split("/")[0], parsed.host, `${base}: ${sent.url}`);
+    const pair = parsed.username === "" ? undefined : `${decodeURIComponent(parsed.username)}:${decodeURIComponent(parsed.password)}`;
+    assert.equal(sent.headers?.["Authorization"], pair === undefined ? undefined : `Basic ${Buffer.from(pair).toString("base64")}`, base);
+  }
+});
+
+test("the base URL's userinfo is scrubbed as typed and as WHATWG spells it, after slashes WHATWG skips too", async () => {
+  // `p"x` is typed raw and sent percent-encoded (`p%22x`); a server may echo either.
+  for (const [base, echoes] of [
+    ['https://alice:p"x-secret@mirror.example', ['alice:p"x-secret@', "alice:p%22x-secret@", 'alice:p"x-secret', 'p"x-secret']],
+    ["http:///alice:s3cretpw@127.0.0.1:9", ["alice:s3cretpw", "s3cretpw", Buffer.from("alice:s3cretpw").toString("base64")]],
+  ] as const) {
+    for (const echo of echoes) {
+      const engine = new RequestEngine({
+        baseUrl: base,
+        maxRetries: 0,
+        transport: async () => ({ status: 401, headers: { "content-type": "text/plain" }, body: Buffer.from(`bad login ${echo} here`) }),
+      });
+      await assert.rejects(engine.getJson("/x"), (err: unknown) => {
+        assert.ok(err instanceof LuftApiError, String(err));
+        assert.ok(!err.message.includes(echo) && !err.body.includes(echo), `${base} ${echo}: ${err.message} | ${err.body}`);
         return true;
       });
     }

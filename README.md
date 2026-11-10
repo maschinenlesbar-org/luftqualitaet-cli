@@ -223,9 +223,9 @@ default it is written log4j style;
 a line break, a control character or a bidi control in a message is written as an escape
 (`\n`, `\u001b`, `\u202e`), so it can neither split a record nor forge another one, nor steer
 the terminal. A value you typed keeps every character, escaped; in a server's text (an error
-message, a Content-Type) the control characters other than tab and line break are removed
-before that (an ESC with the `[31m` after it shows as `[31m`), so what a server sends can't
-drive the terminal even inside an escape. A message longer than 4000 characters is cut and
+message, a Content-Type) whole terminal escape sequences, the other control characters and
+the invisible format characters are removed before that, and its line breaks and tabs become
+single spaces, so what a server sends can't drive the terminal even inside an escape. A message longer than 4000 characters is cut and
 ends in `… (N more characters)`:
 
 ```text

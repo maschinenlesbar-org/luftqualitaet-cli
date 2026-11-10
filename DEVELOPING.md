@@ -588,12 +588,18 @@ controls as `\uXXXX`, so no text that reaches a record, by whatever path, can sp
 forge another one or steer the terminal. Before that a lone surrogate (half a
 character, which jq rejects, stopping the whole stream) becomes U+FFFD (`toWellFormed`,
 exported from `errors.ts`), and a message longer than `MAX_RECORD_MESSAGE` (4000
-characters, exported) is cut at a code point and ends in `… (N more characters)`. The library's error messages keep a server's line
-breaks and bidi controls, which the record escapes; every other C0 control (tab kept), DEL and
-C1 are removed from server text first (`sanitizeServerText`: an error `detail`, a Content-Type,
-a charset, a redirect target, a transport's reason), so a server's ESC never shows as `\u001b`
-either: it is gone, and the printable rest of its sequence (`[31m`) stays as text. That is the
-deliberate defence: a server's text must not drive the terminal. The areas are `cli` (usage errors, commander's messages, unexpected errors),
+characters, exported) is cut at a code point and ends in `… (N more characters)`. Server text
+is cleaned before it reaches a message (`sanitizeServerText`: an error `detail`, a Content-Type,
+a charset, a redirect target, a transport's reason): whole escape sequences (CSI, OSC and the
+other control strings) are dropped, then every other C0 control, DEL, C1 and Unicode format
+character (bidi controls, zero-width characters), and each run of whitespace (line breaks and
+tabs included) becomes one space. So a server's ESC never shows as `\u001b` and leaves no `[31m`
+behind. Only the first 16 384 characters of a text are read (`MAX_SERVER_TEXT`), every step is
+a linear regex replace, and a control string ends at the next introducer: a 16 MB error
+`detail` or 100 000 unterminated OSC introducers cost neither seconds nor the heap. The pieces of
+a text rebuilt from many slices (a lone-surrogate repair, a quoted big-integer member, the stdout
+redaction) are joined in batches (`TextBuilder`), so millions of them fit a small heap. That is
+the deliberate defence: a server's text must not drive the terminal. The areas are `cli` (usage errors, commander's messages, unexpected errors),
 `api` (the API's answers: HTTP errors, an unknown station, text replaced with U+FFFD, a malformed answer — a
 `LuftParseError`: bad JSON, the wrong shape or content type, an unknown charset, a station
 catalogue without stations — and the notes and hints about an answer — `annualDataNote`,

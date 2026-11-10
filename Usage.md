@@ -184,7 +184,7 @@ These flags apply to every command and go before the subcommand:
 | Flag | Purpose |
 | --- | --- |
 | `-V, --version` | Print the CLI version. |
-| `--base-url <url>` | Override the API host (default `https://luftdaten.umweltbundesamt.de`); the CLI adds `/api/air-data/v3` itself. A backslash in it is a usage error. A plain `http:` URL to a non-loopback host (not `localhost`, `127.0.0.0/8`, `::1`) gets one `WARN` record of `luftqualitaet.http` on stderr, `… sent unencrypted (http:, not https:)`, naming the host (and the URL's credentials, never printed); stdout and the exit code are unchanged. |
+| `--base-url <url>` | Override the API host (default `https://luftdaten.umweltbundesamt.de`); the CLI adds `/api/air-data/v3` itself. A backslash in it is a usage error, and so is a scheme not followed by exactly `//` and the host (`http:host`, `http:/host`, `http:///host`). A plain `http:` URL to a non-loopback host (not `localhost`, `127.0.0.0/8`, `::1`) gets one `WARN` record of `luftqualitaet.http` on stderr, `… sent unencrypted (http:, not https:)`, naming the host (and the URL's credentials, never printed); stdout and the exit code are unchanged. |
 | `--timeout <ms>` | Per-request timeout in milliseconds. |
 | `--user-agent <ua>` | Set the `User-Agent` header. |
 | `--max-retries <n>` | Retries for transient `429`/`503` responses and reset connections (`0..10`, default `2`). Each retry backs off linearly (200 ms, 400 ms, …), or waits the server's `Retry-After` when that is longer (up to 30 s; a longer one is not retried, and the error says so). Each retry logs one WARN record of `luftqualitaet.http` before it waits (`HTTP 503 from host: retry 1 of 3 in 2 s`). |

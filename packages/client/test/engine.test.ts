@@ -855,7 +855,7 @@ test("requests go to the host of the parsed base URL, spelled as it parses, with
     "https://alice:pw@api.example/v1/@evil.example",
     "https://API.Example:443/v1",
     "https://bob:p%40ss@h.example:8443/m/",
-    "http:///carol:pw@127.0.0.1:9/m",
+    "http://carol:pw@127.0.0.1:9/m",
     "https://tok3n@h.example",
   ]) {
     const parsed = new URL(base);
@@ -871,11 +871,11 @@ test("requests go to the host of the parsed base URL, spelled as it parses, with
   }
 });
 
-test("the base URL's userinfo is scrubbed as typed and as WHATWG spells it, after slashes WHATWG skips too", async () => {
+test("the base URL's userinfo is scrubbed as typed and as WHATWG spells it", async () => {
   // `p"x` is typed raw and sent percent-encoded (`p%22x`); a server may echo either.
   for (const [base, echoes] of [
     ['https://alice:p"x-secret@mirror.example', ['alice:p"x-secret@', "alice:p%22x-secret@", 'alice:p"x-secret', 'p"x-secret']],
-    ["http:///alice:s3cretpw@127.0.0.1:9", ["alice:s3cretpw", "s3cretpw", Buffer.from("alice:s3cretpw").toString("base64")]],
+    ["http://alice:s3cretpw@127.0.0.1:9", ["alice:s3cretpw", "s3cretpw", Buffer.from("alice:s3cretpw").toString("base64")]],
   ] as const) {
     for (const echo of echoes) {
       const engine = new RequestEngine({
@@ -1145,5 +1145,29 @@ test("a credential echoed in a redirect's Location never names the request in a 
       .catch(() => undefined);
     assert.equal(retries.length, 1);
     assert.ok(!leaks(retries[0] ?? ""), `${location}: ${retries[0]}`);
+  }
+});
+
+test("a base URL whose scheme is not followed by // and the host is rejected at construction, never echoing the password (F4)", () => {
+  // WHATWG repairs `http:host`, `http:/host` and `http:///host` silently into `http://host`, so the
+  // host requested is not the one typed: refused, like a backslash.
+  for (const [baseUrl, reason] of [
+    ["http:alice:s3cret@h.example", 'Expected an absolute http(s) URL ("https://" and the host).'],
+    ["https:/alice:s3cret@h.example", 'Expected an absolute http(s) URL ("https://" and the host).'],
+    ["http:///alice:s3cret@h.example", 'Expected an absolute http(s) URL ("https://" and the host).'],
+    ["HTTPS:h.example/v1", 'Expected an absolute http(s) URL ("https://" and the host).'],
+    ["https:\\\\alice:s3cret@h.example", 'A base URL cannot contain a backslash (\\); write "/" instead.'],
+  ] as const) {
+    const mt = makeMockTransport(() => jsonResponse(OK_BODY));
+    assert.throws(
+      () => new RequestEngine({ transport: mt.transport, baseUrl }),
+      (err: unknown) => err instanceof LuftValidationError && err.message === `Invalid baseUrl: ${reason}` && !err.message.includes("s3cret"),
+      baseUrl,
+    );
+    assert.equal(mt.calls.length, 0, baseUrl);
+  }
+  // A spelling the parser keeps as typed stays accepted: an upper-case scheme, an explicit port.
+  for (const baseUrl of ["HTTPS://h.example/v1", "http://alice:pw@h.example:8080"]) {
+    assert.doesNotThrow(() => new RequestEngine({ transport: makeMockTransport(() => jsonResponse(OK_BODY)).transport, baseUrl }), baseUrl);
   }
 });

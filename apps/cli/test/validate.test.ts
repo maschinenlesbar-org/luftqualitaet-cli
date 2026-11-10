@@ -148,6 +148,11 @@ test("baseUrlProblem: parse, scheme, query/fragment and whitespace, never echoin
   for (const value of ["https://u:pw@a.example\\@b.example", "https://h.example\\p", "https:\\\\h.example"]) {
     assert.equal(baseUrlProblem(value), 'A base URL cannot contain a backslash (\\); write "/" instead.', value);
   }
+  // A scheme not followed by exactly "//" and the host: WHATWG repairs it silently (F4).
+  for (const value of ["http:h.example", "https:/h.example", "http:///h.example", "http:u:s3cret@h.example", "HTTPS:h.example/v1"]) {
+    assert.equal(baseUrlProblem(value), 'Expected an absolute http(s) URL ("https://" and the host).', value);
+  }
+  assert.equal(baseUrlProblem("HTTPS://H.example"), undefined);
 });
 
 test("a rejected value is quoted at most MAX_MESSAGE_TEXT characters long, its userinfo cut out first (L3)", async () => {

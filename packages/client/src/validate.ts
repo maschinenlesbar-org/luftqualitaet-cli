@@ -78,10 +78,11 @@ export const baseUrlWhitespaceProblem: Problem<unknown> = (value) => {
  * as a string, so a `?` or `#` would swallow every path (`http://h/#f` requests `/`)
  * — no backslash (WHATWG ends an http(s) host at one, as at a `/`, while text-based code
  * reads on, so `https://u:pw@a.example\@b.example` was checked as a.example and its
- * credentials went to b.example), no whitespace or control characters (see
- * {@link baseUrlWhitespaceProblem}), and no
- * `%` in the userinfo that doesn't start an escape (`%25` for a literal one): the engine
- * percent-decodes it for the Authorization header.
+ * credentials went to b.example), no `%` in the userinfo that doesn't start an escape (`%25`
+ * for a literal one: the engine percent-decodes it for the Authorization header), no
+ * whitespace or control characters (see {@link baseUrlWhitespaceProblem}), and the scheme
+ * followed by exactly `//` and the host (`http:host`, `http:/host`, `http:///host` are
+ * repaired by WHATWG silently into another URL than the one typed).
  * The reasons never echo the URL, so a credential in it cannot leak. (A path that
  * already ends in the API path is the client's rule, `baseUrlApiPathProblem`.)
  */
@@ -109,7 +110,13 @@ export const baseUrlProblem: Problem<unknown> = (value) => {
       return 'The user name or password has a "%" that is not followed by two hex digits; write a literal "%" as %25.';
     }
   }
-  return baseUrlWhitespaceProblem(value);
+  const whitespace = baseUrlWhitespaceProblem(value);
+  if (whitespace !== undefined) return whitespace;
+  // WHATWG skips any slashes after "http:" and repairs `http:host`, `http:/host` and
+  // `http:///host` into `http://host` silently: the host requested would not be the one typed,
+  // and code that reads the value as text (a userinfo cut after "://") reads another authority.
+  if (!/^https?:\/\/[^/]/i.test(value)) return 'Expected an absolute http(s) URL ("https://" and the host).';
+  return undefined;
 };
 
 /**

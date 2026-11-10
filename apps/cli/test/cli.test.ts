@@ -924,20 +924,16 @@ test("a --base-url with a backslash is a usage error before any request, never e
   }
 });
 
-test("a --base-url spelled with the slashes WHATWG skips sends its credential to the parsed host and redacts it", async () => {
+test("a --base-url whose scheme is not followed by exactly // and the host is a usage error, never echoing the password", async () => {
+  // WHATWG skips any slashes after "http:" and repairs the URL silently, so the host requested
+  // was not the one typed (F4): refused before any request, like a backslash.
   const pw = "s3cretpw";
-  const basic = Buffer.from(`alice:${pw}`).toString("base64");
-  for (const base of [`http:///alice:${pw}@127.0.0.1:9`, `http:/alice:${pw}@127.0.0.1:9`, `http:alice:${pw}@127.0.0.1:9`]) {
-    const cli = makeCli(() => ({
-      status: 401,
-      headers: { "content-type": "text/plain" },
-      body: Buffer.from(`bad login alice:${pw} / Basic ${basic} / ${pw}`),
-    }));
+  for (const base of [`http:///alice:${pw}@127.0.0.1:9`, `http:/alice:${pw}@127.0.0.1:9`, `http:alice:${pw}@127.0.0.1:9`, "HTTPS:h.example"]) {
+    const cli = makeCli(() => ({ status: 200, headers: { "content-type": "application/json" }, body: Buffer.from("{}") }));
     assert.equal(await run(["--base-url", base, "--max-retries", "0", "components"], cli.deps), 1, base);
-    assert.equal(new URL(cli.mt.last().url).host, "127.0.0.1:9", base);
-    assert.ok(!cli.mt.last().url.includes(pw), cli.mt.last().url);
+    assert.equal(cli.mt.calls.length, 0, base);
     const text = [...cli.out, ...cli.err].join("\n");
-    assert.match(text, /401/);
-    assert.ok(!text.includes(pw) && !text.includes(basic), `${base}: ${text}`);
+    assert.match(text, /"https:\/\/" and the host/, base);
+    assert.ok(!text.includes(pw), `${base}: ${text}`);
   }
 });

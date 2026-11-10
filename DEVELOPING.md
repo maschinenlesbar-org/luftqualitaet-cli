@@ -79,7 +79,8 @@ never a raw `TypeError`. Server text in an error message is cut at 500 character
 character), and so is every other value an own message quotes from a server answer or the
 user's input (a redirect target, a Content-Type or charset, a transport's error text, a
 rejected parameter value, after its userinfo is cut out), so `err.message` stays bounded
-for a library caller; `LuftApiError.body` keeps the whole body.
+for a library caller; `LuftApiError.body` keeps the whole body (scrubbed of the base URL's
+credentials, see `--base-url` validation).
 
 Every optional field of the option and parameter types (`EngineOptions`, `FilterOptions`,
 `ListParams`, `YearComponentParams`, `ThresholdParams`, `MetaParams`) is declared
@@ -463,7 +464,13 @@ The engine keeps the base URL in a real `#private` field, so `console.log(client
 parse, a custom transport's error text and the `cause` chain — and with it the forms a
 server echoes it back in (`echoedCredentialForms`, exported): the `Authorization: Basic`
 value, the decoded `user:password`, and the password alone from 4 characters on
-(`redactSecrets`). A userinfo without a password (`https://TOKEN@host`, `https://TOKEN:@host`)
+(`redactSecrets`), each also percent-encoded as a server writes it into a URL (`pw%22x1` for
+`pw"x1`). An error `detail` is scrubbed again once decoded from the JSON body, so an escape
+(`s3cret\u002dpw`) can't hide the password; and `LuftApiError.body`, scrubbed as sent, is kept as
+the server sent it unless it is JSON whose decoded text still holds one of those forms: then it
+is that JSON written again (`JSON.stringify`, other escapes, no insignificant whitespace) with
+them replaced, or `""` for one too deeply nested to write again. A password with inner spaces is
+scrubbed whole. The Content-Type is scrubbed before a message quotes it. A userinfo without a password (`https://TOKEN@host`, `https://TOKEN:@host`)
 is a token: it is sent as `Basic base64("TOKEN:")`, and its forms are that value, `TOKEN:` and
 the token alone, in place of the password. The CLI replaces the Basic value and the pair on stdout and stderr, the
 bare password (or token) on stderr only (on stdout a short password may well occur in the data). Whatever a custom transport

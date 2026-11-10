@@ -1009,3 +1009,73 @@ test("scanNumbers quotes millions of declared members within a small heap", STAR
   const out = execFileSync(process.execPath, ["--max-old-space-size=128", "--input-type=module", "-e", script], { encoding: "utf8" });
   assert.equal(out, String(n * 10 + 1));
 });
+
+test("an error body keeps its spelling unless a credential hides behind an escape", async () => {
+  const base = "https://alice:s3cret-pw@mirror.example";
+  const bodyOf = async (body: string): Promise<string> => {
+    const e = new RequestEngine({ baseUrl: base, transport: async () => rawResponse(body, "application/json", 500) });
+    const err = await e.getJson("/x").catch((caught: unknown) => caught);
+    assert.ok(err instanceof LuftApiError, String(err));
+    return err.body;
+  };
+  // No credential, or one spelled as sent: the body as sent (scrubbed), escapes kept.
+  assert.equal(await bodyOf('{"m":"caf\\u00e9 \\"x\\""}'), '{"m":"caf\\u00e9 \\"x\\""}');
+  assert.equal(await bodyOf('{"m":"pw s3cret-pw \\u00e9"}'), '{"m":"pw *** \\u00e9"}');
+  // Escaped: written again decoded, scrubbed in that spelling.
+  assert.equal(await bodyOf('{"m":"pw s3cret\\u002dpw \\u00e9"}'), '{"m":"pw *** é"}');
+  // Not JSON: nobody decodes it, it stays as sent.
+  assert.equal(await bodyOf("pw s3cret\\u002dpw"), "pw s3cret\\u002dpw");
+  // Deeply nested: written again where this runtime can, else left out (probed, not assumed:
+  // whether JSON.stringify recurses depends on the Node version).
+  const deep = `${"[".repeat(200_000)}"s3cret\\u002dpw"${"]".repeat(200_000)}`;
+  let parses = true;
+  let writes = true;
+  try {
+    const value: unknown = JSON.parse(deep);
+    try {
+      JSON.stringify(value);
+    } catch {
+      writes = false;
+    }
+  } catch {
+    parses = false;
+  }
+  if (parses) {
+    const body = await bodyOf(deep);
+    assert.ok(!body.includes("s3cret"), body.slice(199_990, 200_030));
+    assert.equal(body === "", !writes);
+  }
+});
+
+test("a credential echoed behind a JSON escape, percent-encoded or with an inner space is scrubbed whole", async () => {
+  const errorFor = async (baseUrl: string, body: string): Promise<LuftApiError> => {
+    const e = new RequestEngine({ baseUrl, transport: async () => rawResponse(body, "application/json", 403), maxRetries: 0 });
+    const err = await e.getJson("/x").catch((caught: unknown) => caught);
+    assert.ok(err instanceof LuftApiError, String(err));
+    return err;
+  };
+  const texts = (err: LuftApiError): string[] => [err.message, err.detail ?? "", err.body];
+  // The detail is decoded from the body: an escape hid the password from the scrub of the text as sent.
+  for (const escaped of ["s3cret\\u002dpw", "\\u0073\\u0033cret-pw"]) {
+    const err = await errorFor("https://alice:s3cret-pw@mirror.example", `{"detail":"bad login ${escaped}"}`);
+    for (const text of texts(err)) assert.ok(!text.includes("s3cret-pw"), text);
+    assert.match(err.detail ?? "", /bad login \*\*\*/);
+  }
+  // The request URL as WHATWG sends it (typed raw, `p"ä` is `p%22%C3%A4`), and the password alone
+  // percent-encoded (`pw%22x1` for `pw"x1`), as a server writes it into a URL.
+  {
+    const err = await errorFor('https://alice:p"ä@mirror.example', '{"message":"no access: https://alice:p%22%C3%A4@mirror.example/x"}');
+    for (const text of texts(err)) assert.ok(!text.includes("p%22%C3%A4@") && !text.includes('p"ä@'), text);
+  }
+  {
+    const err = await errorFor('https://alice:pw"x1@mirror.example', '{"message":"login?pw=pw%22x1 refused"}');
+    for (const text of texts(err)) assert.ok(!text.includes("pw%22x1"), text);
+  }
+  // A password with inner spaces (percent-encoded in the URL) is scrubbed whole, never word by word.
+  {
+    const err = await errorFor("https://alice:pa%20ss%20word@mirror.example", '{"message":"bad password pa ss word, pa\\u0020ss word"}');
+    for (const text of texts(err)) {
+      for (const part of ["pa ss", "ss word", "pa\\u0020ss"]) assert.ok(!text.includes(part), `${part}: ${text}`);
+    }
+  }
+});

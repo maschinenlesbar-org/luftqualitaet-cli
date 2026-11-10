@@ -406,6 +406,19 @@ export { MAX_MESSAGE_TEXT, cutForMessage };
 // quoteValue lives with the other message helpers (validate.ts quotes refused values with it).
 export { quoteValue } from "./errors.js";
 
+/**
+ * `form` and its spelling in a URL (`encodeURIComponent`): a server that puts a credential into
+ * a URL, a redirect's Location, percent-encodes it. A form that has no such spelling (a lone
+ * surrogate) is kept as it is.
+ */
+function urlSpellings(form: string): string[] {
+  try {
+    return [form, encodeURIComponent(form)];
+  } catch {
+    return [form];
+  }
+}
+
 const realSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -437,8 +450,9 @@ export class RequestEngine {
   readonly #credentials: string[];
   /**
    * The forms a server echoes that userinfo back in (the Basic value, the decoded
-   * `user:password`, the password alone), longest first, so a password never leaves half
-   * of the `user:password` around it.
+   * `user:password`, the password or token alone; `echoedCredentialForms`), each also
+   * percent-encoded as in a URL (`urlSpellings`), longest first, so a password never leaves
+   * half of the `user:password` around it.
    */
   readonly #echoed: string[];
   private readonly transport: Transport;
@@ -485,7 +499,7 @@ export class RequestEngine {
         return [raw];
       }
     });
-    this.#echoed = [...new Set(userinfos.flatMap(echoedCredentialForms))].sort((a, b) => b.length - a.length);
+    this.#echoed = [...new Set(userinfos.flatMap(echoedCredentialForms).flatMap(urlSpellings))].sort((a, b) => b.length - a.length);
     this.transport = options.transport ?? nodeHttpTransport;
     // Only an omitted userAgent selects the default: a blank one is an error, and a
     // malformed one fails here rather than at request time.
@@ -539,6 +553,32 @@ export class RequestEngine {
    */
   private scrub(text: string): string {
     return this.#credentials.length === 0 ? text : redactSecrets(redactCredentials(text, this.#credentials), this.#echoed);
+  }
+
+  /**
+   * An error body, already scrubbed as sent, as `LuftApiError.body` keeps it: when it is
+   * JSON with an escape in it, checked decoded too. An escape (`\"`, `\u00e4`) hides an echoed
+   * credential from the scrub of the text as sent, while a caller who parses the body sees it. Such
+   * a body is kept as the decoded JSON written again (`JSON.stringify`, one spelling per character)
+   * with the credential scrubbed in that spelling. A body that doesn't parse is text nobody
+   * decodes, and stays as sent; one too deeply nested to write again is left out.
+   */
+  private scrubBody(scrubbed: string): string {
+    if (this.#echoed.length === 0 || !scrubbed.includes("\\")) return scrubbed;
+    let decoded: unknown;
+    try {
+      decoded = JSON.parse(scrubbed);
+    } catch {
+      return scrubbed;
+    }
+    let rewritten: string;
+    try {
+      rewritten = JSON.stringify(decoded);
+    } catch {
+      return "";
+    }
+    const spelled = this.#echoed.map((form) => JSON.stringify(form).slice(1, -1));
+    return spelled.some((form) => rewritten.includes(form)) ? redactSecrets(rewritten, spelled) : scrubbed;
   }
 
   /**
@@ -799,7 +839,9 @@ export class RequestEngine {
   async getJson<T>(path: string, query?: QueryParams, shape?: (value: unknown) => string | undefined): Promise<T> {
     const res = await this.request("GET", path, { query, accept: "application/json" });
     const request = `GET ${this.describeUrl(path, query)}`;
-    const decoded = decodeBody(res.data, res.contentType, request);
+    // The Content-Type is server text a message may quote (a charset, the type): scrubbed first.
+    const contentType = this.scrub(res.contentType);
+    const decoded = decodeBody(res.data, contentType, request);
     if (decoded.text.trim() === "") {
       // A broken answer, not "no results": printed as nothing with exit 0, it would let a
       // script carry on as if the API had found nothing.
@@ -813,7 +855,7 @@ export class RequestEngine {
       value = JSON.parse(json);
     } catch (cause) {
       // A maintenance or proxy page answered with 200: say what it was.
-      const type = res.contentType.split(";")[0]?.trim() ?? "";
+      const type = contentType.split(";")[0]?.trim() ?? "";
       const hint = type !== "" && !/json/i.test(type) ? ` (expected JSON, got Content-Type "${cutForMessage(sanitizeServerText(type))}")` : "";
       throw new LuftParseError(`${request}: the answer is not valid JSON${hint}.`, { cause });
     }
@@ -861,15 +903,16 @@ export class RequestEngine {
     } catch {
       // Non-JSON error body; leave detail undefined.
     }
-    // `detail` came from the response body; strip control characters so a hostile
-    // endpoint cannot inject terminal escape sequences via the stderr error message.
-    if (detail !== undefined) detail = cutForMessage(sanitizeServerText(detail));
+    // `detail` came from the response body, decoded: scrubbed again (a JSON escape hid the
+    // credential from the scrub above), then stripped of control characters so a hostile
+    // endpoint cannot inject terminal escape sequences via the stderr error message, and cut.
+    if (detail !== undefined) detail = cutForMessage(sanitizeServerText(this.scrub(detail)));
     if (hint !== undefined) detail = detail === undefined ? hint : `${detail}; ${hint}`;
     return new LuftApiError({
       status,
       url,
       method,
-      body: text,
+      body: this.scrubBody(text),
       detail,
       retries: retry.retries,
       ...(retry.retryAfterMs === undefined ? {} : { retryAfterMs: retry.retryAfterMs, maxRetryAfterMs: MAX_RETRY_AFTER_MS }),

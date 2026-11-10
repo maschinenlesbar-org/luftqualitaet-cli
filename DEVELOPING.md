@@ -455,7 +455,9 @@ carry none — and `redactUrl` (exported from [`errors.ts`](packages/client/src/
 shows it as `***@` in every error message and in `LuftApiError.url`; the base-URL
 reasons never echo the URL, and a rejected parameter value is quoted with its userinfo
 cut out. The CLI also redacts on output: `run.ts` (`redactionFor`, `withRedactedOutput`)
-takes the exact userinfo of every URL argument (`credentialsIn`, exported) and replaces it
+takes the exact userinfo of every URL argument (`credentialsIn`, exported; a base URL is read as a URL however its scheme is typed,
+`typedUrlCredentials`: missing, `alice:pw@host`, or mistyped, `http//alice:pw@host` with the
+colon left out, whose userinfo is everything between the first slashes and the last `@`) and replaces it
 with `***` in everything it prints — commander's usage errors, which echo rejected values,
 and the library's messages for `--lang`/`--use`/`--index` — so a password with spaces,
 quotes, `#`, `?` or `/` is caught as well as an ordinary one. A URL counts wherever it

@@ -418,7 +418,9 @@ the transport is called.
 constructor checks the raw configured value, before trailing slashes are stripped, with
 the exported `validateBaseUrl` (rule: `baseUrlProblem`, the same one the CLI's
 `--base-url` uses): a value that does not parse (`notaurl`, `""`), a scheme other than
-`http:`/`https:` (`file:///etc/passwd`, `ftp://…`), a query (`?`) or fragment (`#`) —
+`http:`/`https:` (`file:///etc/passwd`, `ftp://…`; the scheme is named only when the value
+spells `<scheme>://`, so `T0kenS3cret:@host`, which parses with the token as its scheme, is
+`Expected an absolute http(s) URL.`), a query (`?`) or fragment (`#`) —
 paths are appended to the base URL as a string, so they would swallow every request
 path — a backslash (`A base URL cannot contain a backslash (\); write "/" instead.`), surrounding
 or inner whitespace or control characters (`new URL()` would hide them, so the URL requested

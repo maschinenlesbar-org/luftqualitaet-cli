@@ -5,7 +5,7 @@ import { run } from "../src/cli/run.js";
 import { forbidRepeatedOptions, renderJson } from "../src/cli/shared.js";
 import { buildProgram } from "../src/cli/program.js";
 import { LuftqualitaetClient } from "@maschinenlesbar.org/luftqualitaet-client/internal/client";
-import { credentialsIn } from "@maschinenlesbar.org/luftqualitaet-client/internal/errors";
+import { LuftValidationError, credentialsIn } from "@maschinenlesbar.org/luftqualitaet-client/internal/errors";
 import type { CliDeps } from "../src/cli/io.js";
 import type { HttpRequest, HttpResponse } from "@maschinenlesbar.org/luftqualitaet-client/internal/http";
 import { makeMockTransport, jsonResponse, rawResponse, OK_BODY, WINDOW_BODY, withCatalogue, untimed } from "./helpers.js";
@@ -935,5 +935,29 @@ test("a --base-url whose scheme is not followed by exactly // and the host is a 
     const text = [...cli.out, ...cli.err].join("\n");
     assert.match(text, /"https:\/\/" and the host/, base);
     assert.ok(!text.includes(pw), `${base}: ${text}`);
+  }
+});
+
+test("a --base-url typed without its scheme never names its user name or password as a scheme", async () => {
+  // `T0kenS3cret:@h` parses as a URL whose scheme is the token, lower-cased: the refusal named it
+  // (`Unsupported scheme "t0kens3cret:"`), which no exact-string redaction matches.
+  for (const [baseUrl, secret] of [
+    ["T0kenS3cret:@h.example", "t0kens3cret"],
+    ["T0k:@h.example", "t0k"],
+    ["alice:s3cret-pw@h.example", "s3cret-pw"],
+    ["Alice:s3cret-pw@h.example/x", "s3cret-pw"],
+    ["my_user:s3cret-pw@h.example", "s3cret-pw"],
+  ] as const) {
+    const cli = makeCli(() => jsonResponse(OK_BODY));
+    assert.equal(await run(["--base-url", baseUrl, "components"], cli.deps), 1, baseUrl);
+    assert.equal(cli.mt.calls.length, 0, baseUrl);
+    const text = [...cli.out, ...cli.err].join("\n");
+    assert.ok(!text.toLowerCase().includes(secret), text);
+    assert.match(text, /Expected an absolute http\(s\) URL\./, baseUrl);
+    assert.throws(
+      () => new LuftqualitaetClient({ baseUrl }),
+      (err: unknown) => err instanceof LuftValidationError && !err.message.toLowerCase().includes(secret) && /Expected an absolute http\(s\) URL\./.test(err.message),
+      baseUrl,
+    );
   }
 });

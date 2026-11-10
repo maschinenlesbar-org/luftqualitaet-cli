@@ -545,7 +545,14 @@ everything that drives the CLI is in `apps/cli/test/`.
   512 MB heap, and 90 MB of DEL, too large once escaped, are an ERROR record of
   `luftqualitaet.output`; an answer in two million one-byte chunks is read under a 256 MB heap;
   a lone surrogate or invalid bytes become U+FFFD with a `WARN` record of `luftqualitaet.api`;
-  the memory cases start the built bin, 30 s).
+  the memory cases start the built bin, 30 s). The security audit of 2026-10-27 added P28
+  (hostile error answers: the number scan and the cleaning of server text are linear and
+  memory-bounded, a 16 MB error message is one record; credentials are scrubbed from decoded
+  text and from a redirect's Location; no 2xx value is quoted here, so that case is skipped, and
+  a 302 answered forever ends in `HTTP 302 for GET …` past `maxRedirects`), P29 (base-URL
+  credentials: a token userinfo scrubbed, a backslash and a mangled scheme refused, requests to
+  the parsed host, linear stdout redaction), P30 (output links; skipped here, there is no `-o`)
+  and P31 (release.yml's three jobs and the locked `tools/sbom/`).
 
 ## Continuous integration
 

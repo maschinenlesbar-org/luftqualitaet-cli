@@ -447,7 +447,10 @@ quotes, `#`, `?` or `/` is caught as well as an ordinary one. A URL counts where
 starts in an argument (`urlsWithin`: padded, after a dash, inside a phrase), and in an
 argument's percent-decoded form too, and the userinfo is also replaced in its percent-encoded
 form. Each `://` is found with `indexOf` and its scheme by walking back, so the search stays
-linear in a long argument, and at most 64 URLs are read from one argument. Only a URL with a scheme counts (a bare `a:b@c` is a User-Agent or a typed value as
+linear in a long argument, and at most 64 URLs are read from one argument. Behind the exact
+strings, stdout and stderr also go through `redactUrlUserinfo` (`errors.ts`), which replaces
+the userinfo of any URL in the text (`https://***@host`), in one linear pass however long the
+answer, a URL glued onto the one before it (`https://host://u:p@h`) included. Only a URL with a scheme counts (a bare `a:b@c` is a User-Agent or a typed value as
 often as a credential), except as the `--base-url` value, where a `user:password@host` typed without its scheme is
 still a credential. The log replaces them in each
 record's *message*, before the record is cut and escaped, and writes it to the raw stderr:

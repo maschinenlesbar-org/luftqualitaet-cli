@@ -350,7 +350,12 @@ the target then says so ("the server redirected http→https, which dropped the 
 credentials; use an https base URL"). Userinfo in a `Location` is never used. Transports
 are told `redirect: "manual"` (`HttpRequest.redirect`): the engine follows redirects
 itself, and a response whose `HttpResponse.url` lies on another origin (a fetch transport
-that followed one) is rejected as a `LuftNetworkError`.
+that followed one) is rejected as a `LuftNetworkError`. A server can echo the credential in a
+`Location` (in its path or query, raw or percent-encoded): every message about the request
+after a redirect (a redirect loop's 3xx, an error answer, a reset, the size cap, `onRetry`'s
+`url`, `LuftApiError.url`) names the URL as shown, the `Location` scrubbed as sent before it is
+resolved (`redirectTarget`; resolving first would write `'` as `%27`, a spelling no scrub
+matches), userinfo redacted, cleaned and cut. The request itself goes to the `Location` as sent.
 
 **maxResponseBytes.** A hard cap on response body size (default 100 MiB; `0` =
 unlimited) that defends against memory exhaustion from a hostile or buggy

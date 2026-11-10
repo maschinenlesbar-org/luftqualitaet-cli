@@ -359,7 +359,9 @@ matches), userinfo redacted, cleaned and cut. The request itself goes to the `Lo
 
 **maxResponseBytes.** A hard cap on response body size (default 100 MiB; `0` =
 unlimited) that defends against memory exhaustion from a hostile or buggy
-endpoint. CLI: `--max-response-bytes`.
+endpoint. CLI: `--max-response-bytes`. The default transport joins the body's chunks as they
+arrive (every 1024 chunks or 64 KiB), so memory follows the bytes, not the number of chunks:
+a Buffer kept per one-byte chunk cost about 210 bytes of heap each, far below the cap.
 
 **Decoding.** A JSON body is decoded by the charset its `Content-Type` declares
 (UTF-8 when it names none) with `TextDecoder`, which also drops a leading byte order
@@ -540,8 +542,9 @@ everything that drives the CLI is in `apps/cli/test/`.
   P27 (a big or odd answer is printed or refused in one clean record, within memory: a large
   flat answer prints with `--compact` under a 256 MB heap, 20 MB of DEL print escaped under a
   512 MB heap, and 90 MB of DEL, too large once escaped, are an ERROR record of
-  `luftqualitaet.output`; a lone surrogate or invalid bytes become U+FFFD with a `WARN` record
-  of `luftqualitaet.api`; the memory cases start the built bin, 30 s).
+  `luftqualitaet.output`; an answer in two million one-byte chunks is read under a 256 MB heap;
+  a lone surrogate or invalid bytes become U+FFFD with a `WARN` record of `luftqualitaet.api`;
+  the memory cases start the built bin, 30 s).
 
 ## Continuous integration
 

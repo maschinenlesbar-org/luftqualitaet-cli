@@ -1,0 +1,107 @@
+{
+  "comment": "What tools/image/smoke.mjs needs that is particular to this repo: the bin (its log topic), a command that makes one request, the exit code of a network error, the mock answer to that request (by path, under --base-url http://mock:8080; the client adds /api/air-data/v3), and a string the printed answer contains. The answer is the live components list, recorded on 2026-11-19.",
+  "bin": "luftqualitaet",
+  "command": [
+    "components",
+    "--lang",
+    "en"
+  ],
+  "networkErrorExit": 1,
+  "answers": {
+    "/api/air-data/v3/components/json": {
+      "1": [
+        "1",
+        "PM10",
+        "PM₁₀",
+        "µg/m³",
+        "Particulate matter"
+      ],
+      "2": [
+        "2",
+        "CO",
+        "CO",
+        "mg/m³",
+        "Carbon monoxide"
+      ],
+      "3": [
+        "3",
+        "O3",
+        "O₃",
+        "µg/m³",
+        "Ozone"
+      ],
+      "4": [
+        "4",
+        "SO2",
+        "SO₂",
+        "µg/m³",
+        "Sulphur dioxide"
+      ],
+      "5": [
+        "5",
+        "NO2",
+        "NO₂",
+        "µg/m³",
+        "Nitrogen dioxide"
+      ],
+      "6": [
+        "6",
+        "PM10PB",
+        "Pb",
+        "µg/m³",
+        "Lead in particulate matter"
+      ],
+      "7": [
+        "7",
+        "PM10BAP",
+        "BaP",
+        "ng/m³",
+        "Benzo(a)pyrene in particulate matter"
+      ],
+      "8": [
+        "8",
+        "CHB",
+        "C₆H₆",
+        "µg/m³",
+        "Benzene"
+      ],
+      "9": [
+        "9",
+        "PM2",
+        "PM₂,₅",
+        "µg/m³",
+        "Particulate matter"
+      ],
+      "10": [
+        "10",
+        "PM10AS",
+        "As",
+        "ng/m³",
+        "Arsenic in particulate matter"
+      ],
+      "11": [
+        "11",
+        "PM10CD",
+        "Cd",
+        "ng/m³",
+        "Cadmium in particulate matter"
+      ],
+      "12": [
+        "12",
+        "PM10NI",
+        "Ni",
+        "ng/m³",
+        "Nickel in particulate matter"
+      ],
+      "count": 12,
+      "indices": [
+        "component id",
+        "component code",
+        "component symbol",
+        "component unit",
+        "component name"
+      ]
+    }
+  },
+  "expectStdout": "Nitrogen dioxide"
+}

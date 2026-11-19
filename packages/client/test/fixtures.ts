@@ -30,9 +30,19 @@ export const STATION_ROWS: Record<string, JsonValue[]> = {
 // The rest of the catalogue: scopes, which component is measured in which scope, components, networks.
 export const META_TABLES: Record<string, JsonValue> = {"scopes":{"1":["1","1TMW","day","86400","0","Daily average"],"2":["2","1SMW","hour","3600","0","One hour average"],"3":["3","1SMW_MAX","hour","3600","1","Maximum one hour average"],"4":["4","8SMW","hour","28800","0","Eight hour average"],"5":["5","8SMW_MAX","hour","28800","1","Maximum eight hour average"],"6":["6","1TMWGL","hour","3600","0","Daily average (hourly floating)"]},"xref":[["1","1","1","1","0"],["1","2","1","1","1"],["1","6","0","1","1"],["2","4","1","0","1"],["2","5","1","0","0"],["3","2","1","1","1"],["3","3","1","1","0"],["3","4","1","1","1"],["3","5","1","1","0"],["4","1","1","0","0"],["4","2","1","0","1"],["4","3","1","0","0"],["5","2","1","1","1"],["5","3","1","1","0"],["9","1","1","0","0"],["9","2","1","0","1"],["9","6","0","0","1"]],"components":{"1":["1","PM10","PM₁₀","µg/m³","Particulate matter"],"2":["2","CO","CO","mg/m³","Carbon monoxide"],"3":["3","O3","O₃","µg/m³","Ozone"],"4":["4","SO2","SO₂","µg/m³","Sulphur dioxide"],"5":["5","NO2","NO₂","µg/m³","Nitrogen dioxide"],"9":["9","PM2","PM₂,₅","µg/m³","Particulate matter"]},"networks":{"1":["1","BW","Baden-Württemberg"],"2":["2","BY","Bavaria"],"3":["3","BE","Berlin"],"4":["4","BB","Brandenburg"],"5":["5","HB","Bremen"],"6":["6","HH","Hamburg"],"7":["7","HE","Hesse"],"8":["8","MV","Mecklenburg-West Pomerania"],"9":["9","NI","Lower Saxony"],"10":["10","NW","North Rhine-Westphalia"],"11":["11","RP","Rhineland-Palatinate"],"12":["12","SL","Saarland"],"13":["13","SN","Saxony"],"14":["14","ST","Saxony-Anhalt"],"15":["15","SH","Schleswig-Holstein"],"16":["16","TH","Thuringia"],"17":["17","UB","UBA"]}};
 
-/** The catalogue answer. */
-export function metaAnswer(): Record<string, JsonValue> {
-  return { stations: STATION_ROWS, ...META_TABLES, limits: {}, request: { use: "measure", lang: "en", recent: false, index: "id" } };
+/** The catalogue answer, with `stations` in place of the recorded rows when given. */
+export function metaAnswer(stations: Record<string, JsonValue[]> = STATION_ROWS): Record<string, JsonValue> {
+  return { stations, ...META_TABLES, limits: {}, request: { use: "measure", lang: "en", recent: false, index: "id" } };
+}
+
+/** A catalogue row: a station in Leipzig (traffic, urban, SN) with these fields changed. */
+export function stationRow(id: number, fields: { name?: string; city?: string } = {}): JsonValue[] {
+  const row = [...(STATION_ROWS["1613"] as JsonValue[])];
+  row[0] = String(id);
+  row[1] = `DEXX${String(id).padStart(3, "0")}`;
+  if (fields.name !== undefined) row[2] = fields.name;
+  if (fields.city !== undefined) row[3] = fields.city;
+  return row;
 }
 
 /** Annual balances (lang=en), by "component/year". */
@@ -105,15 +115,15 @@ function inWindow(series: Record<string, JsonValue[]>, from: string | null, to: 
   return Object.fromEntries(Object.entries(series).filter(([key]) => (from === null || key.slice(0, 10) >= from) && (to === null || key.slice(0, 10) <= to)));
 }
 
-/** The answer the API gives `request`, from the fixtures above. */
-export function airData(request: HttpRequest): HttpResponse {
+/** The answer the API gives `request`, from the fixtures above (the catalogue's stations replaceable). */
+export function airData(request: HttpRequest, stations: Record<string, JsonValue[]> = STATION_ROWS): HttpResponse {
   const url = new URL(request.url);
   const path = url.pathname.startsWith(API) ? url.pathname.slice(API.length) : url.pathname;
   const q = (name: string) => url.searchParams.get(name);
   const request_ = Object.fromEntries(url.searchParams);
   switch (path) {
     case "meta/json":
-      return jsonResponse(metaAnswer());
+      return jsonResponse(metaAnswer(stations));
     case "airquality/json": {
       const data = q("station") === "1613" ? { "1613": inWindow(AIRQUALITY_1613, q("date_from"), q("date_to")) } : {};
       const empty = Object.values(data).every((hours) => Object.keys(hours).length === 0);
@@ -144,7 +154,8 @@ export function airData(request: HttpRequest): HttpResponse {
   }
 }
 
-/** A mock transport over the fixtures: every request answered as the API would. */
-export function airDataApi(): MockTransport {
-  return makeMockTransport(airData);
+/** A mock transport over the fixtures: every request answered as the API would; `stations` replaces the catalogue's. */
+export function airDataApi(stations?: JsonValue[][]): MockTransport {
+  const catalogue = stations === undefined ? STATION_ROWS : Object.fromEntries(stations.map((row) => [String(row[0]), row]));
+  return makeMockTransport((request) => airData(request, catalogue));
 }

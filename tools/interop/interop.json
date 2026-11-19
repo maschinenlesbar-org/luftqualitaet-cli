@@ -1,0 +1,919 @@
+{
+  "comment": "What tools/interop/interop.mjs needs that is particular to this repo: the mock upstream answer per path (under --base-url http://127.0.0.1:<port>; the client adds /api/air-data/v3), how many tools the server lists, and the calls to make with what each must answer. Live-shaped answers recorded on 2026-11-19, trimmed (the client test fixtures).",
+  "answers": {
+    "/api/air-data/v3/meta/json": {
+      "stations": {
+        "43": [
+          "43",
+          "DEBB045",
+          "Frankfurt (Oder), Leipziger Str.",
+          "Frankfurt (Oder)",
+          "FFLS",
+          "1995-08-01",
+          null,
+          "14.5386",
+          "52.3373",
+          "4",
+          "1",
+          "3",
+          "BB",
+          "Brandenburg",
+          "urban area",
+          "urban",
+          "traffic",
+          "Leipziger Str.",
+          "",
+          "15232"
+        ],
+        "1613": [
+          "1613",
+          "DESN025",
+          "Leipzig-Mitte",
+          "Leipzig",
+          "",
+          "1990-12-01",
+          null,
+          "12.3772",
+          "51.3442",
+          "13",
+          "1",
+          "3",
+          "SN",
+          "Saxony",
+          "urban area",
+          "urban",
+          "traffic",
+          "Willy-Brandt-Platz/Am Hallischen Tor",
+          "",
+          "04109"
+        ],
+        "1647": [
+          "1647",
+          "DESN059",
+          "Leipzig-West",
+          "Leipzig",
+          "",
+          "1994-09-01",
+          null,
+          "12.2974",
+          "51.3179",
+          "13",
+          "2",
+          "1",
+          "SN",
+          "Saxony",
+          "suburban area",
+          "suburban",
+          "background",
+          "Nikolai-Rumjanzew-Str.",
+          "100",
+          "04207"
+        ],
+        "1665": [
+          "1665",
+          "DESN077",
+          "Leipzig Lützner Str.",
+          "Leipzig",
+          "",
+          "2001-01-01",
+          null,
+          "12.3347",
+          "51.3359",
+          "13",
+          "1",
+          "3",
+          "SN",
+          "Saxony",
+          "urban area",
+          "urban",
+          "traffic",
+          "Lützner Str.",
+          "34/36",
+          "04177"
+        ],
+        "1670": [
+          "1670",
+          "DESN082",
+          "Leipzig-Thekla",
+          "Leipzig",
+          "",
+          "2004-04-01",
+          "2020-12-31",
+          "12.4257",
+          "51.3760",
+          "13",
+          "2",
+          "1",
+          "SN",
+          "Saxony",
+          "suburban area",
+          "suburban",
+          "background",
+          "Kiebitzstr.",
+          "",
+          "04349"
+        ],
+        "1671": [
+          "1671",
+          "DESN083",
+          "Chemnitz-Leipziger Str.",
+          "Chemnitz",
+          "",
+          "2016-04-01",
+          null,
+          "12.9034",
+          "50.8457",
+          "13",
+          "1",
+          "3",
+          "SN",
+          "Saxony",
+          "urban area",
+          "urban",
+          "traffic",
+          "Leipziger Str.",
+          "",
+          "09113"
+        ],
+        "9480": [
+          "9480",
+          "DEBE125",
+          "Berlin Leipziger Straße (MC)",
+          "Berlin",
+          "",
+          "2020-03-26",
+          null,
+          "13.3824",
+          "52.5098",
+          "3",
+          "1",
+          "3",
+          "BE",
+          "Berlin",
+          "urban area",
+          "urban",
+          "traffic",
+          "Leipziger Straße",
+          "5",
+          "10117"
+        ]
+      },
+      "scopes": {
+        "1": [
+          "1",
+          "1TMW",
+          "day",
+          "86400",
+          "0",
+          "Daily average"
+        ],
+        "2": [
+          "2",
+          "1SMW",
+          "hour",
+          "3600",
+          "0",
+          "One hour average"
+        ],
+        "3": [
+          "3",
+          "1SMW_MAX",
+          "hour",
+          "3600",
+          "1",
+          "Maximum one hour average"
+        ],
+        "4": [
+          "4",
+          "8SMW",
+          "hour",
+          "28800",
+          "0",
+          "Eight hour average"
+        ],
+        "5": [
+          "5",
+          "8SMW_MAX",
+          "hour",
+          "28800",
+          "1",
+          "Maximum eight hour average"
+        ],
+        "6": [
+          "6",
+          "1TMWGL",
+          "hour",
+          "3600",
+          "0",
+          "Daily average (hourly floating)"
+        ]
+      },
+      "xref": [
+        [
+          "1",
+          "1",
+          "1",
+          "1",
+          "0"
+        ],
+        [
+          "1",
+          "2",
+          "1",
+          "1",
+          "1"
+        ],
+        [
+          "1",
+          "6",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "2",
+          "4",
+          "1",
+          "0",
+          "1"
+        ],
+        [
+          "2",
+          "5",
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "3",
+          "2",
+          "1",
+          "1",
+          "1"
+        ],
+        [
+          "3",
+          "3",
+          "1",
+          "1",
+          "0"
+        ],
+        [
+          "3",
+          "4",
+          "1",
+          "1",
+          "1"
+        ],
+        [
+          "3",
+          "5",
+          "1",
+          "1",
+          "0"
+        ],
+        [
+          "4",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "4",
+          "2",
+          "1",
+          "0",
+          "1"
+        ],
+        [
+          "4",
+          "3",
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "5",
+          "2",
+          "1",
+          "1",
+          "1"
+        ],
+        [
+          "5",
+          "3",
+          "1",
+          "1",
+          "0"
+        ],
+        [
+          "9",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "9",
+          "2",
+          "1",
+          "0",
+          "1"
+        ],
+        [
+          "9",
+          "6",
+          "0",
+          "0",
+          "1"
+        ]
+      ],
+      "components": {
+        "1": [
+          "1",
+          "PM10",
+          "PM₁₀",
+          "µg/m³",
+          "Particulate matter"
+        ],
+        "2": [
+          "2",
+          "CO",
+          "CO",
+          "mg/m³",
+          "Carbon monoxide"
+        ],
+        "3": [
+          "3",
+          "O3",
+          "O₃",
+          "µg/m³",
+          "Ozone"
+        ],
+        "4": [
+          "4",
+          "SO2",
+          "SO₂",
+          "µg/m³",
+          "Sulphur dioxide"
+        ],
+        "5": [
+          "5",
+          "NO2",
+          "NO₂",
+          "µg/m³",
+          "Nitrogen dioxide"
+        ],
+        "9": [
+          "9",
+          "PM2",
+          "PM₂,₅",
+          "µg/m³",
+          "Particulate matter"
+        ]
+      },
+      "networks": {
+        "1": [
+          "1",
+          "BW",
+          "Baden-Württemberg"
+        ],
+        "2": [
+          "2",
+          "BY",
+          "Bavaria"
+        ],
+        "3": [
+          "3",
+          "BE",
+          "Berlin"
+        ],
+        "4": [
+          "4",
+          "BB",
+          "Brandenburg"
+        ],
+        "5": [
+          "5",
+          "HB",
+          "Bremen"
+        ],
+        "6": [
+          "6",
+          "HH",
+          "Hamburg"
+        ],
+        "7": [
+          "7",
+          "HE",
+          "Hesse"
+        ],
+        "8": [
+          "8",
+          "MV",
+          "Mecklenburg-West Pomerania"
+        ],
+        "9": [
+          "9",
+          "NI",
+          "Lower Saxony"
+        ],
+        "10": [
+          "10",
+          "NW",
+          "North Rhine-Westphalia"
+        ],
+        "11": [
+          "11",
+          "RP",
+          "Rhineland-Palatinate"
+        ],
+        "12": [
+          "12",
+          "SL",
+          "Saarland"
+        ],
+        "13": [
+          "13",
+          "SN",
+          "Saxony"
+        ],
+        "14": [
+          "14",
+          "ST",
+          "Saxony-Anhalt"
+        ],
+        "15": [
+          "15",
+          "SH",
+          "Schleswig-Holstein"
+        ],
+        "16": [
+          "16",
+          "TH",
+          "Thuringia"
+        ],
+        "17": [
+          "17",
+          "UB",
+          "UBA"
+        ]
+      },
+      "limits": {},
+      "request": {
+        "use": "measure",
+        "lang": "en",
+        "recent": false,
+        "index": "id"
+      }
+    },
+    "/api/air-data/v3/airquality/json": {
+      "request": {
+        "station": "1613"
+      },
+      "data": {
+        "1613": {
+          "2026-11-18 21:00:00": [
+            "2026-11-18 22:00:00",
+            0,
+            0,
+            [
+              3,
+              47,
+              0,
+              "0.783"
+            ],
+            [
+              5,
+              20,
+              0,
+              "1"
+            ],
+            [
+              1,
+              6,
+              0,
+              "0.3"
+            ],
+            [
+              9,
+              3,
+              0,
+              "0.3"
+            ]
+          ],
+          "2026-11-18 22:00:00": [
+            "2026-11-18 23:00:00",
+            1,
+            0,
+            [
+              3,
+              64,
+              1,
+              "1.051"
+            ],
+            [
+              5,
+              6,
+              0,
+              "0.3"
+            ],
+            [
+              1,
+              12,
+              0,
+              "0.6"
+            ],
+            [
+              9,
+              6,
+              0,
+              "0.6"
+            ]
+          ],
+          "2026-11-18 23:00:00": [
+            "2026-11-18 24:00:00",
+            2,
+            0,
+            [
+              3,
+              64,
+              1,
+              "1.051"
+            ],
+            [
+              5,
+              95,
+              2,
+              "2.1"
+            ],
+            [
+              1,
+              12,
+              0,
+              "0.6"
+            ],
+            [
+              9,
+              6,
+              0,
+              "0.6"
+            ]
+          ],
+          "2026-11-19 02:00:00": [
+            "2026-11-19 03:00:00",
+            1,
+            1,
+            [
+              3,
+              70,
+              1,
+              "1.1"
+            ],
+            [
+              5,
+              25,
+              1,
+              "1.2"
+            ]
+          ],
+          "2026-11-19 00:00:00": [
+            "2026-11-19 01:00:00",
+            1,
+            0,
+            [
+              3,
+              62,
+              1,
+              "1.017"
+            ],
+            [
+              5,
+              17,
+              0,
+              "0.85"
+            ],
+            [
+              1,
+              6,
+              0,
+              "0.3"
+            ],
+            [
+              9,
+              3,
+              0,
+              "0.3"
+            ]
+          ],
+          "2026-11-19 01:00:00": [
+            "2026-11-19 02:00:00",
+            0,
+            0,
+            [
+              3,
+              55,
+              0,
+              "0.917"
+            ],
+            [
+              5,
+              7,
+              0,
+              "0.35"
+            ],
+            [
+              1,
+              12,
+              0,
+              "0.6"
+            ],
+            [
+              9,
+              6,
+              0,
+              "0.6"
+            ]
+          ]
+        }
+      },
+      "indices": {},
+      "count": 0
+    },
+    "/api/air-data/v3/thresholds/json": {
+      "1": [
+        "1",
+        "5",
+        "2",
+        "aq",
+        "0",
+        "20",
+        "0"
+      ],
+      "2": [
+        "2",
+        "5",
+        "2",
+        "aq",
+        "21",
+        "40",
+        "1"
+      ],
+      "3": [
+        "3",
+        "5",
+        "2",
+        "aq",
+        "41",
+        "100",
+        "2"
+      ],
+      "4": [
+        "4",
+        "5",
+        "2",
+        "aq",
+        "101",
+        "200",
+        "3"
+      ],
+      "5": [
+        "5",
+        "5",
+        "2",
+        "aq",
+        "201",
+        "1000",
+        "4"
+      ],
+      "count": 5,
+      "indices": [
+        "threshold id",
+        "component id",
+        "scope id",
+        "threshold type",
+        "threshold min",
+        "threshold max",
+        "threshold index"
+      ]
+    },
+    "/api/air-data/v3/components/json": {
+      "1": [
+        "1",
+        "PM10",
+        "PM₁₀",
+        "µg/m³",
+        "Particulate matter"
+      ],
+      "2": [
+        "2",
+        "CO",
+        "CO",
+        "mg/m³",
+        "Carbon monoxide"
+      ],
+      "3": [
+        "3",
+        "O3",
+        "O₃",
+        "µg/m³",
+        "Ozone"
+      ],
+      "4": [
+        "4",
+        "SO2",
+        "SO₂",
+        "µg/m³",
+        "Sulphur dioxide"
+      ],
+      "5": [
+        "5",
+        "NO2",
+        "NO₂",
+        "µg/m³",
+        "Nitrogen dioxide"
+      ],
+      "6": [
+        "6",
+        "PM10PB",
+        "Pb",
+        "µg/m³",
+        "Lead in particulate matter"
+      ],
+      "7": [
+        "7",
+        "PM10BAP",
+        "BaP",
+        "ng/m³",
+        "Benzo(a)pyrene in particulate matter"
+      ],
+      "8": [
+        "8",
+        "CHB",
+        "C₆H₆",
+        "µg/m³",
+        "Benzene"
+      ],
+      "9": [
+        "9",
+        "PM2",
+        "PM₂,₅",
+        "µg/m³",
+        "Particulate matter"
+      ],
+      "10": [
+        "10",
+        "PM10AS",
+        "As",
+        "ng/m³",
+        "Arsenic in particulate matter"
+      ],
+      "11": [
+        "11",
+        "PM10CD",
+        "Cd",
+        "ng/m³",
+        "Cadmium in particulate matter"
+      ],
+      "12": [
+        "12",
+        "PM10NI",
+        "Ni",
+        "ng/m³",
+        "Nickel in particulate matter"
+      ],
+      "count": 12,
+      "indices": [
+        "component id",
+        "component code",
+        "component symbol",
+        "component unit",
+        "component name"
+      ]
+    },
+    "/api/air-data/v3/scopes/json": {
+      "1": [
+        "1",
+        "1TMW",
+        "day",
+        "86400",
+        "0",
+        "Daily average"
+      ],
+      "2": [
+        "2",
+        "1SMW",
+        "hour",
+        "3600",
+        "0",
+        "One hour average"
+      ],
+      "3": [
+        "3",
+        "1SMW_MAX",
+        "hour",
+        "3600",
+        "1",
+        "Maximum one hour average"
+      ],
+      "4": [
+        "4",
+        "8SMW",
+        "hour",
+        "28800",
+        "0",
+        "Eight hour average"
+      ],
+      "5": [
+        "5",
+        "8SMW_MAX",
+        "hour",
+        "28800",
+        "1",
+        "Maximum eight hour average"
+      ],
+      "6": [
+        "6",
+        "1TMWGL",
+        "hour",
+        "3600",
+        "0",
+        "Daily average (hourly floating)"
+      ],
+      "count": 6,
+      "indices": [
+        "scope id",
+        "scope code",
+        "scope time base",
+        "scope time scope",
+        "scope time is max",
+        "scope name"
+      ]
+    }
+  },
+  "tools": 6,
+  "calls": [
+    {
+      "name": "findStations",
+      "arguments": {
+        "query": "Leipzig"
+      },
+      "expect": {
+        "status": "ok",
+        "total": 3,
+        "inactiveLeftOut": 1
+      }
+    },
+    {
+      "name": "getAirQualityReport",
+      "arguments": {
+        "station": 1613,
+        "from": "2026-11-18",
+        "to": "2026-11-19"
+      },
+      "expect": {
+        "status": "ok",
+        "worst.level": 2,
+        "worst.drivers": [
+          "NO₂"
+        ],
+        "latestComplete.end": "2026-11-19 02:00:00"
+      }
+    },
+    {
+      "name": "getAirQualityReport",
+      "arguments": {
+        "station": 99999
+      },
+      "expect": {
+        "status": "empty"
+      }
+    },
+    {
+      "name": "getIndexBands",
+      "arguments": {
+        "component": "NO2"
+      },
+      "expect": {
+        "status": "ok",
+        "sets.0.bands.2.max": 100
+      }
+    },
+    {
+      "name": "listComponents",
+      "arguments": {},
+      "expect": {
+        "components.4.symbol": "NO₂"
+      }
+    },
+    {
+      "name": "findStations",
+      "arguments": {
+        "query": "Leipzig",
+        "limit": 500
+      },
+      "error": true
+    }
+  ]
+}

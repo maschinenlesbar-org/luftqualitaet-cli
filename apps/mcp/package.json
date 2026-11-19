@@ -1,0 +1,59 @@
+{
+  "name": "@maschinenlesbar.org/luftqualitaet-mcp",
+  "version": "0.9.0",
+  "description": "MCP server for the German Environment Agency's air-quality data (Umweltbundesamt Air Data API): stations, the decoded air-quality index, station rankings by limit-value exceedances, for AI agents (stdio and Streamable HTTP)",
+  "type": "module",
+  "bin": {
+    "luftqualitaet-mcp": "dist/src/mcp/index.js"
+  },
+  "files": [
+    "dist/src",
+    "dist/node_modules",
+    "!dist/src/**/*.map",
+    "LICENSING.md",
+    "DATA_LICENSE.md",
+    "CONTRIBUTING.md"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "prepack": "tsc -b ../../tsconfig.json && node ../../tools/pack/prepack.mjs",
+    "postpack": "node ../../tools/pack/postpack.mjs",
+    "test": "node --test $(node -p \"+process.versions.node.split('.')[0] >= 24 ? '--test-timeout=5000' : ''\") dist/test/*.test.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "luftqualitaet",
+    "air-quality",
+    "umweltbundesamt",
+    "germany"
+  ],
+  "author": "Sebastian Schürmann <sebs@2xs.org>",
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maschinenlesbar-org/luftqualitaet-cli.git",
+    "directory": "apps/mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/maschinenlesbar-org/luftqualitaet-cli/issues"
+  },
+  "homepage": "https://maschinenlesbar.org/luftqualitaet-cli/",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/sebs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.4.0"
+  },
+  "bundleDependencies": [
+    "@modelcontextprotocol/server",
+    "@modelcontextprotocol/core",
+    "zod"
+  ]
+}

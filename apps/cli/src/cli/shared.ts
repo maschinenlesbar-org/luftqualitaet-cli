@@ -5,6 +5,7 @@ import { constants } from "node:buffer";
 import type { Command } from "commander";
 import { InvalidArgumentError } from "commander";
 import { logOf, type CliDeps } from "./io.js";
+import { pidsProblem, responseCapFor } from "./limits.js";
 import { LuftError } from "@maschinenlesbar.org/luftqualitaet-client/internal/errors";
 import { baseUrlApiPathProblem } from "@maschinenlesbar.org/luftqualitaet-client/internal/client";
 import { DEFAULT_BASE_URL, cleartextProblem, isBidiControl, type EngineOptions, type RetryEvent } from "@maschinenlesbar.org/luftqualitaet-client/internal/engine";
@@ -227,6 +228,9 @@ export function toEngineOptions(global: GlobalOptions): EngineOptions {
  */
 export class OutputError extends LuftError {}
 
+/** The container can't run the CLI as it is limited (limits.ts): an ERROR record of the cli area and exit 1. */
+export class EnvironmentError extends LuftError {}
+
 /** The longest string V8 makes (2^29 - 24 characters on 64-bit): a longer JSON text can't be printed at once. */
 const MAX_TEXT_LENGTH = constants.MAX_STRING_LENGTH;
 
@@ -404,6 +408,15 @@ export function action(
     const cleartext = cleartextProblem(global.baseUrl ?? DEFAULT_BASE_URL);
     if (cleartext !== undefined) logOf(deps).warn("http", cleartext);
     const options = toEngineOptions(global);
+    // In a container: under a pids limit Node can't work with, refuse before any request; under a
+    // memory limit the 100 MiB default can't be held, so cap by the memory instead (an oversized
+    // answer is then the cap's error, not an OOM kill). An explicit --max-response-bytes wins.
+    const limits = deps.limits?.() ?? {};
+    const problem = pidsProblem(limits);
+    if (problem !== undefined) throw new EnvironmentError(problem);
+    const given = command.getOptionValueSourceWithGlobals("maxResponseBytes");
+    const memory = given === undefined || given === "default" ? limits.memoryBytes : undefined;
+    if (memory !== undefined) options.maxResponseBytes = responseCapFor(memory);
     options.onRetry = (event) => logOf(deps).warn("http", retryMessage(event));
     // Text in an answer replaced with U+FFFD is never silent: one WARN record of the api area.
     options.onWarning = (message) => logOf(deps).warn("api", message);

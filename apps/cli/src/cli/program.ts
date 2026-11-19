@@ -14,6 +14,7 @@ import { forbidRepeatedOptions, parseBaseUrl, parseBoundedInt, parseHeaderValue,
 import { registerReferenceCommands } from "./commands/reference.js";
 import { registerDataCommands } from "./commands/data.js";
 import { DEFAULT_LOG_FORMAT, logFormatProblem } from "./log.js";
+import { readContainerLimits } from "./limits.js";
 
 /**
  * Single source of truth for the version: read from package.json at runtime
@@ -37,6 +38,8 @@ export const VERSION = readVersion();
 export const defaultDeps: CliDeps = {
   io: defaultIO,
   createClient: (options) => new LuftqualitaetClient(options),
+  // In a container: the memory and pids limits (cgroup), for action()'s checks.
+  limits: () => readContainerLimits(),
 };
 
 /** commander value-parser for `--log-format`. */

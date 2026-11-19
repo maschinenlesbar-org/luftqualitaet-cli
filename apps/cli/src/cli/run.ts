@@ -5,8 +5,8 @@
 import { CommanderError, type Command } from "commander";
 import { buildProgram, defaultDeps } from "./program.js";
 import { logOf, type CliDeps } from "./io.js";
-import { OutputError } from "./shared.js";
-import { DEFAULT_LOG_FORMAT, createLogger, logFormatFromArgv, type LogFormat, type Logger } from "./log.js";
+import { EnvironmentError, OutputError } from "./shared.js";
+import { LOG_PROGRAM, DEFAULT_LOG_FORMAT, createLogger, logFormatFromArgv, type LogFormat, type Logger } from "./log.js";
 import {
   LuftApiError,
   LuftError,
@@ -288,6 +288,10 @@ function areaOf(err: LuftError): string {
 }
 
 export async function run(argv: string[], deps: CliDeps = defaultDeps): Promise<number> {
+  // In the container image the entrypoint is the program, so `docker run <image> components`;
+  // people copy the npm form and type `docker run <image> luftqualitaet components`. A leading
+  // program name is dropped, so both work (no command is named like the program).
+  if (argv[0] === LOG_PROGRAM) argv = argv.slice(1);
   // The log replaces the secrets of the run in every message, in either format.
   deps = withRedactedOutput(deps, argv);
   const program = buildProgram(deps);
@@ -356,6 +360,11 @@ export async function run(argv: string[], deps: CliDeps = defaultDeps): Promise<
       // exit code commander uses for a rejected option value.
       log.error("cli", err.message);
       return USAGE_EXIT_CODE;
+    }
+    if (err instanceof EnvironmentError) {
+      // The container can't run the CLI as it is limited (limits.ts): no request was made.
+      log.error("cli", err.message);
+      return 1;
     }
     if (err instanceof LuftError) {
       log.error(areaOf(err), err.message);

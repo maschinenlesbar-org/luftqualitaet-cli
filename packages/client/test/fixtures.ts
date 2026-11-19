@@ -30,6 +30,9 @@ export const STATION_ROWS: Record<string, JsonValue[]> = {
 // The rest of the catalogue: scopes, which component is measured in which scope, components, networks.
 export const META_TABLES: Record<string, JsonValue> = {"scopes":{"1":["1","1TMW","day","86400","0","Daily average"],"2":["2","1SMW","hour","3600","0","One hour average"],"3":["3","1SMW_MAX","hour","3600","1","Maximum one hour average"],"4":["4","8SMW","hour","28800","0","Eight hour average"],"5":["5","8SMW_MAX","hour","28800","1","Maximum eight hour average"],"6":["6","1TMWGL","hour","3600","0","Daily average (hourly floating)"]},"xref":[["1","1","1","1","0"],["1","2","1","1","1"],["1","6","0","1","1"],["2","4","1","0","1"],["2","5","1","0","0"],["3","2","1","1","1"],["3","3","1","1","0"],["3","4","1","1","1"],["3","5","1","1","0"],["4","1","1","0","0"],["4","2","1","0","1"],["4","3","1","0","0"],["5","2","1","1","1"],["5","3","1","1","0"],["9","1","1","0","0"],["9","2","1","0","1"],["9","6","0","0","1"]],"components":{"1":["1","PM10","PM₁₀","µg/m³","Particulate matter"],"2":["2","CO","CO","mg/m³","Carbon monoxide"],"3":["3","O3","O₃","µg/m³","Ozone"],"4":["4","SO2","SO₂","µg/m³","Sulphur dioxide"],"5":["5","NO2","NO₂","µg/m³","Nitrogen dioxide"],"9":["9","PM2","PM₂,₅","µg/m³","Particulate matter"]},"networks":{"1":["1","BW","Baden-Württemberg"],"2":["2","BY","Bavaria"],"3":["3","BE","Berlin"],"4":["4","BB","Brandenburg"],"5":["5","HB","Bremen"],"6":["6","HH","Hamburg"],"7":["7","HE","Hesse"],"8":["8","MV","Mecklenburg-West Pomerania"],"9":["9","NI","Lower Saxony"],"10":["10","NW","North Rhine-Westphalia"],"11":["11","RP","Rhineland-Palatinate"],"12":["12","SL","Saarland"],"13":["13","SN","Saxony"],"14":["14","ST","Saxony-Anhalt"],"15":["15","SH","Schleswig-Holstein"],"16":["16","TH","Thuringia"],"17":["17","UB","UBA"]}};
 
+/** A station of the yearly tables' catalogue (meta?use=annualbalance) that the hourly one lacks. */
+export const YEARLY_ONLY_STATION: JsonValue[] = ["199","DEBE092","Berlin Spandauer Damm","Berlin","","2007-01-01",null,"13.2818","52.5183","3","1","3","BE","Berlin","urban area","urban","traffic","Spandauer Damm","103","14059"];
+
 /** The catalogue answer, with `stations` in place of the recorded rows when given. */
 export function metaAnswer(stations: Record<string, JsonValue[]> = STATION_ROWS): Record<string, JsonValue> {
   return { stations, ...META_TABLES, limits: {}, request: { use: "measure", lang: "en", recent: false, index: "id" } };
@@ -53,7 +56,7 @@ export const ANNUAL: Record<string, { headers: Record<string, string>; data: Jso
   },
   "5/2024": {
     headers: { "1": "Annual mean value in µg/m³", "2": "Number of hourly mean values above 200 µg/m³*" },
-    data: [["21","9","0"],["28","7","0"],["31","7","0"],["43","27","0"],["240","2","0"],["471","24","0"],["473","17","0"],["523","13","0"],["535","39","0"],["680","4","0"],["1613","21","0"],["1647","9","0"],["1665","19","0"],["1671","21","0"],["9480","25","0"]],
+    data: [["199","20","0"],["4242","1",null],["21","9","0"],["28","7","0"],["31","7","0"],["43","27","0"],["240","2","0"],["471","24","0"],["473","17","0"],["523","13","0"],["535","39","0"],["680","4","0"],["1613","21","0"],["1647","9","0"],["1665","19","0"],["1671","21","0"],["9480","25","0"]],
   },
 };
 
@@ -123,7 +126,8 @@ export function airData(request: HttpRequest, stations: Record<string, JsonValue
   const request_ = Object.fromEntries(url.searchParams);
   switch (path) {
     case "meta/json":
-      return jsonResponse(metaAnswer(stations));
+      // The yearly tables' catalogue also lists a station with yearly values only.
+      return jsonResponse(metaAnswer(q("use") === "annualbalance" ? { ...stations, "199": YEARLY_ONLY_STATION } : stations));
     case "airquality/json": {
       const data = q("station") === "1613" ? { "1613": inWindow(AIRQUALITY_1613, q("date_from"), q("date_to")) } : {};
       const empty = Object.values(data).every((hours) => Object.keys(hours).length === 0);

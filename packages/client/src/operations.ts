@@ -238,9 +238,14 @@ export function stationOf(row: JsonValue): Station | undefined {
   };
 }
 
-/** The catalogue, read in English (station types, settings and states as the API names them). */
-export async function loadCatalogue(client: LuftqualitaetClient): Promise<Catalogue> {
-  const meta = await client.meta({ use: "measure", lang: "en" });
+/**
+ * The catalogue, read in English (station types, settings and states as the API names them).
+ * `measure` (the default) lists the stations with hourly data, the ones every hourly call takes;
+ * `annualbalance` lists the stations of the yearly tables, about 200 more active ones among them
+ * (NO₂ sites that report only yearly values, Berlin Spandauer Damm), in the same row layout.
+ */
+export async function loadCatalogue(client: LuftqualitaetClient, use: "measure" | "annualbalance" = "measure"): Promise<Catalogue> {
+  const meta = await client.meta({ use, lang: "en" });
   const stations = new Map<number, Station>();
   if (isRecord(meta["stations"])) {
     for (const row of Object.values(meta["stations"])) {
@@ -440,6 +445,7 @@ export async function findStations(client: LuftqualitaetClient, input: FindStati
   const notes = [
     "Lead with the station id: every other call takes it. Coordinates are lat/lon here (the API stores lon first).",
     "A traffic station measures a street, a background station the area's general air: say which one you picked.",
+    "These are the stations with hourly data; the yearly rankings also list stations that report only yearly values.",
   ];
   if (otherNameMatches > 0) notes.push(`${otherNameMatches} station(s) elsewhere have the term in their name (a street named after the town) and are left out.`);
   return {
@@ -789,7 +795,8 @@ export type StationRanking =
       period?: { from: string; to: string; stationsEndingEarlier: number };
       stationCount: number;
       withoutFigure: number;
-      aboveZero: number;
+      /** For a count: how many stations counted at least one. */
+      aboveZero?: number;
       limit?: ColumnLimit;
       overLimit?: number;
       unknownStations: number;
@@ -939,7 +946,8 @@ export async function rankStations(client: LuftqualitaetClient, input: RankStati
     column = chosen;
   }
   const text = headers[String(column)] ?? "";
-  const catalogue = await loadCatalogue(client);
+  // The yearly tables list stations the hourly catalogue lacks (yearly-only NO₂ sites): their own catalogue names them.
+  const catalogue = await loadCatalogue(client, basis === "annualBalance" ? "annualbalance" : "measure");
   let unknownStations = 0;
   let withoutFigure = 0;
   const figures: { row: JsonValue[]; station: number; value: number; known: Station | undefined }[] = [];
@@ -996,6 +1004,7 @@ export async function rankStations(client: LuftqualitaetClient, input: RankStati
     "Show each station's type: traffic stations dominate NO₂ rankings by design, ozone is worst at rural background stations.",
     "Don't mix the annual balance and the exceedance table in one ranking; say which one this is.",
   );
+  if (unknownStations > 0) notes.push(`${unknownStations} station(s) of the table are not in UBA's station catalogue: they are listed by id only.`);
   return {
     status: "ok",
     searched,
@@ -1011,7 +1020,7 @@ export async function rankStations(client: LuftqualitaetClient, input: RankStati
     ...(period === undefined ? {} : { period }),
     stationCount: figures.length,
     withoutFigure,
-    aboveZero: figures.filter((figure) => figure.value > 0).length,
+    ...(/^number of/i.test(text) ? { aboveZero: figures.filter((figure) => figure.value > 0).length } : {}),
     ...(limitInfo === undefined ? {} : { limit: limitInfo, overLimit: figures.filter((figure) => figure.value > limitInfo.value).length }),
     unknownStations,
     stations: ranked.slice(offset, offset + limit),

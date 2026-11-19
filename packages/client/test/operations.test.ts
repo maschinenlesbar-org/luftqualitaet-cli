@@ -203,8 +203,12 @@ test("ties share a rank; an annual mean is read against its limit", async () => 
   if (ranking.status !== "ok") return;
   assert.equal(ranking.metric.text, "Annual mean value in µg/m³");
   assert.deepEqual(ranking.stations.slice(0, 7).map((s) => [s.rank, s.station, s.value]), [
-    [1, 535, 39], [2, 43, 27], [3, 9480, 25], [4, 471, 24], [5, 1613, 21], [5, 1671, 21], [7, 1665, 19],
+    [1, 535, 39], [2, 43, 27], [3, 9480, 25], [4, 471, 24], [5, 1613, 21], [5, 1671, 21], [7, 199, 20],
   ]);
+  assert.equal(ranking.stations[6]?.name, "Berlin Spandauer Damm", "named from the yearly tables' catalogue, which the hourly one lacks");
+  assert.equal(ranking.unknownStations, 1);
+  assert.equal(ranking.aboveZero, undefined, "a mean is no count");
+  assert.ok(ranking.notes.some((n) => /1 station\(s\) of the table are not in UBA's station catalogue/.test(n)));
   assert.deepEqual(ranking.limit, { value: 40, kind: "annual mean limit", text: "annual mean limit 40 µg/m³" });
   assert.equal(ranking.overLimit, 0);
   assert.equal(ranking.nextOffset, 7);

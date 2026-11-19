@@ -36,7 +36,7 @@ luftqualitaet --help
 ## Library usage
 
 ```ts
-import { LuftqualitaetClient, LuftApiError } from "@maschinenlesbar.org/luftqualitaet-cli";
+import { LuftqualitaetClient, LuftApiError, getAirQualityReport, rankStations } from "@maschinenlesbar.org/luftqualitaet-cli";
 
 const client = new LuftqualitaetClient(); // defaults to https://luftdaten.umweltbundesamt.de
 
@@ -50,6 +50,12 @@ try {
 } catch (err) {
   if (err instanceof LuftApiError) console.error(err.status, err.detail);
 }
+
+// The skills' use cases, with their traps built in (see "MCP server" below): the index decoded
+// with its driving pollutant and CET times, an unknown station said to be one; a completed year
+// ranked on the annual balance, the running one on the preliminary exceedance table.
+const report = await getAirQualityReport(client, { station: 1613 }); // yesterday and today
+const worstNo2 = await rankStations(client, { component: "NO2", year: 2025, metric: "mean" });
 ```
 
 ### Client options
@@ -195,14 +201,18 @@ apps/cli/            # @maschinenlesbar.org/luftqualitaet-cli — the published 
   test/              # CLI tests and every conformance-*.test.ts
 packages/client/     # @maschinenlesbar.org/luftqualitaet-client — private, shipped inside the CLI's tarball
   src/               # the API client (below)
-  test/              # tests that only touch the client, + the transport helpers
+  test/              # tests that only touch the client, + the transport helpers and fixtures (a mock of the API)
+apps/mcp/            # @maschinenlesbar.org/luftqualitaet-mcp — the MCP server, released with the CLI
+packages/log/        # the log records (text/jsonl), shared by both apps
+tools/image/         # the container images of both apps (build, push, smoke, SBOM)
+tools/interop/       # the built MCP server against the official MCP client (own lockfile)
 tools/pack/          # prepack/postpack: ship the client (dist/node_modules) and commander in the tarball
-tools/bump.mjs       # version bump + commit + tag (npm run bump)
+tools/bump.mjs       # version bump + commit + tag of every published app (npm run bump)
 tools/sbom/          # the CycloneDX SBOM tool, own lockfile (release.yml's sbom job only)
 tsconfig.docs.json   # TypeDoc only: the package entry, with the client read from its sources
 ```
 
-- **The client is its own package** so a later MCP app can share it with the CLI. It is
+- **The client is its own package** so the MCP app shares it with the CLI. It is
   never published on its own: `apps/cli`'s `prepack` copies it into
   `apps/cli/dist/node_modules/`, where the CLI's imports find it, and the tarball ships it
   as plain files — so npm lists only commander (bundled) as a dependency, never the
@@ -216,9 +226,10 @@ tsconfig.docs.json   # TypeDoc only: the package entry, with the client read fro
   tests (not bundled). Only `"."` is part of the library.
 - **Dependencies point one way:** the app depends on the client, the client on nothing
   in the workspace.
-- **The version lives in `apps/cli/package.json`.** The root has none; a plain
-  `npm version` at the root is refused. Release with `npm run bump -- <patch|minor|major>`,
-  which bumps the app, commits (the bare version as the message) and tags `vX.Y.Z`.
+- **The version lives in `apps/cli/package.json`** (and, the same, in `apps/mcp/package.json`).
+  The root has none; a plain `npm version` at the root is refused. Release with
+  `npm run bump -- <patch|minor|major>`, which bumps every published app together, commits (the
+  bare version as the message) and tags `vX.Y.Z`.
 - **TypeScript:** `tsconfig.base.json` holds the compiler options; every workspace has a
   `tsconfig.json` (`src/`) and a `tsconfig.test.json` (`test/`), and the root
   `tsconfig.json`/`tsconfig.test.json` reference them, built with `tsc -b`.
@@ -235,6 +246,7 @@ packages/client/src/
     errors.ts    # LuftError / LuftApiError / LuftNetworkError / LuftParseError / LuftValidationError
     validate.ts  # the parameter rules (Problem, assertValid, assertDate, ...)
     client.ts    # LuftqualitaetClient — the air-data surface over the engine
+    operations.ts # the skills' use cases: findStations / getAirQualityReport / rankStations / getMeasurements / getIndexBands / listComponents
     index.ts     # the client's public surface (the library entry re-exports it)
 apps/cli/src/cli/
     io.ts        # injectable I/O seam (stdout/stderr), the logger and the clock
@@ -560,9 +572,12 @@ everything that drives the CLI is in `apps/cli/test/`.
 
 GitHub Actions workflows under `.github/workflows/`:
 
-- **ci.yml** — type-check, build and test on Node 22/24/26 for every push and PR; then pack the
-  real tarball, check the pack left nothing behind, install it globally with the registry out
-  of reach and run the bin.
+- **ci.yml** — type-check, build and test on Node 22/24/26 for every push and PR; then pack each
+  published app (the CLI and the MCP server), check the pack left nothing behind, install it
+  globally with the registry out of reach and run its bins; its `interop` job runs the MCP
+  server against the official client.
+- **images.yml** — build, smoke-test and scan both container images on every push and weekly
+  (see [Container image](#container-image)).
 - **release.yml** — on a `v*` tag (made by `npm run bump`), three jobs. **pack** (read-only):
   verify the tag matches `apps/cli/package.json`, test, `npm pack --workspace apps/cli`, record
   the tarball's and the notes' sha256 as job outputs. **sbom** (read-only): `npm ci
@@ -573,13 +588,119 @@ GitHub Actions workflows under `.github/workflows/`:
   create the GitHub Release with `gh` (tarball, SBOMs, notes). So no third-party code runs where
   the tarball is built or where the write token is. Update the tool by changing its version in
   `tools/sbom/package.json` and running `npm install --package-lock-only --ignore-scripts`
-  there; don't chain its install into an npm script.
-- **publish.yml** — manual dispatch from the release tag (`gh workflow run publish.yml --ref vX.Y.Z`; the version is the tag's): `npm publish --workspace apps/cli` via OIDC **Trusted Publishing** (no stored `NPM_TOKEN`) with provenance.
+  there; don't chain its install into an npm script. The release also carries both image
+  archives, their SBOMs, `SHA256SUMS` and signed provenance (see [Container image](#container-image)).
+- **publish.yml** — manual dispatch from the release tag (`gh workflow run publish.yml --ref vX.Y.Z`; the version is the tag's): publishes the release's own files, both tarballs to npm via OIDC **Trusted
+  Publishing** (no stored `NPM_TOKEN`) with provenance and both images to ghcr.io, each checked
+  first against the immutable release and the provenance `release.yml` signed.
 - **docs.yml** — build the project website (`site/`, English and German) with the TypeDoc API docs
   under `/api/`, and deploy both to GitHub Pages on each `v*` tag.
   TypeDoc runs from the isolated, lockfile-pinned `tools/docs/` toolchain because it
   needs the TypeScript 6 compiler API, which TypeScript 7 no longer ships; locally,
   run `npm ci --prefix tools/docs` once before `npm run docs`.
+
+## MCP server (apps/mcp)
+
+`apps/mcp` is the second published app, `@maschinenlesbar.org/luftqualitaet-mcp` (bin
+`luftqualitaet-mcp`), released in lockstep with the CLI: `npm run bump` bumps every
+published app under `apps/` together, one version, one tag. Its npm README is the root
+`MCP.md` (prepack packs `<APP>.md` for an app that has one).
+
+| Module | Role |
+|---|---|
+| `packages/client/src/operations.ts` | The skills' use cases as library functions (findStations, getAirQualityReport, rankStations, getMeasurements, getIndexBands, listComponents), with their traps built in. The station catalogue (`meta?use=measure`, about 540 KB, 526 stations) is read into names (`stationOf`: longitude at index 7, latitude at 8); every station id is looked up there first, so an unknown one is an answer that says so, not the API's empty window. A place that is a town name gives that town's stations (and a district written after it), not the "Leipziger Str." of other towns; umlauts and case are folded (`fold`); closed stations are left out and counted. The index series is decoded per hour (`[end, index, incomplete, [component, value, index, y]…]`): the level in words, the driving pollutant(s) whose own level is the hour's, the worst level and when, the hours per level, the newest complete hour, the hours sorted (the API lists the newest out of order); times are CET all year. A place with several active stations is `ambiguous`, with candidates. `rankStations` reads the annual balance for a completed year and the exceedance table (preliminary) for the running year, or for a year whose balance is not out yet (June of the next year), never mixing them; the column is chosen by UBA's English text (`COLUMN_RULES`: O₃ has no annual mean), read against the EU limit, ties share a rank, stations are joined from the catalogue; the 2016–2018 exceedance tables' HTTP 500 is an empty answer pointing to the annual balance. Component names (NO2, PM₂,₅, Ozon …) resolve to ids; "Feinstaub" alone is refused as PM10 or PM2.5. Public API of both packages. |
+| `packages/log` | The log records (text/jsonl), shared by both apps; `createLogger({ program })`. |
+| `src/mcp/tools.ts` | This repo's: the six tools (flat input schemas with limits, no root combinators; one object output schema each; descriptions under 2000 characters), the instructions, the licence (dl-de/by-2-0 with the three elements of the Quellenvermerk and "eigene Bearbeitung"), the hints the server's messages give. |
+| `src/mcp/api.ts` | This repo's: how the kit reaches the client (`LuftqualitaetClient` as `Client`, `LuftError` as `ClientError`, `LuftNetworkError` as `NetworkError`, `apiBase`). `apiBase` is the host plus `/api/air-data/v3` (the client adds that path to `--base-url`), so a result's `source` is the API request: `meta/json?use=measure&lang=en`, `airquality/json?station=…`, `annualbalances/json?component=…&year=…`. |
+| `src/mcp/server.ts` | The McpServer factory, the tool types, `callTool`: deadline (`--call-timeout`) plus the client's cancellation, cleaned and fitted answers, failures as `isError` results. |
+| `src/mcp/result.ts` | `cleanStrings` (control, bidi, zero-width characters dropped in the value), `fitResult` (whole list entries dropped under `--max-result-chars`, `nextOffset`). Hourly lists are newest first, so a cut drops the oldest hours. |
+| `src/mcp/limiter.ts` | One per process around the upstream transport: 2 in flight, 120 a minute, pause on 429, a bounded queue. |
+| `src/mcp/http.ts` | node:http adapter for the SDK's `createMcpHandler`: POST /mcp, /healthz, Host and Origin checks (the SDK does neither), 1 MiB body, 8 requests at once, timeouts. |
+| `src/mcp/config.ts`, `run.ts`, `index.ts` | Options (`node:util` parseArgs), argv -> exit code, the bin (console into log records, SIGINT/SIGTERM, stdin's end). |
+
+The protocol is the SDK's: `@modelcontextprotocol/server` 2.4.0, bundled with its core and zod
+(prepack). It serves the 2026-07-28 revision and the 2025 handshake (2025-11-25, 2025-06-18)
+statelessly, on stdio (`serveStdio`) and HTTP. The SDK bundles AJV 8.18 into its own code to
+validate tool arguments against the input schemas; an SBOM doesn't list that copy.
+
+Accepted SDK behaviour on stdio: a client that sends `notifications/initialized` and a request
+before the answer to its `initialize` (the MCP lifecycle says it must wait) gets its answers
+late, at the next event on the connection, because `serveStdio` decides the protocol era from
+the opening exchange. Real clients wait, so nothing is worked around here.
+
+The API's v3 is to be retired on 1 February 2027 ("sunsetted", says its 410 answer) and is in a
+brownout until then: about one request in twenty is answered with HTTP 410 Gone and a message to
+migrate to v4. The CLI and the server report that 410 as an error; the server's instructions tell
+a model to call again. The move to v4 is a change of the client, for both apps.
+
+**The kit.** Everything in `apps/mcp` but `tools.ts`, `api.ts`, `test/helpers.ts`,
+`test/tools.test.ts` and the conformance tests' adapter blocks, plus `packages/log`,
+`apps/cli/src/cli/limits.ts`, `tools/image/` (but `smoke.json`), `tools/interop/` (but
+`interop.json`), `tools/bump.mjs`, `tools/pack/` and the workflows `ci.yml`, `images.yml`,
+`release.yml` and `publish.yml`, is the kit of `create-cli-template` (in the api-cli workspace),
+the same in every repository with an MCP server: a fix lands there first and comes here with
+`npm run sync-kit -- ../luftqualitaet-cli` (run in create-cli-template; `--check` lists the
+drift).
+
+Tests (`apps/mcp/test`) run in-process over the SDK's InMemoryTransport with raw JSON-RPC (the
+kit's `harness.ts`). The rules every server follows are the shared conformance tests
+`conformance-m1-…` to `conformance-m10-…` (protocol and tool rules, HTTP, Host and Origin,
+stdio with the built bin, config, limiter, result shaping, drain, call errors, MCP.md), each with
+an adapter block naming this repo's calls and mock answers; `tools.test.ts` holds this server's
+own (the six tools, the traps). The mock API is the client's `test/fixtures.ts` (`airDataApi`,
+`airData`): live answers of 2026-11-19 trimmed to 16 stations (the Leipzig and München ones, the
+"Leipziger Str." of three other towns, a closed station), the index series of station 1613 with
+the API's out-of-order hours and an incomplete newest hour, the O₃ 2025 and NO₂ 2024 annual
+balances, the PM10 exceedance tables, NO₂ and PM10 index bands; the 2017 NO₂ exceedance table
+answers HTTP 500 as the live API does. The stdio tests start the built bin (30 s each).
+`tools/interop/` checks the built server against the official client 2.4.0 (stdio and HTTP;
+legacy, auto and pinned 2026-07-28) in ci.yml's `interop` job; it has its own lockfile and is
+never installed by the workspace, release or publish runs; the calls it makes and the mock's
+answers (the same recorded answers) are in `tools/interop/interop.json`.
+
+## Container image
+
+`tools/image/` builds both apps' images (Dockerfile targets `cli` and `mcp`) from their release
+tarballs (`npm pack` output), never from source: `ADD` unpacks it onto distroless Node 24 (Debian 13, `nonroot`, uid 65532), so the image
+holds exactly the files npm users get. The base, BuildKit, the test registry, skopeo (local runs
+only), syft and grype are pinned in `pins.json`; bump them in the deps round. A Node or Debian
+security fix reaches the image only through a new base digest, so it means a patch release.
+
+| Script | What it does |
+|---|---|
+| `build.mjs` | Multi-arch OCI archive (amd64, arm64), reproducible: no provenance or SBOM attestation, timestamps from `SOURCE_DATE_EPOCH` (default: the HEAD commit's time). Two builds give the same index digest; compare index digests, not files. |
+| `push.mjs` | Copies the archive to a registry with skopeo (`--all --preserve-digests`) and checks the digest the registry serves. Used for the local test registry and for ghcr.io. |
+| `smoke.mjs` | Runs the image read-only, without capabilities, as an arbitrary uid: `--version`, `--help`, a network error, one request to a mock upstream (`smoke.json`: `components --lang en` against the recorded list), and `docker stop`, which must end a waiting call with 143 in under 5 s. |
+| `sbom.mjs` | One CycloneDX SBOM per platform with syft, and with `--gate true` grype over them: a fixable high or critical finding fails. Accepted findings go into `.grype.yaml` with a reason. CI only. |
+
+Locally (colima; the scripts never read your docker config, so no credential helper is asked;
+on macOS port 5000 is often taken by the AirPlay receiver, hence 5055):
+
+```bash
+export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock
+npm pack --workspace apps/cli --pack-destination dist-artifacts
+node tools/image/build.mjs --app cli --tarball dist-artifacts/<tarball>.tgz --out dist-artifacts/cli.oci.tar
+docker run -d -p 127.0.0.1:5055:5000 <registry pin from pins.json>
+node tools/image/push.mjs --archive dist-artifacts/cli.oci.tar --to 127.0.0.1:5055/luftqualitaet-cli:dev
+node tools/image/smoke.mjs --app cli --image 127.0.0.1:5055/luftqualitaet-cli@<index digest>
+```
+
+In CI: `images.yml` does all of it on every push and weekly, with the arm64 image smoke-tested on
+an arm64 runner and the vulnerability gate. In `release.yml` the job `image` builds from the
+checked tarball and records the archive's digest, `image-sbom` makes the SBOMs (no gate: the
+scanner's database changes daily), `attest` signs build provenance for the tarball, the archive
+and the image index, and the release attaches the archive, the image SBOMs and `SHA256SUMS`.
+`publish.yml` publishes the release's own files: both tarballs to npm and both archives to
+`ghcr.io/maschinenlesbar-org/luftqualitaet-cli` and `…/luftqualitaet-mcp` (with the run's `GITHUB_TOKEN`), each checked
+first against the immutable release (`gh release verify-asset`) and the provenance `release.yml`
+signed for that tag (`gh attestation verify`).
+`apps/cli/test/conformance-p32-image-pipeline.test.ts` (shared) pins these rules.
+
+As PID 1 the bin shim listens for SIGINT, SIGTERM and SIGHUP (`exitOnSignalsAsPid1`): without
+a listener the kernel drops them, and `docker stop` would wait 10 s and kill. In a container
+the CLI reads the cgroup limits (`limits.ts`): under a memory limit the default
+`--max-response-bytes` is an eighth of it, under a pids limit below 12 it refuses before any
+request, and a leading program name (`docker run <image> luftqualitaet components`) is dropped.
 
 ## Website
 

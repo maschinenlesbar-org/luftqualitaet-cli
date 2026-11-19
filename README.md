@@ -36,6 +36,54 @@ Check it works:
 luftqualitaet --help
 ```
 
+### Docker
+
+From 0.10.0 every release is also a container image for linux/amd64 and linux/arm64 on the
+GitHub Container Registry, made from the same tarball as the npm package. It needs no Node.js and no
+install:
+
+```bash
+docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges \
+  ghcr.io/maschinenlesbar-org/luftqualitaet-cli:latest components --lang en
+```
+
+The image's entrypoint is the program, so the command follows the image name directly;
+`… luftqualitaet-cli:latest luftqualitaet components` works too.
+
+In a container with a memory limit (`--memory`) the default `--max-response-bytes` is an eighth
+of that limit (at most the usual 100 MiB), so an oversized answer is refused with a clear
+error instead of the container being killed for memory. The largest answer, the station
+catalogue (`meta --use measure`), is about 0.5 MB.
+The CLI needs at least 12 processes and threads (`--pids-limit 12`): below that it refuses with
+an error, and with 4 or fewer Node.js itself hangs before the CLI can check.
+
+`latest` is the newest release. For scripts, name a release and pin its digest, which the
+[release notes](https://github.com/maschinenlesbar-org/luftqualitaet-cli/releases) give:
+`…/luftqualitaet-cli:0.10.0@sha256:<digest>`. Each image carries signed build provenance;
+check it with
+
+```bash
+gh attestation verify oci://ghcr.io/maschinenlesbar-org/luftqualitaet-cli:latest \
+  --repo maschinenlesbar-org/luftqualitaet-cli
+```
+
+### MCP server
+
+From 0.10.0 the same data is also an [MCP](https://modelcontextprotocol.io/) server for AI agents,
+`@maschinenlesbar.org/luftqualitaet-mcp` (command `luftqualitaet-mcp`, image
+`ghcr.io/maschinenlesbar-org/luftqualitaet-mcp`): six read-only tools, the station finder, the
+air-quality index decoded (the level in words, the driving pollutant, the newest complete hour),
+stations ranked by a pollutant's year, one measured series, the index bands and the component ids,
+with the API's traps handled (CET times all year, an unknown station said to be one, the annual
+balance and the preliminary exceedance table never mixed), on stdio or Streamable HTTP. Setup for
+Claude Code, Claude Desktop and VS Code:
+[MCP.md](https://github.com/maschinenlesbar-org/luftqualitaet-cli/blob/main/MCP.md).
+
+```bash
+npm i -g @maschinenlesbar.org/luftqualitaet-mcp
+claude mcp add luftqualitaet -- luftqualitaet-mcp
+```
+
 ## Quickstart
 
 No setup needed — the API is public and open, no key required. Start with the
@@ -354,6 +402,7 @@ These apply to every command and may be given before *or* after it:
 - **[Usage.md](https://github.com/maschinenlesbar-org/luftqualitaet-cli/blob/main/Usage.md)** — full use-case-driven cookbook.
 - **[GLOSSARY.md](https://github.com/maschinenlesbar-org/luftqualitaet-cli/blob/main/GLOSSARY.md)** — every command, flag and domain term explained.
 - **[DEVELOPING.md](https://github.com/maschinenlesbar-org/luftqualitaet-cli/blob/main/DEVELOPING.md)** — TypeScript library usage, architecture, testing, CI.
+- **[MCP.md](https://github.com/maschinenlesbar-org/luftqualitaet-cli/blob/main/MCP.md)** — the MCP server: tools, setup, options.
 
 ## Data license
 

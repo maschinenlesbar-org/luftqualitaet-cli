@@ -318,6 +318,20 @@ test("exceedances: NO₂ hours above 200 against the 18 allowed; zero is the goo
   assert.ok(ranking.notes.some((n) => /0 is the good result/.test(n)));
 });
 
+test("only a count whose limit allows some exceedances is said to allow them", async () => {
+  const no2 = await rankStations(api().client, { component: 5, year: 2024, metric: "exceedances", now: NOW });
+  assert.ok(no2.status === "ok" && no2.notes.some((n) => /not by itself a breach: NO₂: 18 hours a year above 200 µg\/m³ are allowed/.test(n)), JSON.stringify(no2));
+  const alert = await rankStations(api().client, { component: 3, year: 2025, column: 1, now: NOW });
+  assert.equal(alert.status, "ok");
+  if (alert.status !== "ok") return;
+  assert.ok(!alert.notes.some((n) => /are allowed|allow some/.test(n)), alert.notes.join(" | "));
+  assert.ok(alert.notes.some((n) => /0 is the good result, not missing data\. No EU allowance is read for this count/.test(n)));
+  const target = await rankStations(api().client, { component: 3, year: 2025, column: 4, now: NOW });
+  assert.ok(target.status === "ok" && target.notes.some((n) => /O₃ target value: at most 25 days/.test(n)));
+  const aot = await rankStations(api().client, { component: 3, year: 2025, column: 5, now: NOW });
+  assert.ok(aot.status === "ok" && !aot.notes.some((n) => /0 is the good result/.test(n)), "AOT40 is no count");
+});
+
 test("the running year: the exceedance table, preliminary, with the period it covers", async () => {
   const ranking = await rankStations(api().client, { component: "PM10", year: 2026, state: "Berlin", now: NOW });
   assert.equal(ranking.status, "ok");

@@ -1080,9 +1080,7 @@ export async function rankStations(client: LuftqualitaetClient, input: RankStati
     period = { from, to, stationsEndingEarlier: ends.filter((day) => day < to).length };
   }
   notes.push(
-    limitInfo?.kind === "annual mean limit"
-      ? "A mean is a concentration: give it with its unit."
-      : "0 is the good result, not missing data. A count above zero is not by itself a breach: the EU limits allow some exceedances a year.",
+    figureNote(text, limitInfo),
     "Show each station's type: traffic stations dominate NO₂ rankings by design, ozone is worst at rural background stations.",
     "Don't mix the annual balance and the exceedance table in one ranking; say which one this is.",
   );
@@ -1109,6 +1107,15 @@ export async function rankStations(client: LuftqualitaetClient, input: RankStati
     ...(offset + limit < ranked.length ? { nextOffset: offset + limit } : {}),
     notes,
   };
+}
+
+/** What the ranked figure means: a count against its allowance (only where the limit allows some), a mean, another figure. */
+function figureNote(text: string, limit: ColumnLimit | undefined): string {
+  if (limit?.kind === "annual mean limit") return "A mean is a concentration: give it with its unit.";
+  if (!/^number of/i.test(text)) return "Give the figure with what the column measures (metric.text) and its unit.";
+  if (limit?.kind === "allowed exceedances per year") return `0 is the good result, not missing data. A count above zero is not by itself a breach: ${limit.text}.`;
+  if (limit !== undefined) return `0 is the good result, not missing data. ${limit.text}.`;
+  return "0 is the good result, not missing data. No EU allowance is read for this count: say what it counts (metric.text), not whether a limit was kept.";
 }
 
 function annualMissing(year: number, currentYear: number, now: Date): string {

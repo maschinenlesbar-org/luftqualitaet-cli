@@ -76,7 +76,8 @@ For scripts and shared configs, pin a release and its digest from the
 Times are CET (UTC+1) all year and hour-ending, as the API sends them: in summer German clocks are
 an hour ahead. The index is a worst-case scale from 0 (very good) to 4 (very poor): the tools give
 the worst level and its driving pollutant, never an average. An unknown station id is looked up in
-the station catalogue and said to be one; an empty window does not mean clean air. A completed year
+the station catalogue and said to be one; an empty window does not mean clean air. The catalogue
+(about 540 KB) is downloaded once an hour, not on every call. A completed year
 is ranked on the annual balance (UBA's final data, published in June of the following year), the
 running year on the preliminary exceedance table; the two are never mixed, and the column is chosen
 by UBA's own text, not by its position.

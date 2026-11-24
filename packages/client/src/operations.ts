@@ -243,13 +243,33 @@ export function stationOf(row: JsonValue): Station | undefined {
   };
 }
 
+/** How long a client keeps a station catalogue it has read: an hour (stations open and close rarely). */
+export const CATALOGUE_MAX_AGE_MS = 3_600_000;
+
+/** The catalogues each client has read, by `use`, with when; only complete, checked ones. */
+const catalogues = new WeakMap<LuftqualitaetClient, Map<string, { at: number; catalogue: Catalogue }>>();
+
 /**
- * The catalogue, read in English (station types, settings and states as the API names them).
+ * The catalogue, read in English (station types, settings and states as the API names them), kept
+ * per client for {@link CATALOGUE_MAX_AGE_MS}: about 540 KB that nearly every call needs, so a
+ * place and five reports cost one download, not six. A failed download is not kept.
  * `measure` (the default) lists the stations with hourly data, the ones every hourly call takes;
  * `annualbalance` lists the stations of the yearly tables, about 200 more active ones among them
  * (NO₂ sites that report only yearly values, Berlin Spandauer Damm), in the same row layout.
  */
 export async function loadCatalogue(client: LuftqualitaetClient, use: "measure" | "annualbalance" = "measure"): Promise<Catalogue> {
+  const kept = catalogues.get(client)?.get(use);
+  const now = Date.now();
+  // A clock set back makes a kept catalogue no younger than zero, never older than its age.
+  if (kept !== undefined && now - kept.at >= 0 && now - kept.at <= CATALOGUE_MAX_AGE_MS) return kept.catalogue;
+  const catalogue = await readCatalogue(client, use);
+  const byUse = catalogues.get(client) ?? new Map<string, { at: number; catalogue: Catalogue }>();
+  byUse.set(use, { at: Date.now(), catalogue });
+  catalogues.set(client, byUse);
+  return catalogue;
+}
+
+async function readCatalogue(client: LuftqualitaetClient, use: "measure" | "annualbalance"): Promise<Catalogue> {
   const meta = await client.meta({ use, lang: "en" });
   const stations = new Map<number, Station>();
   const rows = isRecord(meta["stations"]) ? Object.entries(meta["stations"]).filter(([key]) => /^\d+$/.test(key)) : [];

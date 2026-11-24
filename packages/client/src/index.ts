@@ -74,6 +74,7 @@ export type { FilterOptions, Problem, WindowOptions } from "./validate.js";
 export * from "./enums.js";
 export * from "./types.js";
 export {
+  CATALOGUE_MAX_AGE_MS,
   INDEX_LEVELS,
   MAX_WINDOW_DAYS,
   NETWORKS,

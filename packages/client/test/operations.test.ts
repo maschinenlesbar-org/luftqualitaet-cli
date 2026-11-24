@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { LuftqualitaetClient } from "../src/client.js";
 import { LuftParseError, LuftValidationError } from "../src/errors.js";
 import {
+  CATALOGUE_MAX_AGE_MS,
   cetDay,
   findStations,
   getAirQualityReport,
@@ -173,6 +174,34 @@ test("an index or measured series in another shape is an error naming it, never 
     await assert.rejects(getAirQualityReport(withSeries(data), { station: 1613, from: "2026-11-18", now: NOW }), (err: Error) => err instanceof LuftParseError && pattern.test(err.message), what);
     await assert.rejects(getMeasurements(withSeries(data), { station: 1613, component: "NO2", from: "2026-11-18", now: NOW }), (err: Error) => err instanceof LuftParseError && pattern.test(err.message), what);
   }
+});
+
+test("the station catalogue is downloaded once an hour per client, not on every call", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-11-19T10:00:00Z") });
+  const { client, mock } = api();
+  const metaCalls = () => mock.calls.filter((c) => new URL(c.url).pathname.endsWith("/meta/json")).length;
+  await findStations(client, { query: "Leipzig" });
+  await getAirQualityReport(client, { station: 1613, now: NOW });
+  await getMeasurements(client, { station: 1613, component: "NO2", from: "2026-11-18", now: NOW });
+  assert.equal(metaCalls(), 1);
+  t.mock.timers.tick(CATALOGUE_MAX_AGE_MS + 1);
+  await findStations(client, { query: "Leipzig" });
+  assert.equal(metaCalls(), 2, "an hour later: fresh");
+  await rankStations(client, { component: "NO2", year: 2024, now: NOW });
+  await rankStations(client, { component: "NO2", year: 2024, metric: "exceedances", now: NOW });
+  assert.equal(metaCalls(), 3, "the yearly tables' catalogue is its own, kept as well");
+  const other = api();
+  await findStations(other.client, { query: "Leipzig" });
+  assert.equal(other.mock.calls.length, 1, "another client has its own");
+});
+
+test("a failed catalogue download is not kept", async () => {
+  let fail = true;
+  const transport = makeMockTransport((request) => (fail && new URL(request.url).pathname.endsWith("/meta/json") ? jsonResponse({ message: "down" }, 500) : airData(request)));
+  const client = new LuftqualitaetClient({ transport: transport.transport, maxRetries: 0 });
+  await assert.rejects(findStations(client, { query: "Leipzig" }));
+  fail = false;
+  assert.equal((await findStations(client, { query: "Leipzig" })).status, "ok");
 });
 
 // --- getAirQualityReport ---

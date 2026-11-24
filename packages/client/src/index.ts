@@ -69,7 +69,7 @@ export {
   textProblem,
   tokenProblem,
 } from "./validate.js";
-export type { FilterOptions, Problem } from "./validate.js";
+export type { FilterOptions, Problem, WindowOptions } from "./validate.js";
 
 export * from "./enums.js";
 export * from "./types.js";

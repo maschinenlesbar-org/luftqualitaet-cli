@@ -30,6 +30,7 @@ import {
   optional,
   type FilterOptions,
   type Problem,
+  type WindowOptions,
 } from "./validate.js";
 
 const WINDOW_KEYS = ["date_from", "time_from", "date_to", "time_to", "station"] as const;
@@ -305,14 +306,15 @@ export class LuftqualitaetClient {
    * Air-quality index data for a station over a time window: `data.<station>.<hour start>`
    * → `[end, index, incomplete, [component, value, index, y]…]`, the hours in time order
    * ({@link inTimeOrder}). An answer without data makes one more request, to the station
-   * catalogue: a station it doesn't list rejects with a LuftNotFoundError.
+   * catalogue: a station it doesn't list rejects with a LuftNotFoundError (not with
+   * `{ stationKnown: true }`, for a caller that has looked the station up already).
    */
-  async airquality(params: WindowParams, options: FilterOptions = {}): Promise<AirDataResult> {
+  async airquality(params: WindowParams, options: WindowOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("airquality", params, CALL_PARAMS.airquality, options);
     assertWindowParams(params);
     const result = inTimeOrder(await this.engine.getJson(`${API}/airquality/json`, prune({ ...params }), shaped("window")));
-    await this.assertStationKnown(params.station, result);
+    if (options.stationKnown !== true) await this.assertStationKnown(params.station, result);
     return result;
   }
 
@@ -325,16 +327,16 @@ export class LuftqualitaetClient {
    * Raw measurement data for a station over a window — one component/scope series.
    * Both are required: without them the API would pick a series itself (see
    * `MeasuresParams`). An answer without data is checked against the station catalogue
-   * like `airquality()`'s.
+   * like `airquality()`'s (not with `{ stationKnown: true }`).
    */
-  async measures(params: MeasuresParams, options: FilterOptions = {}): Promise<AirDataResult> {
+  async measures(params: MeasuresParams, options: WindowOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("measures", params, CALL_PARAMS.measures, options);
     assertWindowParams(params);
     assertId("component", params.component);
     assertId("scope", params.scope);
     const result = inTimeOrder(await this.engine.getJson(`${API}/measures/json`, prune({ ...params }), shaped("window")));
-    await this.assertStationKnown(params.station, result);
+    if (options.stationKnown !== true) await this.assertStationKnown(params.station, result);
     return result;
   }
 

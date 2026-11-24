@@ -175,6 +175,21 @@ test("a known station without data in the window: empty, the station exists, not
   assert.match(closed.status === "empty" ? closed.reason : "", /was closed on 2020-12-31/);
 });
 
+test("an empty window costs no second catalogue download; a station closed before the window no series request", async () => {
+  const quiet = api();
+  assert.equal((await getAirQualityReport(quiet.client, { station: 1647, from: "2026-11-18", now: NOW })).status, "empty");
+  assert.deepEqual(quiet.mock.calls.map((c) => new URL(c.url).pathname.split("/").slice(-2).join("/")), ["meta/json", "airquality/json"]);
+  const closed = api();
+  assert.match((await getAirQualityReport(closed.client, { station: 1670, now: NOW })).status, /empty/);
+  assert.equal(closed.mock.calls.length, 1, "the catalogue only");
+  const co = api();
+  assert.equal((await getMeasurements(co.client, { station: 1613, component: "CO", from: "2026-11-18", now: NOW })).status, "empty");
+  assert.equal(co.mock.calls.length, 2, "the catalogue and the series");
+  const closedSeries = api();
+  assert.equal((await getMeasurements(closedSeries.client, { station: 1670, component: "NO2", now: NOW })).status, "empty");
+  assert.equal(closedSeries.mock.calls.length, 1);
+});
+
 test("a place with several stations is ambiguous, with candidates; a type or a precise name settles it", async () => {
   const several = await getAirQualityReport(api().client, { place: "Leipzig", now: NOW });
   assert.equal(several.status, "ambiguous");

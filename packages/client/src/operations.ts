@@ -623,6 +623,15 @@ const AQ_NOTES = [
   "The newest hour lags the clock by an hour or two; for \"right now\" give latestComplete with its CET time.",
 ];
 
+/** True when the station was closed before `from`: it has no data from then on. */
+function closedBefore(station: Station, from: string): boolean {
+  return station.activeTo !== null && station.activeTo < from;
+}
+
+function closedReason(station: Station, from: string): string {
+  return `Station ${station.id} (${station.name}) was closed on ${station.activeTo}: it has no data from ${from}. Ask for a window before that, or pick an active station.`;
+}
+
 /** One hour of an `airquality` answer: `[end, index, incomplete, [component, value, index, y]…]`. */
 function readHour(start: string, row: JsonValue, catalogue: Catalogue): HourReading | undefined {
   if (!Array.isArray(row)) return undefined;
@@ -661,7 +670,10 @@ export async function getAirQualityReport(client: LuftqualitaetClient, input: Ai
   const resolved = resolveStation(catalogue, input);
   if (resolved.status !== "ok") return resolved;
   const station = resolved.station;
-  const result = await client.airquality({ station: station.id, date_from: window.from, time_from: 1, date_to: window.to, time_to: 24 });
+  const searched = { station: station.id, from: window.from, to: window.to };
+  if (closedBefore(station, window.from)) return { status: "empty", searched, station, reason: closedReason(station, window.from) };
+  // The catalogue has just named the station: an empty answer needs no second lookup.
+  const result = await client.airquality({ station: station.id, date_from: window.from, time_from: 1, date_to: window.to, time_to: 24 }, { stationKnown: true });
   const data = isRecord(result["data"]) ? result["data"][String(station.id)] : undefined;
   const hours: HourReading[] = [];
   if (isRecord(data)) {
@@ -670,16 +682,13 @@ export async function getAirQualityReport(client: LuftqualitaetClient, input: Ai
       if (hour !== undefined) hours.push(hour);
     }
   }
-  const searched = { station: station.id, from: window.from, to: window.to };
   if (hours.length === 0) {
-    const closed = station.activeTo !== null && station.activeTo < window.from;
     return {
       status: "empty",
       searched,
       station,
-      reason: closed
-        ? `Station ${station.id} (${station.name}) was closed on ${station.activeTo}: it has no data from ${window.from}. Ask for a window before that, or pick an active station.`
-        : `Station ${station.id} (${station.name}) has no index data from ${window.from} to ${window.to} (the station exists). The newest hours lag by an hour or two: ask for the day before, or a wider window. This does not mean the air was clean.`,
+      reason:
+        `Station ${station.id} (${station.name}) has no index data from ${window.from} to ${window.to} (the station exists). The newest hours lag by an hour or two: ask for the day before, or a wider window. This does not mean the air was clean.`,
     };
   }
   const worstLevel = Math.max(...hours.map((hour) => hour.level));
@@ -1119,7 +1128,11 @@ export async function getMeasurements(client: LuftqualitaetClient, input: Measur
   }
   const scope = catalogue.scopes.get(scopeId) ?? { id: scopeId, code: "", name: `scope ${scopeId}` };
   const searched = { station: station.id, component: componentId, scope: scopeId, from: window.from, to: window.to };
-  const result = await client.measures({ station: station.id, component: componentId, scope: scopeId, date_from: window.from, time_from: 1, date_to: window.to, time_to: 24 });
+  if (closedBefore(station, window.from)) return { status: "empty", searched, station, reason: closedReason(station, window.from) };
+  const result = await client.measures(
+    { station: station.id, component: componentId, scope: scopeId, date_from: window.from, time_from: 1, date_to: window.to, time_to: 24 },
+    { stationKnown: true },
+  );
   const data = isRecord(result["data"]) ? result["data"][String(station.id)] : undefined;
   const values: MeasuredValue[] = [];
   if (isRecord(data)) {

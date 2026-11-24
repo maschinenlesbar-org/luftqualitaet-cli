@@ -322,6 +322,16 @@ export interface FilterOptions {
   allowUnknownFilters?: boolean | undefined;
 }
 
+/** Options of `airquality()` and `measures()`. */
+export interface WindowOptions extends FilterOptions {
+  /**
+   * The caller has already found the station in the station catalogue: an answer without data
+   * is taken as it is, without the catalogue lookup that tells an unknown id apart (default
+   * `false`).
+   */
+  stationKnown?: boolean | undefined;
+}
+
 /**
  * Check that a parameter object holds only the keys its call documents (`known`): any other
  * own key — misspelled (`stationId`), from another call (`component` on `airquality`), or

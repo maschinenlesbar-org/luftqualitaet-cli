@@ -389,6 +389,11 @@ test("an answer without data is checked against the station catalogue: unknown â
     );
     await assert.rejects(call(clientWith(failing), 143), LuftApiError);
   }
+  // A caller that has looked the station up already: the empty answer stands, one request.
+  const known = makeMockTransport(withCatalogue([143], () => jsonResponse(empty)));
+  assert.deepEqual(await clientWith(known).airquality({ ...window, station: 2 }, { stationKnown: true }), empty);
+  assert.deepEqual(await clientWith(known).measures({ ...window, station: 2, component: 5, scope: 2 }, { stationKnown: true }), empty);
+  assert.equal(known.calls.length, 2);
 });
 
 test("a __proto__ key from parsed JSON is an ordinary key: sent with allowUnknownFilters, kept as a station (T12, 03#1)", async () => {

@@ -88,7 +88,7 @@ rejected parameter value, after its userinfo is cut out), so `err.message` stays
 for a library caller; `LuftApiError.body` keeps the whole body (scrubbed of the base URL's
 credentials, see `--base-url` validation).
 
-Every optional field of the option and parameter types (`EngineOptions`, `FilterOptions`,
+Every optional field of the option and parameter types (`EngineOptions`, `FilterOptions`, `WindowOptions`,
 `ListParams`, `YearComponentParams`, `ThresholdParams`, `MetaParams`) is declared
 `?: T | undefined`: a field given as `undefined` means the same as one left out (its
 default, or no parameter), so `new LuftqualitaetClient({ baseUrl: process.env.X })`
@@ -122,7 +122,10 @@ object is a `LuftParseError`, and a failing lookup fails the call: no guess eith
 `catalogueHasStation(catalogue, station)` is the check itself. A 409 to the station query
 still gets a hint (an `INFO` record) before the error (exit 1); a 409 to the catalogue
 lookup gets none, since it says nothing about the station (its ERROR names the
-`/meta/json?use=measure` request).
+`/meta/json?use=measure` request). A caller that has looked the station up already passes
+`{ stationKnown: true }` (`WindowOptions`) and gets the empty answer without the lookup: the
+use cases in `operations.ts` do, and send no series request at all for a station closed before
+the window.
 
 **Unknown parameters.** The API ignores a query parameter it doesn't take and answers as
 if it weren't there, so each call checks its parameter object against the keys it

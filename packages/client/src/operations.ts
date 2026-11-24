@@ -1084,7 +1084,13 @@ export async function rankStations(client: LuftqualitaetClient, input: RankStati
     "Show each station's type: traffic stations dominate NO₂ rankings by design, ozone is worst at rural background stations.",
     "Don't mix the annual balance and the exceedance table in one ranking; say which one this is.",
   );
-  if (unknownStations > 0) notes.push(`${unknownStations} station(s) of the table are not in UBA's station catalogue: they are listed by id only.`);
+  if (unknownStations > 0) {
+    notes.push(
+      state === undefined && type === undefined
+        ? `${unknownStations} station(s) of the table are not in UBA's station catalogue: they are listed by id only.`
+        : `${unknownStations} station(s) of the table are not in UBA's station catalogue: their Land and type are unknown, so the filter left them out.`,
+    );
+  }
   return {
     status: "ok",
     searched,

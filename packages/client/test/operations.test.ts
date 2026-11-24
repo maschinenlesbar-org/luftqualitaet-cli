@@ -332,6 +332,15 @@ test("only a count whose limit allows some exceedances is said to allow them", a
   assert.ok(aot.status === "ok" && !aot.notes.some((n) => /0 is the good result/.test(n)), "AOT40 is no count");
 });
 
+test("a filtered ranking says it left out the stations the catalogue lacks, not that it lists them", async () => {
+  const ranking = await rankStations(api().client, { component: "NO2", year: 2024, metric: "mean", state: "SN", now: NOW });
+  assert.equal(ranking.status, "ok");
+  if (ranking.status !== "ok") return;
+  assert.ok(!ranking.stations.some((s) => s.station === 4242));
+  assert.ok(ranking.notes.some((n) => /1 station\(s\) of the table are not in UBA's station catalogue: their Land and type are unknown, so the filter left them out/.test(n)), ranking.notes.join(" | "));
+  assert.ok(!ranking.notes.some((n) => /listed by id only/.test(n)));
+});
+
 test("the running year: the exceedance table, preliminary, with the period it covers", async () => {
   const ranking = await rankStations(api().client, { component: "PM10", year: 2026, state: "Berlin", now: NOW });
   assert.equal(ranking.status, "ok");

@@ -195,6 +195,20 @@ test("a station without one of the index pollutants: 'now' is its newest hour wi
   assert.ok(!report.notes.some((n) => /No hour in the window is complete/.test(n)));
 });
 
+test("an index level outside 0-4 is drift, not 'level 5'", async () => {
+  for (const level of [5, -1, 2.5]) {
+    const hours = { "2026-11-18 22:00:00": ["2026-11-18 23:00:00", level, 0, [5, 30, 1, "1"]], "2026-11-18 23:00:00": ["2026-11-18 24:00:00", 1, 0, [5, 25, 1, "1"]] };
+    const transport = makeMockTransport((request) =>
+      new URL(request.url).pathname.endsWith("/airquality/json") ? jsonResponse({ request: {}, indices: {}, data: { "1613": hours } }) : airData(request),
+    );
+    await assert.rejects(
+      getAirQualityReport(new LuftqualitaetClient({ transport: transport.transport }), { station: 1613, from: "2026-11-18", now: NOW }),
+      (err: Error) => err instanceof LuftParseError && new RegExp(`index level ${level} at 2026-11-18 22:00:00.*the scale is 0 to 4`).test(err.message),
+      String(level),
+    );
+  }
+});
+
 test("CET is UTC+1 all year: 23:30 UTC is already the next day", () => {
   assert.equal(cetDay(new Date("2026-07-01T23:30:00Z")), "2026-07-02");
   assert.equal(cetDay(new Date("2026-07-01T22:30:00Z")), "2026-07-01");

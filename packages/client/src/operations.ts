@@ -672,10 +672,13 @@ function noDataReason(station: Station, what: string, window: { from: string; to
 }
 
 /** One hour of an `airquality` answer: `[end, index, incomplete, [component, value, index, y]…]`. */
-function readHour(start: string, row: JsonValue, catalogue: Catalogue): HourReading | undefined {
+function readHour(start: string, row: JsonValue, catalogue: Catalogue, station: number): HourReading | undefined {
   if (!Array.isArray(row)) return undefined;
   const level = num(row[1]);
   if (level === null) return undefined;
+  if (levelLabel(level) === undefined) {
+    throw new LuftParseError(`The index series of station ${station} has the index level ${level} at ${start}, but the scale is 0 to 4: its shape has changed.`);
+  }
   const pollutants: PollutantReading[] = [];
   for (const cell of row.slice(3)) {
     if (!Array.isArray(cell)) continue;
@@ -688,7 +691,7 @@ function readHour(start: string, row: JsonValue, catalogue: Catalogue): HourRead
     start,
     end: str(row[0]),
     level,
-    label: levelLabel(level)?.label ?? `level ${level}`,
+    label: levelLabel(level)?.label ?? "",
     incomplete: num(row[2]) === 1,
     drivers: pollutants.filter((p) => p.level === level).map((p) => p.symbol),
     pollutants,
@@ -736,7 +739,7 @@ export async function getAirQualityReport(client: LuftqualitaetClient, input: Ai
   const hours: HourReading[] = [];
   if (isRecord(data)) {
     for (const key of Object.keys(data).sort()) {
-      const hour = readHour(key, data[key] as JsonValue, catalogue);
+      const hour = readHour(key, data[key] as JsonValue, catalogue, station.id);
       if (hour !== undefined) hours.push(hour);
     }
   }

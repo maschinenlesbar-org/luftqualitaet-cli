@@ -196,6 +196,8 @@ export interface ScopeInfo {
   id: number;
   code: string;
   name: string;
+  /** The values' time base: "hour", or "day" for one value per day (the daily average). */
+  timeBase: string;
 }
 
 const isRecord = (value: unknown): value is Record<string, JsonValue> =>
@@ -261,7 +263,7 @@ export async function loadCatalogue(client: LuftqualitaetClient, use: "measure" 
   const scopes = new Map<number, ScopeInfo>();
   for (const row of rowsOf(meta["scopes"])) {
     const id = num(row[0]);
-    if (id !== null) scopes.set(id, { id, code: str(row[1]), name: str(row[5]) });
+    if (id !== null) scopes.set(id, { id, code: str(row[1]), name: str(row[5]), timeBase: str(row[2]) });
   }
   const scopesOf = new Map<number, number[]>();
   for (const row of Array.isArray(meta["xref"]) ? meta["xref"] : []) {
@@ -1133,9 +1135,15 @@ export interface MeasurementsInput {
   now?: Date | undefined;
 }
 
+/**
+ * One value: of an hourly scope with its hour's start and end (CET, hour-ending); of a daily scope
+ * (`scope.timeBase` "day") with its CET day only, since the API stamps a day's value with the hour
+ * 11:00-12:00, which is no time of measurement.
+ */
 export interface MeasuredValue {
-  start: string;
-  end: string;
+  start?: string;
+  end?: string;
+  date?: string;
   value: number | null;
 }
 
@@ -1185,7 +1193,8 @@ export async function getMeasurements(client: LuftqualitaetClient, input: Measur
   if (!scopes.includes(scopeId)) {
     throw new LuftValidationError(`Invalid scope: ${component.symbol} is measured in ${scopes.map(scopeName).join(", ")}, not in scope ${scopeId}.`);
   }
-  const scope = catalogue.scopes.get(scopeId) ?? { id: scopeId, code: "", name: `scope ${scopeId}` };
+  const scope = catalogue.scopes.get(scopeId) ?? { id: scopeId, code: "", name: `scope ${scopeId}`, timeBase: "" };
+  const daily = scope.timeBase === "day";
   const searched = { station: station.id, component: componentId, scope: scopeId, from: window.from, to: window.to };
   if (closedBefore(station, window.from)) return { status: "empty", searched, station, reason: closedReason(station, window.from) };
   if (openedAfter(station, window.to)) return { status: "empty", searched, station, reason: openedReason(station, window) };
@@ -1199,7 +1208,7 @@ export async function getMeasurements(client: LuftqualitaetClient, input: Measur
     for (const key of Object.keys(data).sort()) {
       const row = data[key];
       if (!Array.isArray(row)) continue;
-      values.push({ start: key, end: str(row[3]), value: num(row[2]) });
+      values.push(daily ? { date: key.slice(0, 10), value: num(row[2]) } : { start: key, end: str(row[3]), value: num(row[2]) });
     }
   }
   const measured = values.filter((entry): entry is MeasuredValue & { value: number } => entry.value !== null);
@@ -1219,7 +1228,7 @@ export async function getMeasurements(client: LuftqualitaetClient, input: Measur
     station,
     component,
     scope,
-    window: { from: window.from, to: window.to, time: "CET (UTC+1), hour-ending" },
+    window: { from: window.from, to: window.to, time: daily ? "CET days: one value per day" : "CET (UTC+1), hour-ending" },
     count: measured.length,
     min,
     max,
@@ -1227,7 +1236,9 @@ export async function getMeasurements(client: LuftqualitaetClient, input: Measur
     latest: measured[measured.length - 1] as MeasuredValue,
     values: values.slice(-limit).reverse(),
     notes: [
-      `Values are ${component.symbol} in ${component.unit}, ${scope.name}; cite them with the unit. Times are CET all year.`,
+      `Values are ${component.symbol} in ${component.unit}, ${scope.name}; cite them with the unit. ${
+        daily ? "This is one value per CET day: give it with its date, never as a time of day." : "Times are CET all year."
+      }`,
       "Current-year values are provisional (vorläufig geprüft); UBA publishes the checked data in June of the following year.",
     ],
   };
@@ -1300,7 +1311,7 @@ export async function getIndexBands(client: LuftqualitaetClient, input: { compon
 export interface ComponentList {
   status: "ok";
   components: ComponentInfo[];
-  scopes: (ScopeInfo & { timeBase: string })[];
+  scopes: ScopeInfo[];
   notes: string[];
 }
 

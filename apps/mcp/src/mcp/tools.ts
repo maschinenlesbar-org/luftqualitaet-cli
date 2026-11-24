@@ -285,7 +285,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     title: "One pollutant's values at a station",
     description: [
       'A station\'s measured values of one pollutant over CET days, in one averaging (scope), newest first, with the minimum, maximum and mean. Use it for "NO2-Werte an der Station Leipzig-Mitte gestern", "stündliche Feinstaubwerte in München", "wie hoch war das Ozon heute Mittag?", "hourly NO2 values at station 1613", "PM2.5 concentrations yesterday", "ozone readings this week".',
-      `The default scope is the one-hour average where the pollutant has one (CO: the eight-hour average); a scope the pollutant isn't measured in is an error naming the ones it is (listComponents has the scope ids). Not every station measures every pollutant: empty says so. Values are concentrations: cite them with the unit. Times are CET, hour-ending. Current-year values are provisional. ${CITE}`,
+      `The default scope is the one-hour average where the pollutant has one (CO: the eight-hour average); a scope the pollutant isn't measured in is an error naming the ones it is (listComponents has the scope ids). Not every station measures every pollutant: empty says so. Values are concentrations: cite them with the unit. Times are CET, hour-ending; the daily average (scope 1) has one value per day, with its date only. Current-year values are provisional. ${CITE}`,
       RULES,
     ].join("\n\n"),
     inputSchema: input(

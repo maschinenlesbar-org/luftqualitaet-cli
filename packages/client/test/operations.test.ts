@@ -394,6 +394,24 @@ test("a measured series: the one-hour average by default, newest first, min/max/
   assert.equal(answer.values.length, 5);
 });
 
+test("a daily scope gives one value per day, by its date, not as the API's hour stamp 11:00-12:00", async () => {
+  const days = {
+    "2026-11-17 11:00:00": [1, 1, 13, "2026-11-17 12:00:00", "1"],
+    "2026-11-18 11:00:00": [1, 1, 5, "2026-11-18 12:00:00", "0"],
+  };
+  const transport = makeMockTransport((request) =>
+    new URL(request.url).pathname.endsWith("/measures/json") ? jsonResponse({ request: {}, indices: {}, data: { "1613": days } }) : airData(request),
+  );
+  const answer = await getMeasurements(new LuftqualitaetClient({ transport: transport.transport }), { station: 1613, component: "PM10", scope: 1, from: "2026-11-17", to: "2026-11-18", now: NOW });
+  assert.equal(answer.status, "ok");
+  if (answer.status !== "ok") return;
+  assert.deepEqual(answer.values, [{ date: "2026-11-18", value: 5 }, { date: "2026-11-17", value: 13 }]);
+  assert.deepEqual(answer.max, { date: "2026-11-17", value: 13 });
+  assert.deepEqual(answer.latest, { date: "2026-11-18", value: 5 });
+  assert.equal(answer.window.time, "CET days: one value per day");
+  assert.ok(answer.notes.some((n) => /one value per CET day: give it with its date, never as a time of day/.test(n)), answer.notes.join(" | "));
+});
+
 test("a scope the component isn't measured in is refused naming the ones it is; a series without data is empty", async () => {
   await assert.rejects(getMeasurements(api().client, { station: 1613, component: 5, scope: 1, now: NOW }), /NO₂ is measured in One hour average \(2\), Maximum one hour average \(3\), not in scope 1/);
   const co = await getMeasurements(api().client, { station: 1613, component: "CO", from: "2026-11-18", now: NOW });

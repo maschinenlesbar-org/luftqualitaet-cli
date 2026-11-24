@@ -19,7 +19,7 @@
 // guessed.
 
 import type { LuftqualitaetClient } from "./client.js";
-import { LuftApiError, LuftParseError, LuftValidationError, quoteValue } from "./errors.js";
+import { cutText, LuftApiError, LuftParseError, LuftValidationError, quoteValue } from "./errors.js";
 import type { AirDataResult, JsonValue } from "./types.js";
 import { assertDate, assertId, assertValid, MIN_YEAR, normalizeText, textProblem } from "./validate.js";
 
@@ -1018,10 +1018,23 @@ function defaultColumn(headers: Record<string, string>, metric: RankMetric): num
   return entries.find(([, text]) => /^number of/i.test(text))?.[0];
 }
 
+/** The most columns a yearly table has (live: 2 to 7) that a caller can ask for. */
+const MAX_COLUMN = 20;
+/** The longest column text kept (live: under 100 characters). */
+const MAX_COLUMN_TEXT = 300;
+
+/**
+ * A yearly table's column texts by number: only the numbered columns 1 to {@link MAX_COLUMN},
+ * each text cut at {@link MAX_COLUMN_TEXT}, so a table in another shape can't fill an answer with
+ * columns no one can ask for.
+ */
 function headersOf(result: AirDataResult): Record<string, string> {
   const headers: Record<string, string> = {};
   if (isRecord(result["headers"])) {
-    for (const [key, text] of Object.entries(result["headers"])) if (typeof text === "string") headers[key] = text.trim();
+    for (const [key, text] of Object.entries(result["headers"])) {
+      if (typeof text !== "string" || !/^[1-9]\d?$/.test(key) || Number(key) > MAX_COLUMN) continue;
+      headers[key] = cutText(text.trim(), MAX_COLUMN_TEXT);
+    }
   }
   return headers;
 }

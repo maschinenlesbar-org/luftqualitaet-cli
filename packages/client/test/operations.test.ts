@@ -461,6 +461,24 @@ test("a yearly table with a station twice or a figure that is no plain number is
   assert.deepEqual(fine.status === "ok" ? [fine.stations.map((s) => [s.station, s.value]), fine.withoutFigure] : fine, [[[43, 15], [21, 9]], 2], "null and an empty text: no figure");
 });
 
+test("a table's columns are the numbered ones a caller can ask for, each text bounded", async () => {
+  const transport = makeMockTransport((request) =>
+    new URL(request.url).pathname.endsWith("/annualbalances/json")
+      ? jsonResponse({
+          request: {},
+          indices: [],
+          headers: { "1": "Annual mean value in µg/m³", "2": `Number of hourly mean values above 200 µg/m³ ${"y".repeat(5000)}`, ["x".repeat(30_000)]: "a key no column has", "\u202e3": "reversed", "21": "beyond the columns one can ask for" },
+          data: [["21", "9", "0"], ["28", "8", "0"]],
+        })
+      : airData(request),
+  );
+  const ranking = await rankStations(new LuftqualitaetClient({ transport: transport.transport }), { component: 5, year: 2024, now: NOW });
+  assert.equal(ranking.status, "ok");
+  if (ranking.status !== "ok") return;
+  assert.deepEqual(Object.keys(ranking.columns), ["1", "2"]);
+  assert.ok((ranking.columns["2"] ?? "").length <= 300, String(ranking.columns["2"]?.length));
+});
+
 test("the running year: the exceedance table, preliminary, with the period it covers", async () => {
   const ranking = await rankStations(api().client, { component: "PM10", year: 2026, state: "Berlin", now: NOW });
   assert.equal(ranking.status, "ok");

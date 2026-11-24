@@ -20,7 +20,7 @@ import {
   resolveComponent,
   resolveState,
 } from "../src/operations.js";
-import { airData, airDataApi } from "./fixtures.js";
+import { airData, airDataApi, STATION_ROWS, stationRow } from "./fixtures.js";
 import { jsonResponse, makeMockTransport } from "./helpers.js";
 
 function api() {
@@ -61,6 +61,29 @@ test("umlauts and case aside, a district written after the town counts as the to
   assert.deepEqual(answer.status === "ok" ? answer.stations.map((s) => s.id).sort((a, b) => a - b) : [], [471, 473, 523, 535]);
   const words = await findStations(api().client, { query: "berlin leipziger" });
   assert.deepEqual(words.status === "ok" ? words.stations.map((s) => s.id) : [], [9480], "every word, in name or town");
+});
+
+test("a town whose stations the catalogue files under another spelling: the name's town counts, a closed station decides nothing", async () => {
+  // Live 2026-11-22: Dessau's one station with the city "Dessau" is closed; the active one is
+  // "Dessau/Roßlau" with the city "Roßlau". Wittenberg's second station has the city "Lutherstadt Wittenberg".
+  const closedDessau = stationRow(1500, { name: "Dessau", city: "Dessau" });
+  closedDessau[6] = "2011-12-31";
+  const rows = [
+    ...Object.values(STATION_ROWS),
+    closedDessau,
+    stationRow(9529, { name: "Dessau/Roßlau", city: "Roßlau" }),
+    stationRow(1758, { name: "Wittenberg/Bahnstrasse", city: "Wittenberg" }),
+    stationRow(1779, { name: "Wittenberg/Dessauer Strasse", city: "Lutherstadt Wittenberg" }),
+  ];
+  const client = () => new LuftqualitaetClient({ transport: airDataApi(rows).transport });
+  const dessau = await findStations(client(), { query: "Dessau" });
+  assert.deepEqual(dessau.status === "ok" ? [dessau.stations.map((s) => s.id), dessau.inactiveLeftOut, dessau.otherNameMatches] : dessau, [[9529], 1, 1], "the Dessauer Strasse of Wittenberg is elsewhere");
+  const report = await getAirQualityReport(client(), { place: "Dessau", now: NOW });
+  assert.equal(report.status === "empty" ? report.station?.id : report.status, 9529, "resolved to the active station (no data in the mock)");
+  const wittenberg = await findStations(client(), { query: "Wittenberg" });
+  assert.deepEqual(wittenberg.status === "ok" ? [wittenberg.stations.map((s) => s.id).sort(), wittenberg.otherNameMatches] : wittenberg, [[1758, 1779], undefined]);
+  const leipzig = await findStations(client(), { query: "Leipzig" });
+  assert.deepEqual(leipzig.status === "ok" ? [leipzig.stations.map((s) => s.id).sort(), leipzig.otherNameMatches] : leipzig, [[1613, 1647, 1665], 3], "a Leipziger Str. is still elsewhere");
 });
 
 test("a Land by code, German or English name; a type and a setting in German or English", async () => {

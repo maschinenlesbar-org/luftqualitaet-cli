@@ -371,8 +371,17 @@ function matchPlace(stations: Station[], query: string): { matches: Station[]; o
     return words.every((word) => text.includes(word));
   };
   const loose = stations.filter(holds);
-  // The town itself, or a district written after it ("München, Stadtteil Johanneskirchen").
-  const town = stations.filter((station) => fold(station.city) === q || fold(station.city).startsWith(`${q} `));
+  // The town itself, a district written after it ("München, Stadtteil Johanneskirchen"), the town
+  // with a title before it as its own word ("Lutherstadt Wittenberg", not "Neu-Ulm"), or a station
+  // whose name starts with the town (the active Dessau station is "Dessau/Roßlau" with the city
+  // "Roßlau"). A word of the name further in ("Essen Gladbecker Straße", "Wittenberg/Dessauer
+  // Strasse") is a street, not the town.
+  const startsWithTown = (text: string) => text === q || text.startsWith(`${q} `);
+  const lastWord = (text: string) => text.trim().split(/\s+/).pop() ?? "";
+  const town = stations.filter((station) => {
+    const titled = /^\p{L}/u.test(lastWord(station.city)) && fold(lastWord(station.city)) === q;
+    return startsWithTown(fold(station.city)) || titled || startsWithTown(fold(station.name));
+  });
   if (town.length === 0) return { matches: loose, otherNameMatches: 0 };
   return { matches: town, otherNameMatches: loose.filter((station) => !town.includes(station)).length };
 }

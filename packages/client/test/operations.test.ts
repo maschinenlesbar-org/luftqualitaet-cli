@@ -8,7 +8,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { LuftqualitaetClient } from "../src/client.js";
-import { LuftValidationError } from "../src/errors.js";
+import { LuftParseError, LuftValidationError } from "../src/errors.js";
 import {
   cetDay,
   findStations,
@@ -339,6 +339,24 @@ test("a filtered ranking says it left out the stations the catalogue lacks, not 
   assert.ok(!ranking.stations.some((s) => s.station === 4242));
   assert.ok(ranking.notes.some((n) => /1 station\(s\) of the table are not in UBA's station catalogue: their Land and type are unknown, so the filter left them out/.test(n)), ranking.notes.join(" | "));
   assert.ok(!ranking.notes.some((n) => /listed by id only/.test(n)));
+});
+
+test("a yearly table with a station twice or a figure that is no plain number is drift, not a ranking", async () => {
+  const table = (data: unknown[][]) => {
+    const transport = makeMockTransport((request) =>
+      new URL(request.url).pathname.endsWith("/annualbalances/json")
+        ? jsonResponse({ request: {}, indices: [], headers: { "1": "Annual mean value in µg/m³", "2": "Number of hourly mean values above 200 µg/m³*" }, data })
+        : airData(request),
+    );
+    return rankStations(new LuftqualitaetClient({ transport: transport.transport }), { component: 5, year: 2024, metric: "mean", now: NOW });
+  };
+  await assert.rejects(table([["1613", "99", "0"], ["1613", "21", "0"]]), (err: Error) => err instanceof LuftParseError && /lists station 1613 twice/.test(err.message));
+  await assert.rejects(table([["471", "-5", "0"]]), (err: Error) => err instanceof LuftParseError && /negative figure -5 for station 471/.test(err.message));
+  for (const odd of ["0x10", "12,5", "Infinity", true, "1e400"]) {
+    await assert.rejects(table([["21", odd, "0"]]), (err: Error) => err instanceof LuftParseError && /is no number/.test(err.message), String(odd));
+  }
+  const fine = await table([["21", "9", "0"], ["28", null, "0"], ["31", "", "0"], ["43", "1.5e1", "0"]]);
+  assert.deepEqual(fine.status === "ok" ? [fine.stations.map((s) => [s.station, s.value]), fine.withoutFigure] : fine, [[[43, 15], [21, 9]], 2], "null and an empty text: no figure");
 });
 
 test("the running year: the exceedance table, preliminary, with the period it covers", async () => {

@@ -19,7 +19,7 @@
 // guessed.
 
 import type { LuftqualitaetClient } from "./client.js";
-import { LuftApiError, LuftValidationError, quoteValue } from "./errors.js";
+import { LuftApiError, LuftParseError, LuftValidationError, quoteValue } from "./errors.js";
 import type { AirDataResult, JsonValue } from "./types.js";
 import { assertDate, assertId, assertValid, MIN_YEAR, normalizeText, textProblem } from "./validate.js";
 
@@ -205,9 +205,12 @@ const isRecord = (value: unknown): value is Record<string, JsonValue> =>
 
 const str = (value: JsonValue | undefined): string => (typeof value === "string" ? value.trim() : typeof value === "number" ? String(value) : "");
 
+/** A plain decimal, as the API writes figures in text ("12", "8.3", "1.5e1"): not hex, not "Infinity", not "12,5". */
+const DECIMAL = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
+
 const num = (value: JsonValue | undefined): number | null => {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  if (typeof value === "string" && value.trim() !== "") {
+  if (typeof value === "string" && DECIMAL.test(value.trim())) {
     const n = Number(value);
     return Number.isFinite(n) ? n : null;
   }
@@ -1032,14 +1035,19 @@ export async function rankStations(client: LuftqualitaetClient, input: RankStati
   let unknownStations = 0;
   let withoutFigure = 0;
   const figures: { row: JsonValue[]; station: number; value: number; known: Station | undefined }[] = [];
+  const tableName = `${year} ${basis === "annualBalance" ? "annual balance" : "exceedance table"} of component ${componentId}`;
+  const seen = new Set<number>();
   for (const row of rows) {
     const stationId = num(row[0]);
     if (stationId === null) continue;
+    // A station twice, or a figure no table can hold, is a table in another shape: no ranking from it.
+    if (seen.has(stationId)) throw new LuftParseError(`The ${tableName} lists station ${stationId} twice: its shape has changed, so no ranking is built from it.`);
+    seen.add(stationId);
     const known = catalogue.stations.get(stationId);
     if (known === undefined) unknownStations++;
     if (state !== undefined && known?.state !== state) continue;
     if (type !== undefined && known?.type !== type) continue;
-    const value = num(row[column]);
+    const value = figureOf(row[column], stationId, tableName);
     if (value === null) {
       withoutFigure++;
       continue;
@@ -1113,6 +1121,15 @@ export async function rankStations(client: LuftqualitaetClient, input: RankStati
     ...(offset + limit < ranked.length ? { nextOffset: offset + limit } : {}),
     notes,
   };
+}
+
+/** A table's figure: null for none (null or an empty text); a number, never negative; anything else is drift. */
+function figureOf(cell: JsonValue | undefined, station: number, tableName: string): number | null {
+  if (cell === null || cell === undefined || (typeof cell === "string" && cell.trim() === "")) return null;
+  const value = num(cell);
+  if (value === null) throw new LuftParseError(`The ${tableName} has ${quoteValue(typeof cell === "string" ? cell : JSON.stringify(cell))} as the figure of station ${station}, which is no number: its shape has changed.`);
+  if (value < 0) throw new LuftParseError(`The ${tableName} has the negative figure ${value} for station ${station}, which no concentration or count can be: its shape has changed.`);
+  return value;
 }
 
 /** What the ranked figure means: a count against its allowance (only where the limit allows some), a mean, another figure. */

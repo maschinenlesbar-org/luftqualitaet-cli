@@ -129,7 +129,8 @@ HTTP 410 (a "brownout"). Such a call is a tool error naming the 410: call again.
   ends it at once. On stdio it ends at once, and when stdin ends.
 - **In a container** it needs at least 12 processes and threads (`--pids-limit`) and about
   256 MB of memory.
-- **Logs** go to stderr, one record per line; stdout carries only the protocol.
+- **Logs** go to stderr, one record per line; stdout carries only the protocol. A call that fails
+  upstream or reaches its deadline leaves a WARN record naming the tool.
 - **Never installs anything.**
 
 ## Licence

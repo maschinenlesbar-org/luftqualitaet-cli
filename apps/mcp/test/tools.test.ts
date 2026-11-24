@@ -9,6 +9,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { listTools } from "../src/mcp/server.js";
+import { DEADLINE_HINT, SIZE_HINT, TOOLS } from "../src/mcp/tools.js";
 import { connect } from "./harness.js";
 import { airDataApi } from "./helpers.js";
 
@@ -133,4 +134,19 @@ test("getMeasurements, getIndexBands, listComponents answer through the protocol
   const list = (await connection.call("listComponents", {})).structuredContent ?? {};
   assert.equal((list["components"] as unknown[]).length, 12);
   await connection.close();
+});
+
+test("the deadline and size advice fit every tool: each option is named with the tools that take it", () => {
+  const schemas = new Map(TOOLS.map((tool) => [tool.name, Object.keys((tool.inputSchema as { properties: Record<string, unknown> }).properties)]));
+  for (const hint of [DEADLINE_HINT, SIZE_HINT]) {
+    const pairs = [...hint.matchAll(/(\w+(?: or \w+)*) \((\w+(?:, \w+)*)\)/g)];
+    assert.ok(pairs.length >= 1, hint);
+    for (const [, options, tools] of pairs) {
+      for (const tool of (tools as string).split(", ")) {
+        for (const option of (options as string).split(" or ")) assert.ok(schemas.get(tool)?.includes(option), `${tool} takes no ${option}: ${hint}`);
+      }
+    }
+    // A window is asked for with from and to; only the tools that take them may be told to.
+    assert.ok(!/window/.test(hint) || /window: from or to \(/.test(hint), hint);
+  }
 });

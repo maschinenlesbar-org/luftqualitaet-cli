@@ -252,11 +252,15 @@ export function stationOf(row: JsonValue): Station | undefined {
 export async function loadCatalogue(client: LuftqualitaetClient, use: "measure" | "annualbalance" = "measure"): Promise<Catalogue> {
   const meta = await client.meta({ use, lang: "en" });
   const stations = new Map<number, Station>();
-  if (isRecord(meta["stations"])) {
-    for (const row of Object.values(meta["stations"])) {
-      const station = stationOf(row);
-      if (station !== undefined) stations.set(station.id, station);
-    }
+  const rows = isRecord(meta["stations"]) ? Object.entries(meta["stations"]).filter(([key]) => /^\d+$/.test(key)) : [];
+  // Positional rows read without a check turn a moved column into answers ("only closed stations",
+  // "the id is wrong", the nearest station 500 km off): a row that breaks the layout fails the call.
+  if (rows.length === 0) throw new LuftParseError(`The station catalogue lists no stations (meta?use=${use}): its shape has changed, so no answer is built from it.`);
+  for (const [key, row] of rows) {
+    const problem = catalogueRowProblem(row);
+    if (problem !== undefined) throw new LuftParseError(`The station catalogue has changed its shape: station ${key} has ${problem} (meta?use=${use}). No answer is built from it.`);
+    const station = stationOf(row);
+    if (station !== undefined) stations.set(station.id, station);
   }
   const components = new Map<number, ComponentInfo>();
   for (const row of rowsOf(meta["components"])) {
@@ -279,6 +283,64 @@ export async function loadCatalogue(client: LuftqualitaetClient, use: "measure" 
     scopesOf.set(component, list);
   }
   return { stations, components, scopes, scopesOf };
+}
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const NETWORK_CODES = new Set<string>(NETWORKS.map(([code]) => code));
+
+/** Germany with a margin: a coordinate outside it is a moved or swapped column. */
+const LAT_RANGE = [47, 55.5] as const;
+const LON_RANGE = [5.5, 15.5] as const;
+
+/**
+ * What breaks the catalogue's row layout in `row` ("…" as its Land), or undefined: 20 fields at
+ * least, an id, days as YYYY-MM-DD (or none), a network code, the known types and settings (or
+ * none), and a position in Germany (or none). The live catalogues (526 and 1,231 stations, checked
+ * 2026-11-24) pass every check.
+ */
+function catalogueRowProblem(row: JsonValue): string | undefined {
+  if (!Array.isArray(row) || row.length < 20) return `a row of ${Array.isArray(row) ? row.length : "no"} fields (20 expected)`;
+  const shown = (value: JsonValue | undefined) => quoteValue(typeof value === "string" ? value : String(JSON.stringify(value)));
+  const optional = (value: JsonValue | undefined) => value === null || value === undefined || value === "";
+  const id = num(row[0]);
+  if (id === null || !Number.isSafeInteger(id)) return `${shown(row[0])} as its id`;
+  for (const [index, what] of [[5, "first day"], [6, "closing day"]] as const) {
+    const value = row[index];
+    if (!optional(value) && !(typeof value === "string" && DAY.test(value))) return `${shown(value)} as its ${what}`;
+  }
+  if (!NETWORK_CODES.has(str(row[12]))) return `${shown(row[12])} as its Land`;
+  if (!optional(row[15]) && !(STATION_SETTINGS as readonly string[]).includes(str(row[15]))) return `${shown(row[15])} as its setting`;
+  if (!optional(row[16]) && !(STATION_TYPES as readonly string[]).includes(str(row[16]))) return `${shown(row[16])} as its type`;
+  if (!(optional(row[7]) && optional(row[8]))) {
+    const lat = num(row[8]);
+    const lon = num(row[7]);
+    if (lat === null || lat < LAT_RANGE[0] || lat > LAT_RANGE[1]) return `${shown(row[8])} as its latitude`;
+    if (lon === null || lon < LON_RANGE[0] || lon > LON_RANGE[1]) return `${shown(row[7])} as its longitude`;
+  }
+  return undefined;
+}
+
+/** A series' hour key: its start, "YYYY-MM-DD hh:mm:ss". */
+const HOUR_KEY = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+
+/**
+ * A window answer's hours for `station` (undefined when it has none), checked: an answer for
+ * another station, an hour key in another format or an hour that is no row means the answer
+ * changed its shape, never "no data".
+ */
+function seriesFor(result: AirDataResult, station: number, what: string): Record<string, JsonValue[]> | undefined {
+  const data = result["data"];
+  if (!isRecord(data) || Object.keys(data).length === 0) return undefined;
+  const own = data[String(station)];
+  if (own === undefined) {
+    throw new LuftParseError(`The ${what} answered for station ${Object.keys(data).slice(0, 3).join(", ")}, not ${station}: its shape has changed.`);
+  }
+  if (!isRecord(own)) throw new LuftParseError(`The ${what} of station ${station} is no object of hours: its shape has changed.`);
+  for (const [key, row] of Object.entries(own)) {
+    if (!HOUR_KEY.test(key)) throw new LuftParseError(`The ${what} has the hour key ${quoteValue(key)} of station ${station}, not "YYYY-MM-DD hh:mm:ss": its shape has changed.`);
+    if (!Array.isArray(row)) throw new LuftParseError(`In the ${what}, hour ${key} of station ${station} is no row: its shape has changed.`);
+  }
+  return own as Record<string, JsonValue[]>;
 }
 
 /** The positional rows of a keyed list (`{ "1": [...], "count": 12, "indices": [...] }`). */
@@ -735,9 +797,9 @@ export async function getAirQualityReport(client: LuftqualitaetClient, input: Ai
   if (openedAfter(station, window.to)) return { status: "empty", searched, station, reason: openedReason(station, window) };
   // The catalogue has just named the station: an empty answer needs no second lookup.
   const result = await client.airquality({ station: station.id, date_from: window.from, time_from: 1, date_to: window.to, time_to: 24 }, { stationKnown: true });
-  const data = isRecord(result["data"]) ? result["data"][String(station.id)] : undefined;
+  const data = seriesFor(result, station.id, "index series");
   const hours: HourReading[] = [];
-  if (isRecord(data)) {
+  if (data !== undefined) {
     for (const key of Object.keys(data).sort()) {
       const hour = readHour(key, data[key] as JsonValue, catalogue, station.id);
       if (hour !== undefined) hours.push(hour);
@@ -1256,9 +1318,9 @@ export async function getMeasurements(client: LuftqualitaetClient, input: Measur
     { station: station.id, component: componentId, scope: scopeId, date_from: window.from, time_from: 1, date_to: window.to, time_to: 24 },
     { stationKnown: true },
   );
-  const data = isRecord(result["data"]) ? result["data"][String(station.id)] : undefined;
+  const data = seriesFor(result, station.id, "measured series");
   const values: MeasuredValue[] = [];
-  if (isRecord(data)) {
+  if (data !== undefined) {
     for (const key of Object.keys(data).sort()) {
       const row = data[key];
       if (!Array.isArray(row)) continue;

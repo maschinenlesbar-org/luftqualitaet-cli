@@ -20,7 +20,7 @@ import {
   resolveComponent,
   resolveState,
 } from "../src/operations.js";
-import { airData, airDataApi, STATION_ROWS, stationRow } from "./fixtures.js";
+import { airData, airDataApi, metaAnswer, STATION_ROWS, stationRow } from "./fixtures.js";
 import { jsonResponse, makeMockTransport } from "./helpers.js";
 
 function api() {
@@ -135,6 +135,44 @@ test("no match is empty with what was searched and how to ask, never a bare not 
   assert.match(answer.status === "empty" ? answer.reason : "", /German town names as the catalogue spells them \(München/);
   const closed = await findStations(api().client, { query: "Thekla" });
   assert.match(closed.status === "empty" ? closed.reason : "", /Only closed stations match \(1\); ask with includeInactive/);
+});
+
+test("a station catalogue in another shape is an error naming it, never 'only closed stations' or 'the id is wrong'", async () => {
+  const withCatalogue = (stations: Record<string, unknown>) =>
+    new LuftqualitaetClient({
+      transport: makeMockTransport((request) =>
+        new URL(request.url).pathname.endsWith("/meta/json") ? jsonResponse(metaAnswer(stations as never)) : airData(request),
+      ).transport,
+    });
+  const shifted = Object.fromEntries(Object.entries(STATION_ROWS).map(([id, row]) => [id, [...row.slice(0, 3), "inserted", ...row.slice(3)]]));
+  const swapped = Object.fromEntries(Object.entries(STATION_ROWS).map(([id, row]) => [id, [...row.slice(0, 7), row[8], row[7], ...row.slice(9)]]));
+  for (const [what, stations, pattern] of [
+    ["a column inserted after the name", shifted, /station catalogue has changed its shape: station \d+ has .* as its/],
+    ["lon and lat swapped", swapped, /station catalogue has changed its shape: station \d+ has .* as its latitude/],
+    ["no stations at all", {}, /station catalogue lists no stations/],
+  ] as const) {
+    await assert.rejects(findStations(withCatalogue(stations), { query: "Leipzig" }), (err: Error) => err instanceof LuftParseError && pattern.test(err.message), what);
+    await assert.rejects(getAirQualityReport(withCatalogue(stations), { station: 1613, now: NOW }), LuftParseError, what);
+  }
+});
+
+test("an index or measured series in another shape is an error naming it, never 'no data'", async () => {
+  const withSeries = (data: unknown) =>
+    new LuftqualitaetClient({
+      transport: makeMockTransport((request) => {
+        const path = new URL(request.url).pathname;
+        return path.endsWith("/airquality/json") || path.endsWith("/measures/json") ? jsonResponse({ request: {}, indices: {}, data }) : airData(request);
+      }).transport,
+    });
+  const hour = ["2026-11-18 23:00:00", 4, 0, [5, 250, 4, "4"]];
+  for (const [what, data, pattern] of [
+    ["another station's series", { "1647": { "2026-11-18 22:00:00": hour } }, /answered for station 1647, not 1613/],
+    ["an hour as an object", { "1613": { "2026-11-18 22:00:00": { end: "2026-11-18 23:00:00", index: 4 } } }, /hour 2026-11-18 22:00:00 of station 1613 is no row/],
+    ["an hour key in another format", { "1613": { "18.11.2026 22:00": hour } }, /hour key "18\.11\.2026 22:00" of station 1613/],
+  ] as const) {
+    await assert.rejects(getAirQualityReport(withSeries(data), { station: 1613, from: "2026-11-18", now: NOW }), (err: Error) => err instanceof LuftParseError && pattern.test(err.message), what);
+    await assert.rejects(getMeasurements(withSeries(data), { station: 1613, component: "NO2", from: "2026-11-18", now: NOW }), (err: Error) => err instanceof LuftParseError && pattern.test(err.message), what);
+  }
 });
 
 // --- getAirQualityReport ---

@@ -220,7 +220,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     title: "Rank stations by a pollutant's year",
     description: [
       'Stations ranked by a pollutant\'s figure for a year, with names, towns, types and Länder: limit-value exceedances or the annual mean. Use it for "wo war die NO2-Belastung 2024 am höchsten?", "Grenzwertüberschreitungen Feinstaub PM10 dieses Jahr", "Ozon-Überschreitungstage 2025 Ranking", "which cities had the worst NO2 in 2023?", "where did PM10 exceed the limit last year?", "rank stations by ozone exceedances".',
-      `A completed year is ranked on the annual balance (UBA's final data, published in June of the next year); the running year, and a year whose balance is not out yet, on the exceedance table (preliminary, the count so far: give the period). Never mix the two; say which (basisNote). The column is chosen by UBA's text (metric): exceedances (default) or mean; O3 has no mean (column 1 counts hours above 240). columns lists all; column picks one. limit/overLimit read the figure against the EU limit (NO2 18 h above 200, PM10 35 days above 50, annual means 40/40/25 µg/m³): there a count above zero is not a breach; 0 is the good result. Show each station's type: traffic stations top NO2, rural background ones ozone. Exceedance tables before 2019 are incomplete upstream. Paged: nextOffset. ${CITE}`,
+      `A completed year is ranked on the annual balance (UBA's final data, published in June of the next year); the running year, and a year whose balance is not out yet, on the exceedance table (preliminary, the count so far: give the period). Never mix the two; say which (basisNote). The column is chosen by UBA's text (metric): auto (default) ranks on the annual mean where the table has one (the worst NO2, PM10, PM2.5), else on the exceedance count (O3 has no mean; its column 1 counts hours above 240); exceedances or mean ask for one; the running year has the count only. columns lists all; column picks one. limit/overLimit read the figure against the EU limit (NO2 18 h above 200, PM10 35 days above 50, annual means 40/40/25 µg/m³): there a count above zero is not a breach; 0 is the good result. Show each station's type: traffic stations top NO2, rural background ones ozone. Exceedance tables before 2019 are incomplete upstream. Paged: nextOffset. ${CITE}`,
       RULES,
     ].join("\n\n"),
     inputSchema: input(
@@ -228,7 +228,7 @@ export const TOOLS: readonly ToolDefinition[] = [
         component: COMPONENT,
         year: { type: "integer", minimum: 2016, maximum: 2100, description: "The year (2016 or later; default: the last completed one)." },
         basis: { type: "string", enum: [...RANK_BASES], description: "auto (default), annualBalance (final data) or transgressions (preliminary exceedance table)." },
-        metric: { type: "string", enum: [...RANK_METRICS], description: "exceedances (default) or mean (the annual mean)." },
+        metric: { type: "string", enum: [...RANK_METRICS], description: "auto (default: the annual mean where the table has one, else the exceedance count), exceedances (limit exceedances) or mean (the annual mean)." },
         column: { type: "integer", minimum: 1, maximum: 20, description: "An annual-balance column by number (from columns), instead of metric." },
         state: text(40, "A Land: a code (BY, NRW) or a name."),
         type: TYPE,

@@ -308,8 +308,29 @@ test("ties share a rank; an annual mean is read against its limit", async () => 
   assert.equal(ranking.nextOffset, 7);
 });
 
+test("by default a pollutant with an annual mean is ranked on it: 'the worst NO₂' is the highest concentration, not 16 ties at 0", async () => {
+  const ranking = await rankStations(api().client, { component: "NO2", year: 2024, now: NOW });
+  assert.equal(ranking.status, "ok");
+  if (ranking.status !== "ok") return;
+  assert.equal(ranking.searched["metric"], "auto");
+  assert.deepEqual(ranking.metric, { column: 1, text: "Annual mean value in µg/m³" });
+  assert.deepEqual(ranking.stations.slice(0, 2).map((s) => [s.rank, s.station]), [[1, 535], [2, 43]]);
+  assert.ok(ranking.notes.some((n) => /Ranked on the annual mean, the concentration \(metric auto\); for the limit's exceedance count ask with metric exceedances/.test(n)), ranking.notes.join(" | "));
+  const ozone = await rankStations(api().client, { component: "O3", year: 2025, now: NOW });
+  assert.equal(ozone.status === "ok" ? ozone.metric.column : 0, 3, "O₃ has no annual mean: its exceedance days");
+  const running = await rankStations(api().client, { component: "PM10", year: 2026, now: NOW });
+  assert.equal(running.status === "ok" ? running.basis : running.status, "transgressions", "the running year's table has the count only, and auto takes it");
+});
+
+test("a count on which nearly every station is 0 says it doesn't separate them, and names metric mean", async () => {
+  const ranking = await rankStations(api().client, { component: 5, year: 2024, metric: "exceedances", now: NOW });
+  assert.equal(ranking.status, "ok");
+  if (ranking.status !== "ok") return;
+  assert.ok(ranking.notes.some((n) => /16 of 16 stations counted 0: the count doesn't tell them apart, and tied stations are listed by id.*For the most polluted stations ask with metric mean/.test(n)), ranking.notes.join(" | "));
+});
+
 test("exceedances: NO₂ hours above 200 against the 18 allowed; zero is the good result", async () => {
-  const ranking = await rankStations(api().client, { component: 5, year: 2024, now: NOW });
+  const ranking = await rankStations(api().client, { component: 5, year: 2024, metric: "exceedances", now: NOW });
   assert.equal(ranking.status, "ok");
   if (ranking.status !== "ok") return;
   assert.equal(ranking.metric.column, 2);

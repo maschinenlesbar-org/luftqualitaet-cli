@@ -813,8 +813,11 @@ export async function getAirQualityReport(client: LuftqualitaetClient, input: Ai
 export const RANK_BASES = ["auto", "annualBalance", "transgressions"] as const;
 export type RankBasis = (typeof RANK_BASES)[number];
 
-/** What to rank on: the exceedance count (default) or the annual mean. */
-export const RANK_METRICS = ["exceedances", "mean"] as const;
+/**
+ * What to rank on: auto (default: the annual mean where the table has one, else the exceedance
+ * count), the exceedance count, or the annual mean.
+ */
+export const RANK_METRICS = ["auto", "exceedances", "mean"] as const;
 export type RankMetric = (typeof RANK_METRICS)[number];
 
 /** The input of {@link rankStations}. */
@@ -825,7 +828,11 @@ export interface RankStationsInput {
   year?: number | undefined;
   /** auto (default): the annual balance for a completed year, the exceedance table for the running one. */
   basis?: RankBasis | undefined;
-  /** exceedances (default) or mean; ignored when `column` is given. */
+  /**
+   * auto (default): the annual mean where the annual balance has one ("where was NO₂ worst?"),
+   * else its exceedance count (O₃); the exceedance table has the count only. exceedances or mean
+   * ask for one; ignored when `column` is given.
+   */
   metric?: RankMetric | undefined;
   /** An annual-balance column by its number (the answer's `columns`). */
   column?: number | undefined;
@@ -916,7 +923,8 @@ function limitFor(text: string, component: number): ColumnLimit | undefined {
 /** The default column of an annual balance for a metric, or undefined when it has none. */
 function defaultColumn(headers: Record<string, string>, metric: RankMetric): number | undefined {
   const entries = Object.entries(headers).map(([key, text]) => [Number(key), text] as const);
-  if (metric === "mean") return entries.find(([, text]) => /^annual mean value/i.test(text))?.[0];
+  const mean = entries.find(([, text]) => /^annual mean value/i.test(text))?.[0];
+  if (metric === "mean" || (metric === "auto" && mean !== undefined)) return mean;
   for (const rule of COLUMN_RULES) {
     if (rule.exceedance !== true) continue;
     const found = entries.find(([, text]) => rule.pattern.test(text));
@@ -956,7 +964,7 @@ export async function rankStations(client: LuftqualitaetClient, input: RankStati
   }
   const basisWanted = input.basis ?? "auto";
   if (!RANK_BASES.includes(basisWanted)) throw new LuftValidationError(`Invalid basis: expected one of ${RANK_BASES.join(", ")}.`);
-  const metricWanted = input.metric ?? "exceedances";
+  const metricWanted = input.metric ?? "auto";
   if (!RANK_METRICS.includes(metricWanted)) throw new LuftValidationError(`Invalid metric: expected one of ${RANK_METRICS.join(", ")}.`);
   const limit = assertValid("limit", input.limit ?? 15, limitProblem(100));
   const offset = assertValid("offset", input.offset ?? 0, offsetProblem);
@@ -1024,7 +1032,7 @@ export async function rankStations(client: LuftqualitaetClient, input: RankStati
       return {
         status: "empty",
         searched,
-        reason: `${input.column === undefined ? `The ${year} annual balance of component ${componentId} has no ${metricWanted === "mean" ? "annual mean" : "exceedance count"}` : `Column ${chosen} is not in the ${year} annual balance`}. Its columns: ${listed}. Ask with one of them as column.`,
+        reason: `${input.column === undefined ? `The ${year} annual balance of component ${componentId} has no ${metricWanted === "mean" ? "annual mean" : metricWanted === "auto" ? "annual mean and no exceedance count" : "exceedance count"}` : `Column ${chosen} is not in the ${year} annual balance`}. Its columns: ${listed}. Ask with one of them as column.`,
       };
     }
     column = chosen;
@@ -1087,6 +1095,19 @@ export async function rankStations(client: LuftqualitaetClient, input: RankStati
     const from = starts.reduce((a, b) => (a === "" || b < a ? b : a), "");
     period = { from, to, stationsEndingEarlier: ends.filter((day) => day < to).length };
   }
+  const isCount = /^number of/i.test(text);
+  if (metricWanted === "auto" && input.column === undefined && /^annual mean value/i.test(text)) {
+    notes.push("Ranked on the annual mean, the concentration (metric auto); for the limit's exceedance count ask with metric exceedances.");
+  }
+  const zeros = figures.filter((figure) => figure.value === 0).length;
+  if (isCount && figures.length > 1 && zeros * 2 >= figures.length) {
+    const hasMean = Object.values(headers).some((header) => /^annual mean value/i.test(header));
+    notes.push(
+      `${zeros} of ${figures.length} stations counted 0: the count doesn't tell them apart, and tied stations are listed by id, which says nothing about their air. ${
+        hasMean ? "For the most polluted stations ask with metric mean (the annual mean)." : "Say so rather than call the first ones the worst."
+      }`,
+    );
+  }
   notes.push(
     figureNote(text, limitInfo),
     "Show each station's type: traffic stations dominate NO₂ rankings by design, ozone is worst at rural background stations.",
@@ -1114,7 +1135,7 @@ export async function rankStations(client: LuftqualitaetClient, input: RankStati
     ...(period === undefined ? {} : { period }),
     stationCount: figures.length,
     withoutFigure,
-    ...(/^number of/i.test(text) ? { aboveZero: figures.filter((figure) => figure.value > 0).length } : {}),
+    ...(isCount ? { aboveZero: figures.filter((figure) => figure.value > 0).length } : {}),
     ...(limitInfo === undefined ? {} : { limit: limitInfo, overLimit: figures.filter((figure) => figure.value > limitInfo.value).length }),
     unknownStations,
     stations: ranked.slice(offset, offset + limit),

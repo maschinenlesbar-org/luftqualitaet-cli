@@ -82,6 +82,17 @@ test("a blank or unknown filter is refused before the station catalogue is downl
   }
 });
 
+test("a page past the end is empty and says where the matches end", async () => {
+  const answer = await findStations(api().client, { query: "Leipzig", offset: 5 });
+  assert.equal(answer.status, "empty");
+  assert.match(answer.status === "empty" ? answer.reason : "", /offset 5 is past the 3 matches/);
+  const last = await findStations(api().client, { query: "Leipzig", offset: 2 });
+  assert.equal(last.status === "ok" ? last.stations.length : 0, 1);
+  const ranking = await rankStations(api().client, { component: "NO2", year: 2024, metric: "mean", offset: 40, now: NOW });
+  assert.equal(ranking.status, "empty");
+  assert.match(ranking.status === "empty" ? ranking.reason : "", /offset 40 is past the 17 ranked stations/);
+});
+
 test("near a point: the nearest first, with the distance in km", async () => {
   const answer = await findStations(api().client, { near: { lat: 51.34, lon: 12.37 }, limit: 3 });
   assert.equal(answer.status, "ok");

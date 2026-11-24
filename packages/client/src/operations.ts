@@ -443,6 +443,7 @@ export async function findStations(client: LuftqualitaetClient, input: FindStati
           .map((station) => ({ ...station, distanceKm: station.lat === null || station.lon === null ? Number.POSITIVE_INFINITY : distanceKm(near.lat, near.lon, station.lat, station.lon) }))
           .sort((a, b) => a.distanceKm - b.distanceKm || a.id - b.id)
           .map((station) => (Number.isFinite(station.distanceKm) ? station : withoutDistance(station)));
+  if (offset >= ranked.length) return { status: "empty", searched, inactiveLeftOut, reason: pastTheEnd(offset, ranked.length, "matches") };
   const page = ranked.slice(offset, offset + limit);
   const notes = [
     "Lead with the station id: every other call takes it. Coordinates are lat/lon here (the API stores lon first).",
@@ -460,6 +461,11 @@ export async function findStations(client: LuftqualitaetClient, input: FindStati
     ...(offset + limit < kept.length ? { nextOffset: offset + limit } : {}),
     notes,
   };
+}
+
+/** The reason of a page that starts after the last entry. */
+function pastTheEnd(offset: number, total: number, what: string): string {
+  return `offset ${offset} is past the ${total} ${what}: ask with a smaller offset (0 for the first page).`;
 }
 
 function withoutDistance(station: StationMatch): StationMatch {
@@ -990,6 +996,7 @@ export async function rankStations(client: LuftqualitaetClient, input: RankStati
       ...(basis === "transgressions" && typeof figure.row[2] === "string" ? { dataUntil: figure.row[2] } : {}),
     });
   });
+  if (offset >= ranked.length) return { status: "empty", searched, reason: pastTheEnd(offset, ranked.length, "ranked stations") };
   const limitInfo = limitFor(text, componentId);
   let period: { from: string; to: string; stationsEndingEarlier: number } | undefined;
   if (basis === "transgressions") {

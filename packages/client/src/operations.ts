@@ -604,6 +604,11 @@ export type AirQualityReport =
       hoursWithData: number;
       worst: { level: number; label: string; labelDe: string; hours: number; first: { start: string; end: string }; drivers: string[] };
       levelCounts: { level: number; label: string; hours: number }[];
+      /**
+       * The newest complete hour; at a station that reported one of the index pollutants at no
+       * hour of the window (no O₃ monitor), when UBA marks every hour incomplete: its newest hour
+       * with all the pollutants it did report (a note says so).
+       */
       latestComplete?: HourReading;
       /** The newest hour, when it is newer than latestComplete (and so incomplete). */
       latest?: HourReading;
@@ -676,6 +681,24 @@ function readHour(start: string, row: JsonValue, catalogue: Catalogue): HourRead
   };
 }
 
+/** The index's pollutants: PM₁₀, O₃, NO₂, PM₂,₅. */
+const INDEX_COMPONENTS = [5, 1, 9, 3];
+
+/**
+ * When no hour is complete: the index pollutants the station never reported in the window (a
+ * station without an O₃ monitor), the ones it did, and its newest hour with all of those. Undefined
+ * when every index pollutant was reported at some hour (the hours are partial, not the station).
+ */
+function missingIndexPollutants(hours: HourReading[], catalogue: Catalogue): { missing: string[]; reported: string[]; latest: HourReading | undefined } | undefined {
+  const seen = new Set(hours.flatMap((hour) => hour.pollutants.filter((p) => p.value !== null).map((p) => p.component)));
+  const symbol = (id: number) => catalogue.components.get(id)?.symbol ?? `component ${id}`;
+  const missing = INDEX_COMPONENTS.filter((id) => !seen.has(id));
+  const reported = INDEX_COMPONENTS.filter((id) => seen.has(id));
+  if (missing.length === 0 || reported.length === 0) return undefined;
+  const full = hours.filter((hour) => reported.every((id) => hour.pollutants.some((p) => p.component === id && p.value !== null)));
+  return { missing: missing.map(symbol), reported: reported.map(symbol), latest: full[full.length - 1] };
+}
+
 /**
  * A station's air-quality index over a window of CET days, decoded: per hour the level in words,
  * the driving pollutant(s) and the values with units; the worst level and when it was first
@@ -715,7 +738,8 @@ export async function getAirQualityReport(client: LuftqualitaetClient, input: Ai
   const worstHours = hours.filter((hour) => hour.level === worstLevel);
   const firstWorst = worstHours[0] as HourReading;
   const complete = hours.filter((hour) => !hour.incomplete);
-  const latestComplete = complete[complete.length - 1];
+  const lacking = complete.length === 0 ? missingIndexPollutants(hours, catalogue) : undefined;
+  const latestComplete = complete[complete.length - 1] ?? lacking?.latest;
   const newest = hours[hours.length - 1] as HourReading;
   const driverCounts = new Map<string, number>();
   for (const hour of hours) {
@@ -728,7 +752,13 @@ export async function getAirQualityReport(client: LuftqualitaetClient, input: Ai
     days.set(date, [...(days.get(date) ?? []), hour]);
   }
   const notes = [...AQ_NOTES];
-  if (latestComplete === undefined) notes.push("No hour in the window is complete: every level is partial (some pollutants were not reported).");
+  if (lacking !== undefined && lacking.latest !== undefined) {
+    notes.push(
+      `Station ${station.id} reported no ${lacking.missing.join(", ")} in this window: UBA marks every hour incomplete. latestComplete is the newest hour with all the pollutants it did report (${lacking.reported.join(", ")}); its levels are built from those.`,
+    );
+  } else if (latestComplete === undefined) {
+    notes.push("No hour in the window is complete: every level is partial (some pollutants were not reported).");
+  }
   return {
     status: "ok",
     station,

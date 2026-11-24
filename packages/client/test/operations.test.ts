@@ -20,7 +20,8 @@ import {
   resolveComponent,
   resolveState,
 } from "../src/operations.js";
-import { airDataApi } from "./fixtures.js";
+import { airData, airDataApi } from "./fixtures.js";
+import { jsonResponse, makeMockTransport } from "./helpers.js";
 
 function api() {
   const mock = airDataApi();
@@ -149,6 +150,26 @@ test("'right now' is the newest complete hour; a newer incomplete one is said ap
   assert.equal(report.incompleteHours, 1);
   assert.ok(report.notes.some((n) => /CET \(UTC\+1\) all year/.test(n)));
   assert.ok(report.notes.some((n) => /never an average/.test(n)));
+});
+
+test("a station without one of the index pollutants: 'now' is its newest hour with all the others, and the answer says why", async () => {
+  // Like Berlin Mitte (175): no O₃, so UBA flags every hour incomplete.
+  const hours = {
+    "2026-11-18 22:00:00": ["2026-11-18 23:00:00", 1, 1, [5, 30, 1, "1"], [1, 12, 0, "0.6"], [9, 6, 0, "0.6"]],
+    "2026-11-18 23:00:00": ["2026-11-18 24:00:00", 1, 1, [5, 25, 1, "1"], [1, 12, 0, "0.6"], [9, 6, 0, "0.6"]],
+    "2026-11-19 00:00:00": ["2026-11-19 01:00:00", 0, 1, [5, 15, 0, "0.7"]],
+  };
+  const transport = makeMockTransport((request) =>
+    new URL(request.url).pathname.endsWith("/airquality/json") ? jsonResponse({ request: {}, indices: {}, data: { "1613": hours } }) : airData(request),
+  );
+  const report = await getAirQualityReport(new LuftqualitaetClient({ transport: transport.transport }), { station: 1613, now: NOW });
+  assert.equal(report.status, "ok");
+  if (report.status !== "ok") return;
+  assert.equal(report.latestComplete?.end, "2026-11-18 24:00:00", "the newest hour with NO₂, PM₁₀ and PM₂,₅");
+  assert.equal(report.latest?.end, "2026-11-19 01:00:00");
+  assert.equal(report.incompleteHours, 3);
+  assert.ok(report.notes.some((n) => /Station 1613 reported no O₃ in this window: UBA marks every hour incomplete\. latestComplete is the newest hour with all the pollutants it did report \(NO₂, PM₁₀, PM₂,₅\)/.test(n)), report.notes.join(" | "));
+  assert.ok(!report.notes.some((n) => /No hour in the window is complete/.test(n)));
 });
 
 test("CET is UTC+1 all year: 23:30 UTC is already the next day", () => {

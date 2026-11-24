@@ -104,6 +104,23 @@ function windowArgs(args: Record<string, unknown>): { date_from: string; date_to
   return { date_from: from ?? to ?? cetDay(now, -1), date_to: to ?? from ?? cetDay(now) };
 }
 
+/** The station catalogue every station-taking tool reads first. */
+const CATALOGUE = "meta/json?use=measure&lang=en";
+
+/**
+ * The station and window a series request of this answer was made for, or undefined when the
+ * answer came from the catalogue alone: an ambiguous or unknown place, an unknown id, a station
+ * closed before the window or opened after it.
+ */
+function seriesOf(answer: Record<string, unknown>): { station: number; from: string; to: string } | undefined {
+  const station = answer["station"] as { id?: unknown; activeFrom?: unknown; activeTo?: unknown } | undefined;
+  const window = (answer["status"] === "ok" ? answer["window"] : answer["searched"]) as { from?: unknown; to?: unknown } | undefined;
+  if (typeof station?.id !== "number" || typeof window?.from !== "string" || typeof window.to !== "string") return undefined;
+  if (typeof station.activeTo === "string" && station.activeTo < window.from) return undefined;
+  if (typeof station.activeFrom === "string" && station.activeFrom > window.to) return undefined;
+  return { station: station.id, from: window.from, to: window.to };
+}
+
 /** A component's id for a source, or the text as given. */
 function componentId(value: string | undefined): string | number | undefined {
   if (value === undefined) return undefined;
@@ -137,7 +154,7 @@ export const TOOLS: readonly ToolDefinition[] = [
       limit: limit(100, 20, "stations"),
     }),
     outputSchema: output({ total: int, stations: arr, inactiveLeftOut: int, otherNameMatches: int, nextOffset: int }),
-    source: "meta/json?use=measure&lang=en",
+    source: CATALOGUE,
     paged: (args) => ({ list: "stations", offset: numArg(args, "offset") ?? 0 }),
     async run(args, context) {
       const lat = numArg(args, "lat");
@@ -188,7 +205,11 @@ export const TOOLS: readonly ToolDefinition[] = [
       total: int,
       candidates: arr,
     }),
-    source: (args) => withQuery("airquality/json", { station: numArg(args, "station"), ...windowArgs(args), time_from: 1, time_to: 24 }),
+    // The request the answer came from: a place's station is known only from the answer.
+    source: (_args, _apiBase, answer) => {
+      const series = seriesOf(answer);
+      return series === undefined ? CATALOGUE : withQuery("airquality/json", { station: series.station, date_from: series.from, date_to: series.to, time_from: 1, time_to: 24 });
+    },
     async run(args, context) {
       return {
         ...(await getAirQualityReport(context.client, {

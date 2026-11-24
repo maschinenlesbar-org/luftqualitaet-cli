@@ -69,6 +69,17 @@ test("getAirQualityReport: a town with several stations is ambiguous with candid
   await connection.close();
 });
 
+test("getAirQualityReport: the source is the request the answer came from, by place too; no series request, the catalogue", async () => {
+  const connection = await connect({ transport: airDataApi() });
+  const source = async (args: Record<string, unknown>) => (await connection.call("getAirQualityReport", args)).structuredContent?.["source"];
+  assert.equal(await source({ place: "Leipzig-Mitte", from: "2026-11-18", to: "2026-11-19" }), `${BASE}/airquality/json?station=1613&date_from=2026-11-18&date_to=2026-11-19&time_from=1&time_to=24`);
+  assert.equal(await source({ place: "Leipzig" }), `${BASE}/meta/json?use=measure&lang=en`, "ambiguous: only the catalogue was read");
+  assert.equal(await source({ station: 99999 }), `${BASE}/meta/json?use=measure&lang=en`);
+  assert.equal(await source({ station: 1670, from: "2026-11-18" }), `${BASE}/meta/json?use=measure&lang=en`, "closed before the window: no series request");
+  assert.equal(await source({ station: 1647, from: "2026-11-18" }), `${BASE}/airquality/json?station=1647&date_from=2026-11-18&date_to=2026-11-18&time_from=1&time_to=24`, "empty window: the series request");
+  await connection.close();
+});
+
 test("rankStations: a completed year on the annual balance, its column by UBA's text, names joined; the source is the table", async () => {
   const connection = await connect({ transport: airDataApi() });
   const content = (await connection.call("rankStations", { component: "Ozon", year: 2025, limit: 2 })).structuredContent ?? {};

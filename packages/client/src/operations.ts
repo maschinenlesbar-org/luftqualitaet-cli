@@ -494,6 +494,9 @@ function checkStationInput(input: StationInput): void {
   }
   if (input.station !== undefined) assertId("station", input.station);
   else assertValid("place", input.place as string, textProblem);
+  if (input.station !== undefined && input.stationType !== undefined) {
+    throw new LuftValidationError("Invalid stationType: stationType narrows a place; a station id names one station, so leave it out.");
+  }
   if (input.stationType !== undefined) resolveWord("stationType", input.stationType, TYPE_WORDS, STATION_TYPES);
 }
 

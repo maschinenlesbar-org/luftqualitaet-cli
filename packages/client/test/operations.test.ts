@@ -196,6 +196,7 @@ test("the window is checked before any request: order, span, a station or a plac
   await assert.rejects(getAirQualityReport(client, { from: "2026-11-18" }), /Give a station id or a place/);
   await assert.rejects(getAirQualityReport(client, { station: 1613, place: "Leipzig" }), /one of them/);
   await assert.rejects(getAirQualityReport(client, { station: 1613, from: "2026-02-30" }), LuftValidationError);
+  await assert.rejects(getAirQualityReport(client, { station: 1613, stationType: "background" }), /stationType narrows a place/);
   assert.equal(mock.calls.length, 0);
 });
 

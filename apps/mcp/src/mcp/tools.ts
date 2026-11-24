@@ -168,7 +168,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     inputSchema: input({
       station: STATION,
       place: text(100, 'A town or station name instead of the id: "Leipzig-Mitte", "Leipzig" (with stationType).'),
-      stationType: TYPE,
+      stationType: { ...TYPE, description: "With place only (a station id is one station): background (the area's general air), traffic (a busy street) or industry." },
       from: FROM,
       to: TO,
       hours: limit(168, 24, "hours to list, newest first"),

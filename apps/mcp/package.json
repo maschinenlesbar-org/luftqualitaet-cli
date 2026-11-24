@@ -1,6 +1,6 @@
 {
   "name": "@maschinenlesbar.org/luftqualitaet-mcp",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "MCP server for the German Environment Agency's air-quality data (Umweltbundesamt Air Data API): stations, the decoded air-quality index, station rankings by limit-value exceedances, for AI agents (stdio and Streamable HTTP)",
   "type": "module",
   "bin": {

@@ -254,10 +254,13 @@ export const TOOLS: readonly ToolDefinition[] = [
       stations: arr,
       nextOffset: int,
     }),
-    source: (args) => {
-      const year = numArg(args, "year") ?? Number(cetDay(new Date()).slice(0, 4)) - 1;
+    // The table the figures came from: the answer's basis (a completed year whose annual balance
+    // is missing falls back to the exceedance table), else the one the arguments ask for.
+    source: (args, _apiBase, answer) => {
+      const year = typeof answer["year"] === "number" ? answer["year"] : (numArg(args, "year") ?? Number(cetDay(new Date()).slice(0, 4)) - 1);
       const running = year >= Number(cetDay(new Date()).slice(0, 4));
-      const table = strArg(args, "basis") === "transgressions" || (strArg(args, "basis") !== "annualBalance" && running) ? "transgressions/json" : "annualbalances/json";
+      const basis = typeof answer["basis"] === "string" ? answer["basis"] : strArg(args, "basis");
+      const table = basis === "transgressions" || (basis !== "annualBalance" && running) ? "transgressions/json" : "annualbalances/json";
       return withQuery(table, { component: componentId(strArg(args, "component")), year, lang: "en" });
     },
     paged: (args) => ({ list: "stations", offset: numArg(args, "offset") ?? 0 }),

@@ -107,6 +107,14 @@ test("rankStations: the exceedance table is preliminary and named so; 2016-2018 
   await connection.close();
 });
 
+test("rankStations: a ranking that fell back to the exceedance table cites that table", async () => {
+  const connection = await connect({ transport: airDataApi() });
+  const content = (await connection.call("rankStations", { component: "PM10", year: 2025 })).structuredContent ?? {};
+  assert.equal(content["basis"], "transgressions", "the fixtures have no PM10 2025 annual balance");
+  assert.equal(content["source"], `${BASE}/transgressions/json?component=1&year=2025&lang=en`);
+  await connection.close();
+});
+
 test("getMeasurements, getIndexBands, listComponents answer through the protocol", async () => {
   const connection = await connect({ transport: airDataApi() });
   const series = (await connection.call("getMeasurements", { station: 1613, component: "NO2", from: "2026-11-18" })).structuredContent ?? {};

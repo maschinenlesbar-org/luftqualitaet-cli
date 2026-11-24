@@ -84,7 +84,7 @@ const limit = (max: number, fallback: number, what: string): JsonSchema => ({ ty
 const OFFSET: JsonSchema = { type: "integer", minimum: 0, maximum: 1000, description: "Where the page starts (default 0); nextOffset says where the next one does." };
 const STATION: JsonSchema = { type: "integer", minimum: 1, maximum: 99_999, description: "The numeric station id, from findStations (1613 = Leipzig-Mitte)." };
 const DAY = (what: string): JsonSchema => ({ type: "string", pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", description: what });
-const FROM = DAY("First day of the window, YYYY-MM-DD, CET (default: yesterday; with to alone, that day).");
+const FROM = DAY("First day of the window, YYYY-MM-DD, CET, not after today (default: yesterday; with to alone, that day).");
 const TO = DAY("Last day of the window, YYYY-MM-DD (default: from, or today). At most 31 days in all.");
 const TYPE: JsonSchema = { type: "string", enum: [...STATION_TYPES], description: "background (the area's general air), traffic (a busy street) or industry." };
 const COMPONENT = text(40, 'The pollutant: "NO2", "PM10", "PM2.5", "O3"/"Ozon", "SO2", "CO", or its id (5, 1, 9, 3, 4, 2). "Feinstaub" alone is PM10 or PM2.5: ask which.');

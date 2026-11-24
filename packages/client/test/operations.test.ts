@@ -190,6 +190,21 @@ test("an empty window costs no second catalogue download; a station closed befor
   assert.equal(closedSeries.mock.calls.length, 1);
 });
 
+test("a window after today is refused; one before the station's records says so; the lag only near today", async () => {
+  const { client, mock } = api();
+  await assert.rejects(getAirQualityReport(client, { station: 1613, from: "2026-12-01", now: NOW }), /from \(2026-12-01\) is after today \(2026-11-19, CET\)/);
+  await assert.rejects(getMeasurements(client, { station: 1613, component: "NO2", from: "2026-11-20", now: NOW }), /after today/);
+  assert.equal(mock.calls.length, 0);
+  const early = api();
+  const before = await getAirQualityReport(early.client, { station: 1613, from: "1900-01-01", now: NOW });
+  assert.match(before.status === "empty" ? before.reason : "", /has records from 1990-12-01 on: none from 1900-01-01 to 1900-01-01/);
+  assert.equal(early.mock.calls.length, 1, "the catalogue only");
+  const old = await getAirQualityReport(api().client, { station: 1647, from: "2026-10-01", now: NOW });
+  const reason = old.status === "empty" ? old.reason : "";
+  assert.match(reason, /has no index data from 2026-10-01 to 2026-10-01 \(the station exists\)/);
+  assert.doesNotMatch(reason, /newest hours lag/);
+});
+
 test("a place with several stations is ambiguous, with candidates; a type or a precise name settles it", async () => {
   const several = await getAirQualityReport(api().client, { place: "Leipzig", now: NOW });
   assert.equal(several.status, "ambiguous");

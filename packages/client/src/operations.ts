@@ -300,6 +300,8 @@ function windowOf(input: { from?: string | undefined; to?: string | undefined },
   const to = input.to === undefined ? (input.from === undefined ? cetDay(now) : input.from) : assertDate("to", input.to);
   const from = input.from === undefined ? (input.to === undefined ? cetDay(now, -1) : to) : assertDate("from", input.from);
   if (from > to) throw new LuftValidationError(`Invalid window: from (${from}) is after to (${to}).`);
+  const today = cetDay(now);
+  if (from > today) throw new LuftValidationError(`Invalid window: from (${from}) is after today (${today}, CET): there is no data for it yet.`);
   if (daysBetween(from, to) + 1 > MAX_WINDOW_DAYS) {
     throw new LuftValidationError(`Invalid window: ${from} to ${to} spans more than ${MAX_WINDOW_DAYS} days; ask for a shorter one.`);
   }
@@ -632,6 +634,23 @@ function closedReason(station: Station, from: string): string {
   return `Station ${station.id} (${station.name}) was closed on ${station.activeTo}: it has no data from ${from}. Ask for a window before that, or pick an active station.`;
 }
 
+/** True when the window ends before the station's first records. */
+function openedAfter(station: Station, to: string): boolean {
+  return station.activeFrom !== null && station.activeFrom > to;
+}
+
+function openedReason(station: Station, window: { from: string; to: string }): string {
+  return `Station ${station.id} (${station.name}) has records from ${station.activeFrom} on: none from ${window.from} to ${window.to}. Ask for a window after that.`;
+}
+
+/** Why a window of a known, open station came back without data; the lag only for a window that reaches yesterday. */
+function noDataReason(station: Station, what: string, window: { from: string; to: string }, now: Date): string {
+  const recent = window.to >= cetDay(now, -1);
+  return `Station ${station.id} (${station.name}) has no ${what} from ${window.from} to ${window.to} (the station exists). ${
+    recent ? "The newest hours lag by an hour or two: ask for the day before, or a wider window." : "Its records have a gap there: ask for another window."
+  }`;
+}
+
 /** One hour of an `airquality` answer: `[end, index, incomplete, [component, value, index, y]…]`. */
 function readHour(start: string, row: JsonValue, catalogue: Catalogue): HourReading | undefined {
   if (!Array.isArray(row)) return undefined;
@@ -672,6 +691,7 @@ export async function getAirQualityReport(client: LuftqualitaetClient, input: Ai
   const station = resolved.station;
   const searched = { station: station.id, from: window.from, to: window.to };
   if (closedBefore(station, window.from)) return { status: "empty", searched, station, reason: closedReason(station, window.from) };
+  if (openedAfter(station, window.to)) return { status: "empty", searched, station, reason: openedReason(station, window) };
   // The catalogue has just named the station: an empty answer needs no second lookup.
   const result = await client.airquality({ station: station.id, date_from: window.from, time_from: 1, date_to: window.to, time_to: 24 }, { stationKnown: true });
   const data = isRecord(result["data"]) ? result["data"][String(station.id)] : undefined;
@@ -687,8 +707,7 @@ export async function getAirQualityReport(client: LuftqualitaetClient, input: Ai
       status: "empty",
       searched,
       station,
-      reason:
-        `Station ${station.id} (${station.name}) has no index data from ${window.from} to ${window.to} (the station exists). The newest hours lag by an hour or two: ask for the day before, or a wider window. This does not mean the air was clean.`,
+      reason: `${noDataReason(station, "index data", window, input.now ?? new Date())} This does not mean the air was clean.`,
     };
   }
   const worstLevel = Math.max(...hours.map((hour) => hour.level));
@@ -1129,6 +1148,7 @@ export async function getMeasurements(client: LuftqualitaetClient, input: Measur
   const scope = catalogue.scopes.get(scopeId) ?? { id: scopeId, code: "", name: `scope ${scopeId}` };
   const searched = { station: station.id, component: componentId, scope: scopeId, from: window.from, to: window.to };
   if (closedBefore(station, window.from)) return { status: "empty", searched, station, reason: closedReason(station, window.from) };
+  if (openedAfter(station, window.to)) return { status: "empty", searched, station, reason: openedReason(station, window) };
   const result = await client.measures(
     { station: station.id, component: componentId, scope: scopeId, date_from: window.from, time_from: 1, date_to: window.to, time_to: 24 },
     { stationKnown: true },

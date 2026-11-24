@@ -417,6 +417,8 @@ export async function findStations(client: LuftqualitaetClient, input: FindStati
   const limit = assertValid("limit", input.limit ?? 20, limitProblem(100));
   const offset = assertValid("offset", input.offset ?? 0, offsetProblem);
   const near = input.near === undefined ? undefined : checkedPoint(input.near);
+  // Every filter checked on no stations first: a blank query or an unknown Land costs no download.
+  filterStations([], input);
   const catalogue = await loadCatalogue(client);
   const { matches, otherNameMatches, searched } = filterStations([...catalogue.stations.values()], input);
   if (near !== undefined) searched["near"] = near;

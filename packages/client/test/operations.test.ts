@@ -74,6 +74,14 @@ test("a Land by code, German or English name; a type and a setting in German or 
   await assert.rejects(findStations(api().client, { type: "street" }), /expected one of background, industry, traffic/);
 });
 
+test("a blank or unknown filter is refused before the station catalogue is downloaded", async () => {
+  for (const input of [{ query: "   " }, { query: "\u200b" }, { state: "Atlantis" }, { type: "street" }, { setting: "moon" }]) {
+    const { client, mock } = api();
+    await assert.rejects(findStations(client, input), LuftValidationError, JSON.stringify(input));
+    assert.equal(mock.calls.length, 0, JSON.stringify(input));
+  }
+});
+
 test("near a point: the nearest first, with the distance in km", async () => {
   const answer = await findStations(api().client, { near: { lat: 51.34, lon: 12.37 }, limit: 3 });
   assert.equal(answer.status, "ok");

@@ -112,7 +112,11 @@ test("getMeasurements, getIndexBands, listComponents answer through the protocol
   const series = (await connection.call("getMeasurements", { station: 1613, component: "NO2", from: "2026-11-18" })).structuredContent ?? {};
   assert.equal(series["status"], "ok");
   assert.equal(series["mean"], 11.8);
-  assert.equal(series["source"], `${BASE}/measures/json?station=1613&component=5&date_from=2026-11-18&date_to=2026-11-18&time_from=1&time_to=24`);
+  assert.equal(series["source"], `${BASE}/measures/json?station=1613&component=5&scope=2&date_from=2026-11-18&date_to=2026-11-18&time_from=1&time_to=24`, "the default scope, as sent");
+  const co = (await connection.call("getMeasurements", { station: 1613, component: "CO", from: "2026-11-18" })).structuredContent ?? {};
+  assert.equal(co["source"], `${BASE}/measures/json?station=1613&component=2&scope=4&date_from=2026-11-18&date_to=2026-11-18&time_from=1&time_to=24`);
+  const unknown = (await connection.call("getMeasurements", { station: 99999, component: "NO2" })).structuredContent ?? {};
+  assert.equal(unknown["source"], `${BASE}/meta/json?use=measure&lang=en`);
   const wrongScope = await connection.call("getMeasurements", { station: 1613, component: "NO2", scope: 1 });
   assert.equal(wrongScope.isError, true);
   assert.match(wrongScope.content[0]?.text ?? "", /not in scope 1/);

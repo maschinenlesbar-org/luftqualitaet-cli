@@ -96,14 +96,6 @@ function withQuery(path: string, params: Record<string, string | number | undefi
   return query.size === 0 ? path : `${path}?${query.toString()}`;
 }
 
-/** The window a call asked for, as the tool reads it (yesterday and today by default). */
-function windowArgs(args: Record<string, unknown>): { date_from: string; date_to: string } {
-  const from = strArg(args, "from");
-  const to = strArg(args, "to");
-  const now = new Date();
-  return { date_from: from ?? to ?? cetDay(now, -1), date_to: to ?? from ?? cetDay(now) };
-}
-
 /** The station catalogue every station-taking tool reads first. */
 const CATALOGUE = "meta/json?use=measure&lang=en";
 
@@ -305,8 +297,13 @@ export const TOOLS: readonly ToolDefinition[] = [
       ["station", "component"],
     ),
     outputSchema: output({ station: obj, component: obj, scope: obj, window: obj, count: int, min: obj, max: obj, mean: num, latest: obj, values: arr }),
-    source: (args) =>
-      withQuery("measures/json", { station: numArg(args, "station"), component: componentId(strArg(args, "component")), scope: numArg(args, "scope"), ...windowArgs(args), time_from: 1, time_to: 24 }),
+    // The request the answer came from, with the scope the tool chose when none was given.
+    source: (_args, _apiBase, answer) => {
+      const series = seriesOf(answer);
+      const ids = (answer["status"] === "ok" ? { component: (answer["component"] as { id?: unknown }).id, scope: (answer["scope"] as { id?: unknown }).id } : answer["searched"]) as { component?: unknown; scope?: unknown };
+      if (series === undefined || typeof ids.component !== "number" || typeof ids.scope !== "number") return CATALOGUE;
+      return withQuery("measures/json", { station: series.station, component: ids.component, scope: ids.scope, date_from: series.from, date_to: series.to, time_from: 1, time_to: 24 });
+    },
     async run(args, context) {
       return {
         ...(await getMeasurements(context.client, {

@@ -82,11 +82,11 @@ running year on the preliminary exceedance table; the two are never mixed, and t
 by UBA's own text, not by its position.
 
 Every tool only reads. An answer is JSON (`structuredContent` and the same as text), with the
-`source` it came from (an answer a redirect fetched from another host says so there: "… (answered by
-https://other.example after a redirect)", and a WARN record names both) and the data licence. A text
-over 2000 characters is cut and ends in `…[cut, N characters in all]`, and the answer says
-`truncated`. A failure is a tool error that says what to change (one over 5000 characters loses its
-middle, never its end, where the reason is).
+`source` it came from (whole, never cut like the data; an answer a redirect fetched from another
+host says so there: "… (answered by https://other.example after a redirect)", and a WARN record
+names both) and the data licence. A text over 2000 characters is cut and ends in `…[cut, N
+characters in all]`, and the answer says `truncated`. A failure is a tool error that says what to
+change (one over 5000 characters loses its middle, never its end, where the reason is).
 
 The API's version 3 is to be retired on 1 February 2027; until then it answers some requests with
 HTTP 410 (a "brownout"). Such a call is a tool error naming the 410: call again.

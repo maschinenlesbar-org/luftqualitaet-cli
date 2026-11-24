@@ -361,6 +361,10 @@ exits with its own code.
   when they ran out, so wait a moment and retry. When the server asks for a longer wait
   the CLI does not retry at all and says so (`the server asked to retry after 3600 s,
   longer than the 30 s the client waits; not retried`): wait that long before trying again.
+- **`410`** — the API's v3 brownout: until v3 is retired on 1 February 2027 it answers some
+  requests with `410` at random. The CLI asks once more at once (a WARN record; not with
+  `--max-retries 0`); a second `410` exits `1` with `the Air Data API's v3 brownout: …; asked
+  twice: try again`.
 - **`GET <url>: unexpected response shape …` / `GET <url>: the answer is not valid JSON`**
   (exit `1`) — the server answered `200` with something that isn't the API's documented JSON
   (`null`, `{}`, an error object, an empty body, a proxy or maintenance page). The message

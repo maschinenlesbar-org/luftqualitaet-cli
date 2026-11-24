@@ -5,7 +5,7 @@
 //   client.airquality({ date_from: "2024-01-01", time_from: 1, date_to: "2024-01-01", time_to: 24, station: 143 })
 
 import { RequestEngine, type EngineOptions } from "./engine.js";
-import { LuftNotFoundError, LuftParseError, LuftValidationError } from "./errors.js";
+import { LuftApiError, LuftNotFoundError, LuftParseError, LuftValidationError } from "./errors.js";
 import type { QueryParams } from "./query.js";
 import type {
   AirDataResult,
@@ -292,12 +292,46 @@ function prune(params: Record<string, unknown>): QueryParams {
   return out;
 }
 
+/** What a 410 is, as long as the API's v3 is in its brownout. */
+const BROWNOUT = "the Air Data API's v3 brownout: until UBA retires v3 on 1 February 2027 it answers some requests with 410 at random; asked twice: try again";
+
 export class LuftqualitaetClient {
   private readonly engine: RequestEngine;
+  /** Whether a 410 of the v3 brownout is asked once more (not with `maxRetries: 0`). */
+  private readonly brownoutRetry: boolean;
+  private readonly onRetry: EngineOptions["onRetry"];
 
   constructor(options: EngineOptions = {}) {
     this.engine = new RequestEngine(options);
     if (options.baseUrl !== undefined) assertValid("baseUrl", options.baseUrl, baseUrlApiPathProblem);
+    this.brownoutRetry = options.maxRetries !== 0;
+    this.onRetry = options.onRetry;
+  }
+
+  /**
+   * The engine's GET for JSON, through the API's v3 brownout: until UBA retires v3 on 1 February
+   * 2027 it answers some requests (about one in twenty) with HTTP 410 at random, the body asking to
+   * migrate to v4. Such a 410 is asked once more at once (told to `onRetry`; not with
+   * `maxRetries: 0`); a second one is a LuftApiError that says what it is, instead of the body's
+   * advice, which no caller of this client can follow.
+   */
+  private async getJson<T>(path: string, query?: QueryParams, shape?: (value: unknown) => string | undefined): Promise<T> {
+    try {
+      return await this.engine.getJson<T>(path, query, shape);
+    } catch (err) {
+      if (!(err instanceof LuftApiError) || err.status !== 410 || !this.brownoutRetry) throw err;
+      try {
+        this.onRetry?.({ retry: 1, maxRetries: 1, delayMs: 0, status: 410, url: err.url });
+      } catch {
+        // a logging hook is no reason to fail the request
+      }
+    }
+    try {
+      return await this.engine.getJson<T>(path, query, shape);
+    } catch (err) {
+      if (!(err instanceof LuftApiError) || err.status !== 410) throw err;
+      throw new LuftApiError({ status: 410, url: err.url, method: err.method, body: err.body, detail: BROWNOUT, retries: 1 });
+    }
   }
 
   // --- Air-quality index & raw measures -------------------------------------
@@ -313,14 +347,14 @@ export class LuftqualitaetClient {
     assertParams("params", params);
     assertKnownParams("airquality", params, CALL_PARAMS.airquality, options);
     assertWindowParams(params);
-    const result = inTimeOrder(await this.engine.getJson(`${API}/airquality/json`, prune({ ...params }), shaped("window")));
+    const result = inTimeOrder(await this.getJson(`${API}/airquality/json`, prune({ ...params }), shaped("window")));
     if (options.stationKnown !== true) await this.assertStationKnown(params.station, result);
     return result;
   }
 
   /** The available date range per station for air-quality data. */
   airqualityLimits(): Promise<AirDataResult> {
-    return this.engine.getJson(`${API}/airquality/limits`, undefined, shaped("limits"));
+    return this.getJson(`${API}/airquality/limits`, undefined, shaped("limits"));
   }
 
   /**
@@ -335,7 +369,7 @@ export class LuftqualitaetClient {
     assertWindowParams(params);
     assertId("component", params.component);
     assertId("scope", params.scope);
-    const result = inTimeOrder(await this.engine.getJson(`${API}/measures/json`, prune({ ...params }), shaped("window")));
+    const result = inTimeOrder(await this.getJson(`${API}/measures/json`, prune({ ...params }), shaped("window")));
     if (options.stationKnown !== true) await this.assertStationKnown(params.station, result);
     return result;
   }
@@ -355,7 +389,7 @@ export class LuftqualitaetClient {
 
   /** The available date range per scope/component/station for measurements. */
   measuresLimits(): Promise<AirDataResult> {
-    return this.engine.getJson(`${API}/measures/limits`, undefined, shaped("limits"));
+    return this.getJson(`${API}/measures/limits`, undefined, shaped("limits"));
   }
 
   // --- Aggregations ---------------------------------------------------------
@@ -371,7 +405,7 @@ export class LuftqualitaetClient {
     assertParams("params", params);
     assertKnownParams("annualBalances", params, CALL_PARAMS.annualBalances, options);
     const lists = assertYearComponent(params);
-    return this.engine.getJson(`${API}/annualbalances/json`, prune({ ...params, ...lists }), shaped("annual"));
+    return this.getJson(`${API}/annualbalances/json`, prune({ ...params, ...lists }), shaped("annual"));
   }
 
   /**
@@ -387,7 +421,7 @@ export class LuftqualitaetClient {
     assertParams("params", params);
     assertKnownParams("transgressions", params, CALL_PARAMS.transgressions, options);
     const lists = assertYearComponent(params);
-    return this.engine.getJson(`${API}/transgressions/json`, prune({ ...params, ...lists }), shaped("annual"));
+    return this.getJson(`${API}/transgressions/json`, prune({ ...params, ...lists }), shaped("annual"));
   }
 
   // --- Reference lists ------------------------------------------------------
@@ -396,36 +430,36 @@ export class LuftqualitaetClient {
     assertParams("params", params);
     assertKnownParams("components", params, CALL_PARAMS.components, options);
     const lists = assertListParams(params);
-    return this.engine.getJson(`${API}/components/json`, prune({ ...params, ...lists }), shaped("list"));
+    return this.getJson(`${API}/components/json`, prune({ ...params, ...lists }), shaped("list"));
   }
 
   async networks(params: ListParams = {}, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("networks", params, CALL_PARAMS.networks, options);
     const lists = assertListParams(params);
-    return this.engine.getJson(`${API}/networks/json`, prune({ ...params, ...lists }), shaped("list"));
+    return this.getJson(`${API}/networks/json`, prune({ ...params, ...lists }), shaped("list"));
   }
 
   async scopes(params: ListParams = {}, options: FilterOptions = {}): Promise<AirDataResult> {
     assertParams("params", params);
     assertKnownParams("scopes", params, CALL_PARAMS.scopes, options);
     const lists = assertListParams(params);
-    return this.engine.getJson(`${API}/scopes/json`, prune({ ...params, ...lists }), shaped("list"));
+    return this.getJson(`${API}/scopes/json`, prune({ ...params, ...lists }), shaped("list"));
   }
 
   async stationSettings(lang?: Lang): Promise<AirDataResult> {
     const sent = optional(lang, (v) => assertOneOf("lang", v, LangValues));
-    return this.engine.getJson(`${API}/stationsettings/json`, prune({ lang: sent }), shaped("list"));
+    return this.getJson(`${API}/stationsettings/json`, prune({ lang: sent }), shaped("list"));
   }
 
   async stationTypes(lang?: Lang): Promise<AirDataResult> {
     const sent = optional(lang, (v) => assertOneOf("lang", v, LangValues));
-    return this.engine.getJson(`${API}/stationtypes/json`, prune({ lang: sent }), shaped("list"));
+    return this.getJson(`${API}/stationtypes/json`, prune({ lang: sent }), shaped("list"));
   }
 
   async transgressionTypes(lang?: Lang): Promise<AirDataResult> {
     const sent = optional(lang, (v) => assertOneOf("lang", v, LangValues));
-    return this.engine.getJson(`${API}/transgressiontypes/json`, prune({ lang: sent }), shaped("list"));
+    return this.getJson(`${API}/transgressiontypes/json`, prune({ lang: sent }), shaped("list"));
   }
 
   /** Thresholds for a use (airquality | measure), optional component/scope. */
@@ -436,7 +470,7 @@ export class LuftqualitaetClient {
     const lang = optional(params.lang, (v) => assertOneOf("lang", v, LangValues));
     optional(params.component, (v) => assertId("component", v));
     optional(params.scope, (v) => assertId("scope", v));
-    return this.engine.getJson(`${API}/thresholds/json`, prune({ ...params, use, lang }), shaped("list"));
+    return this.getJson(`${API}/thresholds/json`, prune({ ...params, use, lang }), shaped("list"));
   }
 
   /**
@@ -467,7 +501,7 @@ export class LuftqualitaetClient {
       const time_to = params.time_to ?? DEFAULT_META_TIME_TO;
       assertWindow(params.date_from, time_from, params.date_to, time_to);
       const { date_from, date_to } = params;
-      return this.engine.getJson(
+      return this.getJson(
         `${API}/meta/json`,
         prune({ use, lang, date_from, date_to, time_from, time_to }),
         shaped("meta"),
@@ -476,6 +510,6 @@ export class LuftqualitaetClient {
     if (params.time_from !== undefined || params.time_to !== undefined) {
       throw new LuftValidationError("Invalid meta window: time_from/time_to need date_from and date_to.");
     }
-    return this.engine.getJson(`${API}/meta/json`, prune({ ...params, use, lang }), shaped("meta"));
+    return this.getJson(`${API}/meta/json`, prune({ ...params, use, lang }), shaped("meta"));
   }
 }

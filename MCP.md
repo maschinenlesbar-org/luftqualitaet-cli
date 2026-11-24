@@ -94,7 +94,8 @@ is a tool error that says what to change (one over 5000 characters loses its mid
 where the reason is).
 
 The API's version 3 is to be retired on 1 February 2027; until then it answers some requests with
-HTTP 410 (a "brownout"). Such a call is a tool error naming the 410: call again.
+HTTP 410 (a "brownout"). The server asks such a request once more; a second 410 is a tool error
+that says it is the brownout: call again.
 
 ## Options
 

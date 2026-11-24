@@ -436,3 +436,30 @@ test("a closed value is a token: sent trimmed, refused with an invisible charact
   await assert.rejects(clientWith(mt).components({ lang: "DE" as never }), /Invalid lang: expected one of de, en, got "DE"\./);
   assert.equal(mt.calls.length, before);
 });
+
+test("the API's v3 brownout: a 410 is asked once more; a second one says what it is", async () => {
+  const GONE = { message: "API v3 has been sunsetted. Please migrate to v4: https://luftdaten.umweltbundesamt.de/api/air-data/v4/doc" };
+  const answers = (statuses: number[]) => {
+    let i = 0;
+    return makeMockTransport(() => {
+      const status = statuses[Math.min(i++, statuses.length - 1)] as number;
+      return status === 410 ? jsonResponse(GONE, 410) : jsonResponse(OK_BODY);
+    });
+  };
+  const retries: unknown[] = [];
+  const once = answers([410, 200]);
+  await new LuftqualitaetClient({ transport: once.transport, onRetry: (event) => void retries.push(event) }).components();
+  assert.equal(once.calls.length, 2);
+  assert.deepEqual(retries, [{ retry: 1, maxRetries: 1, delayMs: 0, status: 410, url: "https://luftdaten.umweltbundesamt.de/api/air-data/v3/components/json" }]);
+
+  const twice = answers([410, 410]);
+  await assert.rejects(new LuftqualitaetClient({ transport: twice.transport }).components(), (err: unknown) =>
+    err instanceof LuftApiError && err.status === 410 && err.retries === 1 &&
+    /HTTP 410 for GET .*: the Air Data API's v3 brownout: until UBA retires v3 on 1 February 2027 it answers some requests with 410 at random; asked twice: try again \(after 1 retry\)$/.test(err.message),
+  );
+  assert.equal(twice.calls.length, 2);
+
+  const none = answers([410, 200]);
+  await assert.rejects(new LuftqualitaetClient({ transport: none.transport, maxRetries: 0 }).components(), LuftApiError, "no retries asked for: none");
+  assert.equal(none.calls.length, 1);
+});

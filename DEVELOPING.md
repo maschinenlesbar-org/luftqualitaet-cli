@@ -635,8 +635,11 @@ the opening exchange. Real clients wait, so nothing is worked around here.
 
 The API's v3 is to be retired on 1 February 2027 ("sunsetted", says its 410 answer) and is in a
 brownout until then: about one request in twenty is answered with HTTP 410 Gone and a message to
-migrate to v4. The CLI and the server report that 410 as an error; the server's instructions tell
-a model to call again. The move to v4 is a change of the client, for both apps.
+migrate to v4. The client asks a 410 once more at once (`getJson` in `client.ts`, told to
+`onRetry`, so the CLI and the server log a WARN record; not with `maxRetries: 0`, `--max-retries 0`);
+a second 410 is a `LuftApiError` that says it is the brownout and to try again, instead of the
+body's "migrate to v4", which no user of this client can follow. The server's instructions tell a
+model to call again. The move to v4 is a change of the client, for both apps.
 
 **The kit.** Everything in `apps/mcp` but `tools.ts`, `api.ts`, `test/helpers.ts`,
 `test/tools.test.ts` and the conformance tests' adapter blocks, plus `packages/log`,

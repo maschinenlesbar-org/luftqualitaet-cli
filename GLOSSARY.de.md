@@ -202,7 +202,10 @@ wenn das länger ist — ein `Retry-After` von `0` oder ein vergangenes Datum ve
 Wartezeit nie. Ein `Retry-After` über 30 s wird nicht abgewartet: Der Fehler erscheint
 sofort und nennt die verlangte Wartezeit (`--max-retries`, `0..10`, Standard `2`). Eine Verbindung, die der Server mitten in der
 Anfrage abbricht, wird ebenso wiederholt (linear steigend); eine abgelehnte Verbindung, ein
-DNS-Fehler oder eine Zeitüberschreitung nicht.
+DNS-Fehler oder eine Zeitüberschreitung nicht. Ein HTTP **410** ist der „Brownout“ der API-Version 3
+(bis zu ihrer Abschaltung am 1. Februar 2027 beantwortet sie einzelne Anfragen zufällig mit 410):
+Der Client fragt sofort ein zweites Mal (nicht mit `--max-retries 0`); ein zweites 410 ist ein
+Fehler, der das sagt: später noch einmal versuchen.
 
 **Weiterleitungen.** Die Engine folgt standardmäßig bis zu 5 HTTP-Weiterleitungen
 (einstellbar mit `--max-redirects`; `0` schaltet das Folgen ab). Bei einer

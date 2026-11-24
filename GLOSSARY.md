@@ -201,7 +201,9 @@ longer — a `Retry-After` of `0` or a past date never makes it retry sooner. A
 `Retry-After` above 30 s is not retried: the error surfaces at once and names the wait
 the server asked for (`--max-retries`, `0..10`, default `2`). A connection the server resets mid-request is
 retried the same way (linear backoff); a refused connection, a DNS failure or a timeout
-is not.
+is not. An HTTP **410** is the API's v3 brownout (until v3 is retired on 1 February 2027 it
+answers some requests with 410 at random): the client asks once more at once (not with
+`--max-retries 0`), and a second 410 is an error that says so: try again.
 
 **Redirects.** The engine follows up to 5 HTTP redirects by default
 (configurable with `--max-redirects`; `0` disables following). On a

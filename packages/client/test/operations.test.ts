@@ -133,8 +133,8 @@ test("the index decoded: the worst level with its first hour and driver, hours p
   const worstHour = report.hours[3];
   assert.deepEqual(worstHour?.pollutants.find((p) => p.symbol === "NO₂"), { component: 5, symbol: "NO₂", value: 95, unit: "µg/m³", level: 2 });
   assert.deepEqual(report.drivers, [{ symbol: "O₃", hours: 3 }, { symbol: "NO₂", hours: 2 }], "levels of 1 or worse only");
-  assert.equal(report.days.length, 2);
-  assert.deepEqual(report.days[0], { date: "2026-11-18", worstLevel: 2, label: "moderate", hours: 3, incompleteHours: 0, drivers: ["NO₂"] });
+  assert.deepEqual(report.days.map((d) => d.date), ["2026-11-19", "2026-11-18"], "newest first, like hours: a size cap drops the oldest days");
+  assert.deepEqual(report.days[1], { date: "2026-11-18", worstLevel: 2, label: "moderate", hours: 3, incompleteHours: 0, drivers: ["NO₂"] });
 });
 
 test("'right now' is the newest complete hour; a newer incomplete one is said apart; times are CET", async () => {

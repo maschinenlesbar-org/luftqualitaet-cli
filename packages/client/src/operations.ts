@@ -610,6 +610,7 @@ export type AirQualityReport =
       incompleteHours: number;
       /** How often each pollutant set a level of 1 or worse. */
       drivers: { symbol: string; hours: number }[];
+      /** One line per day, the newest first. */
       days: DaySummary[];
       /** The newest hours first. */
       hours: HourReading[];
@@ -756,7 +757,7 @@ export async function getAirQualityReport(client: LuftqualitaetClient, input: Ai
         incompleteHours: list.filter((hour) => hour.incomplete).length,
         drivers: [...new Set(list.filter((hour) => hour.level === worst).flatMap((hour) => hour.drivers))],
       };
-    }),
+    }).reverse(),
     hours: hours.slice(-hoursLimit).reverse(),
     notes,
   };

@@ -423,11 +423,14 @@ declared values in place; no reviver).
 
 **The transport contract, enforced by the engine.** `timeoutMs` and `maxResponseBytes`
 hold for every transport, not only the built-in one: the engine runs each transport call
-under the overall deadline (it passes an `AbortSignal` in `HttpRequest.signal`, which the
-built-in transport honours and a fetch transport should pass on, and rejects at the
-deadline either way) and checks the size of the body it gets back. Response headers are
-read in any case and from a `Headers` object or a `Map` too; the body may be a `Buffer`,
-any `ArrayBuffer` view (fetch's `Uint8Array`) or an `ArrayBuffer`. Whatever a transport
+under the overall deadline (it passes an `AbortSignal` in `HttpRequest.signal`, aborted
+with its timeout error as the reason, which the built-in transport honours and a fetch
+transport should pass on, and rejects at the deadline either way) and checks the size of
+the body it gets back. The built-in transport stops with the signal's reason; for a signal
+some other caller aborted (the MCP server's tool call: its deadline, a cancellation) it says
+"Request aborted by its caller before it finished", never a deadline it didn't have.
+Response headers are read in any case and from a `Headers` object or a `Map` too; the body
+may be a `Buffer`, any `ArrayBuffer` view (fetch's `Uint8Array`) or an `ArrayBuffer`. Whatever a transport
 throws, and a response without a valid status, headers object or body, becomes a
 `LuftNetworkError`. A redirect to a scheme other than `http:`/`https:` is refused before
 the transport is called.
